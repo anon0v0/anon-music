@@ -47,9 +47,13 @@ class MusicService : Service() {
 
         @JvmStatic
         fun start(context: Context) {
-            val intent = Intent(context, MusicService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
-            else context.startService(intent)
+            try {
+                val intent = Intent(context, MusicService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
+                else context.startService(intent)
+            } catch (e: Exception) {
+                Log.e("MusicService", "start failed: ${e.message}")
+            }
         }
 
         @JvmStatic
@@ -94,17 +98,24 @@ class MusicService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        createChannel()
-        setupSession()
-        setupWakeLock()
-        if (pendingTitle.isNotEmpty()) {
-            updateNowPlayingInternal(pendingTitle, pendingArtist, pendingAlbum, pendingDurationMs, pendingCoverUrl)
+        try {
+            createChannel()
+            setupSession()
+            setupWakeLock()
+            if (pendingTitle.isNotEmpty()) {
+                updateNowPlayingInternal(pendingTitle, pendingArtist, pendingAlbum, pendingDurationMs, pendingCoverUrl)
+            }
+        } catch (e: Exception) {
+            Log.e("MusicService", "onCreate failed: ${e.message}")
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        intent?.let { handleIntent(it) }
-        if (!isForeground) startAsForeground()
+        // 必须先进前台：startForegroundService 后 5s 内不 startForeground 会 ANR 崩溃。
+        if (!isForeground) {
+            if (!startAsForeground()) { stopSelf(); return START_NOT_STICKY }
+        }
+        intent?.let { try { handleIntent(it) } catch (_: Exception) {} }
         return START_STICKY
     }
 
@@ -156,14 +167,29 @@ class MusicService : Service() {
     private fun releaseWakeLock() { wakeLock?.let { if (it.isHeld) it.release() } }
 
     // ---- 前台通知 ----
-    private fun startAsForeground() {
-        val n = buildNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-        } else {
-            startForeground(NOTIFICATION_ID, n)
+    // 返回是否成功进前台。任何异常都吞掉并返回 false（由调用方 stopSelf），绝不让它崩主线程。
+    private fun startAsForeground(): Boolean {
+        val n = try { buildNotification() } catch (e: Exception) {
+            Log.e("MusicService", "buildNotification failed: ${e.message}"); return false
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            } else {
+                startForeground(NOTIFICATION_ID, n)
+            }
+        } catch (e: Exception) {
+            // Android 14+ 对前台服务类型/权限更严，退化为不带类型再试一次。
+            Log.e("MusicService", "startForeground(typed) failed: ${e.message}")
+            try {
+                startForeground(NOTIFICATION_ID, n)
+            } catch (e2: Exception) {
+                Log.e("MusicService", "startForeground(plain) failed: ${e2.message}")
+                return false
+            }
         }
         isForeground = true
+        return true
     }
 
     private fun actionIntent(action: String, req: Int): PendingIntent =
@@ -207,8 +233,12 @@ class MusicService : Service() {
 
     private fun updateNotification() {
         if (!isForeground) return
-        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(NOTIFICATION_ID, buildNotification())
+        try {
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(NOTIFICATION_ID, buildNotification())
+        } catch (e: Exception) {
+            Log.e("MusicService", "updateNotification failed: ${e.message}")
+        }
     }
 
     // ---- 通知按钮 → 回传前端 ----

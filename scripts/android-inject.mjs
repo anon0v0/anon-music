@@ -51,10 +51,18 @@ if (!mani.includes('MusicService')) {
     '            android:exported="false" />\n';
   mani = mani.replace(/(\s*<\/application>)/, `\n${service}$1`);
 
+  // 断言：注入若失败（生成结构变化导致正则不匹配），宁可让 CI 红，也不要产出会崩溃的 APK。
+  if (!mani.includes('FOREGROUND_SERVICE_MEDIA_PLAYBACK') || !/<service[\s\S]*?\.MusicService/.test(mani)) {
+    console.error('[android-inject] 致命：Manifest 注入未生效（未找到锚点）。当前内容：\n' + mani);
+    process.exit(1);
+  }
   writeFileSync(manifestPath, mani);
   console.log('[android-inject] AndroidManifest.xml patched (perms + MusicService)');
 } else {
   console.log('[android-inject] manifest already patched, skip');
 }
 
+// 打印最终 manifest，便于在 CI 日志里核对权限/服务确实写进去了。
+console.log('[android-inject] ----- final AndroidManifest.xml -----');
+console.log(readFileSync(manifestPath, 'utf8'));
 console.log('[android-inject] done.');
