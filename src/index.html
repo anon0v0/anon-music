@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Anon Music</title>
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 14px; background: #0e0e12; color: #e8e8ef;
+        font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      img { width: 96px; height: 96px; border-radius: 22px; }
+      .t { font-size: 16px; opacity: .9; }
+      .s { font-size: 13px; color: #8a8a99; }
+      button {
+        margin-top: 8px; padding: 8px 18px; border: 1px solid #2a2a35; border-radius: 10px;
+        background: #1b1b24; color: #e8e8ef; font-size: 14px; cursor: pointer;
+      }
+      button:hover { background: #24242f; }
+    </style>
+  </head>
+  <body>
+    <img src="/assets/icon.png" alt="" onerror="this.style.display='none'" />
+    <div class="t">正在连接 Anon Music…</div>
+    <div class="s">若长时间无响应，请检查网络后重试</div>
+    <button onclick="location.reload()">重新加载</button>
+    <!-- 说明：正常情况下窗口会直接加载 tauri.conf.json 中配置的远程域名，
+         此本地页面仅作为构建占位 / 离线兜底。 -->
+  </body>
+</html>
