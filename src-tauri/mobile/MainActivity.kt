@@ -3,6 +3,7 @@ package li.saki.anonmusic
 import android.os.Build
 import android.os.Bundle
 import android.webkit.WebView
+import androidx.activity.OnBackPressedCallback
 
 // 覆盖 Tauri 生成的 MainActivity：
 //  1) 加载 Rust 原生库，注册 JNI（initAndroidContext / nativePlayerCommand / nativePlayerSeek）。
@@ -29,6 +30,19 @@ class MainActivity : TauriActivity() {
 
     override fun onWebViewCreate(webView: WebView) {
         this.webView = webView
+        // 系统返回键/侧滑：交给网页逐层处理（关弹窗/面板/全屏、返回上一级）；
+        // 只有网页判定已在一级页面时才退到后台(moveTaskToBack，不杀进程；划掉后台卡片才真退)。
+        // 在这里(onWebViewCreate)注册——它在 WryActivity 注册自己的返回回调之后才被调用，
+        // 而 dispatcher 后注册者优先(LIFO)，故我们的回调会先执行、覆盖 Tauri 默认的返回行为。
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val wv = this@MainActivity.webView
+                if (wv == null) { moveTaskToBack(true); return }
+                wv.evaluateJavascript("(window.__androidBack&&window.__androidBack())||'exit'") { res ->
+                    if (res == null || res.contains("exit")) moveTaskToBack(true)
+                }
+            }
+        })
     }
 
     override fun onPause() {
