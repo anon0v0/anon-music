@@ -109,7 +109,14 @@ where
     let mut env = vm.attach_current_thread().ok()?;
     let obj = cached.as_obj();
     let class: &jni::objects::JClass = obj.into();
-    Some(f(&mut env, class))
+    let result = f(&mut env, class);
+    // 关键：若 Kotlin 调用抛了 Java 异常（如 Android 14 前台服务限制），必须就地清理。
+    // 否则线程 detach 时 ART 检测到待决异常会 abort 整个进程 → 表现为「点播放就闪退」。
+    if matches!(env.exception_check(), Ok(true)) {
+        let _ = env.exception_describe(); // 打到 logcat 便于定位
+        let _ = env.exception_clear();
+    }
+    Some(result)
 }
 
 fn call_start(env: &mut jni::JNIEnv, class: &jni::objects::JClass) {
