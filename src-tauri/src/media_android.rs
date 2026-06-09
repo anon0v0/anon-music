@@ -16,6 +16,7 @@ use tauri::{AppHandle, Emitter};
 
 static ANDROID_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 static MUSIC_SERVICE_CLASS: OnceLock<jni::objects::GlobalRef> = OnceLock::new();
+static LYRIC_OVERLAY_CLASS: OnceLock<jni::objects::GlobalRef> = OnceLock::new();
 
 /// 在 setup 阶段保存 AppHandle，供 JNI 回调里 emit 事件给前端。
 pub fn set_app_handle(app: AppHandle) {
@@ -57,11 +58,16 @@ pub extern "system" fn Java_li_saki_anonmusic_MainActivity_initAndroidContext(
             let _ = MUSIC_SERVICE_CLASS.set(global_ref);
         }
     }
+    if let Ok(class) = env.find_class("li/saki/anonmusic/LyricOverlay") {
+        if let Ok(global_ref) = env.new_global_ref(&class) {
+            let _ = LYRIC_OVERLAY_CLASS.set(global_ref);
+        }
+    }
 
     unsafe {
         ndk_context::initialize_android_context(vm_ptr, activity_ptr);
     }
-    eprintln!("[Android] ndk-context + MusicService class cached");
+    eprintln!("[Android] ndk-context + MusicService/LyricOverlay class cached");
 }
 
 // ---------------------------------------------------------------------------
@@ -99,11 +105,11 @@ pub extern "system" fn Java_li_saki_anonmusic_MusicService_nativePlayerSeek(
 // ---------------------------------------------------------------------------
 // Rust → Kotlin：调用 MusicService 的静态方法。
 // ---------------------------------------------------------------------------
-fn with_env<F, R>(f: F) -> Option<R>
+fn with_class<F, R>(lock: &OnceLock<jni::objects::GlobalRef>, f: F) -> Option<R>
 where
     F: FnOnce(&mut jni::JNIEnv, &jni::objects::JClass) -> R,
 {
-    let cached = MUSIC_SERVICE_CLASS.get()?;
+    let cached = lock.get()?;
     let vm_ptr = ndk_context::android_context().vm() as *mut _;
     let vm = unsafe { jni::JavaVM::from_raw(vm_ptr) }.ok()?;
     let mut env = vm.attach_current_thread().ok()?;
@@ -134,7 +140,7 @@ fn call_start(env: &mut jni::JNIEnv, class: &jni::objects::JClass) {
 }
 
 pub fn update_now_playing(title: &str, artist: &str, album: &str, duration_secs: f64, cover: &str) {
-    with_env(|env, class| {
+    with_class(&MUSIC_SERVICE_CLASS, |env, class| {
         call_start(env, class);
         let t = env.new_string(title).unwrap_or_default();
         let a = env.new_string(artist).unwrap_or_default();
@@ -156,7 +162,7 @@ pub fn update_now_playing(title: &str, artist: &str, album: &str, duration_secs:
 }
 
 pub fn set_playing(playing: bool) {
-    with_env(|env, class| {
+    with_class(&MUSIC_SERVICE_CLASS, |env, class| {
         let _ = env.call_static_method(
             class,
             "setPlaying",
@@ -167,7 +173,7 @@ pub fn set_playing(playing: bool) {
 }
 
 pub fn update_position(position_secs: f64, duration_secs: f64) {
-    with_env(|env, class| {
+    with_class(&MUSIC_SERVICE_CLASS, |env, class| {
         let _ = env.call_static_method(
             class,
             "updatePlaybackPosition",
@@ -176,6 +182,64 @@ pub fn update_position(position_secs: f64, duration_secs: f64) {
                 jni::objects::JValue::Long((position_secs * 1000.0) as i64),
                 jni::objects::JValue::Long((duration_secs * 1000.0) as i64),
             ],
+        );
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Rust → Kotlin：App 外系统悬浮歌词（LyricOverlay 单例）。
+// 歌词整段一次性下发，原生用「上次进度 + 经过时间」插值推进当前行，
+// 故 WebView 退到后台被节流也不影响（这是 App 外悬浮歌词的关键）。
+// ---------------------------------------------------------------------------
+pub fn lyric_set_shown(show: bool) {
+    with_class(&LYRIC_OVERLAY_CLASS, |env, class| {
+        let activity = unsafe {
+            jni::objects::JObject::from_raw(
+                ndk_context::android_context().context() as jni::sys::jobject
+            )
+        };
+        let _ = env.call_static_method(
+            class,
+            "setShown",
+            "(Landroid/content/Context;Z)V",
+            &[
+                jni::objects::JValue::Object(&activity),
+                jni::objects::JValue::Bool(if show { 1 } else { 0 }),
+            ],
+        );
+    });
+}
+
+pub fn lyric_set_data(json: &str) {
+    with_class(&LYRIC_OVERLAY_CLASS, |env, class| {
+        let j = env.new_string(json).unwrap_or_default();
+        let _ = env.call_static_method(
+            class,
+            "setData",
+            "(Ljava/lang/String;)V",
+            &[jni::objects::JValue::Object(&j)],
+        );
+    });
+}
+
+pub fn lyric_set_position(position_secs: f64) {
+    with_class(&LYRIC_OVERLAY_CLASS, |env, class| {
+        let _ = env.call_static_method(
+            class,
+            "setPosition",
+            "(D)V",
+            &[jni::objects::JValue::Double(position_secs)],
+        );
+    });
+}
+
+pub fn lyric_set_playing(playing: bool) {
+    with_class(&LYRIC_OVERLAY_CLASS, |env, class| {
+        let _ = env.call_static_method(
+            class,
+            "setPlaying",
+            "(Z)V",
+            &[jni::objects::JValue::Bool(if playing { 1 } else { 0 })],
         );
     });
 }

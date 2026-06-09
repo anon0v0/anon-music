@@ -24,7 +24,7 @@ if (!existsSync(genJava)) {
 }
 
 // 1) + 2) 拷贝 Kotlin 源
-for (const f of ['MainActivity.kt', 'MusicService.kt']) {
+for (const f of ['MainActivity.kt', 'MusicService.kt', 'LyricOverlay.kt']) {
   const src = new URL(`src-tauri/mobile/${f}`, root);
   const dst = new URL(f, genJava);
   mkdirSync(dirname(dst.pathname), { recursive: true });
@@ -41,6 +41,7 @@ if (!mani.includes('MusicService')) {
     'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK',
     'android.permission.WAKE_LOCK',
     'android.permission.POST_NOTIFICATIONS',
+    'android.permission.SYSTEM_ALERT_WINDOW', // App 外悬浮歌词
   ]
     .map((p) => `    <uses-permission android:name="${p}" />`)
     .join('\n');
@@ -78,9 +79,13 @@ ${pgMarker}
 # R8 看不到 Kotlin 侧引用会删除/重命名 → 运行时 NoSuchMethodError 崩溃。整类保留。
 -keep class ${pkg}.MusicService { *; }
 -keep class ${pkg}.MainActivity { *; }
+-keep class ${pkg}.LyricOverlay { *; }
 -keepclassmembers class ${pkg}.MusicService {
     public static *;
     private native *;
+}
+-keepclassmembers class ${pkg}.LyricOverlay {
+    public static *;
 }
 `;
   appendFileSync(proguardPath, rules);

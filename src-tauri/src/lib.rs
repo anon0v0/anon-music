@@ -164,6 +164,7 @@ pub fn run() {
                     if let Ok(v) = serde_json::from_str::<serde_json::Value>(ev.payload()) {
                         let playing = v.get("playing").and_then(|x| x.as_bool()).unwrap_or(false);
                         media_android::set_playing(playing);
+                        media_android::lyric_set_playing(playing); // 同步悬浮歌词时钟
                     }
                 });
                 app.listen("and-pos", |ev| {
@@ -171,6 +172,18 @@ pub fn run() {
                         let pos = v.get("position").and_then(|x| x.as_f64()).unwrap_or(0.0);
                         let dur = v.get("duration").and_then(|x| x.as_f64()).unwrap_or(0.0);
                         media_android::update_position(pos, dur);
+                        media_android::lyric_set_position(pos); // 同步悬浮歌词时钟
+                    }
+                });
+
+                // App 外悬浮歌词：整段歌词下发 + 开关
+                app.listen("and-lyric-data", |ev| {
+                    media_android::lyric_set_data(ev.payload());
+                });
+                app.listen("and-lyric-show", |ev| {
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(ev.payload()) {
+                        let show = v.get("show").and_then(|x| x.as_bool()).unwrap_or(false);
+                        media_android::lyric_set_shown(show);
                     }
                 });
             }

@@ -38,4 +38,10 @@ class MainActivity : TauriActivity() {
             webView?.onResume()
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // 从「显示在其它应用上层」授权页返回时，自动补显悬浮歌词。
+        try { LyricOverlay.onActivityResume() } catch (_: Exception) {}
+    }
 }
