@@ -44,10 +44,10 @@
       filter: drop-shadow(0 2px 8px rgba(0,0,0,.92)) drop-shadow(0 0 2px rgba(0,0,0,.95)); }
     #cur .kw { background: linear-gradient(90deg, var(--hl,#fff) calc(var(--p,0%) - 1.5%), rgba(255,255,255,.42) calc(var(--p,0%) + 1.5%));
       -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
-    #next { max-width: 92%; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    #nextline { max-width: 92%; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       opacity: .6; color: var(--hl, #fff); filter: drop-shadow(0 2px 8px rgba(0,0,0,.9)); display: none;
       transition: opacity .25s; }
-    body.two #next { display: block; }
+    body.two #nextline { display: block; }
   </style>
 </head>
 <body>
@@ -68,7 +68,7 @@
     </div>
 
     <div id="cur">♪ Anon Music</div>
-    <div id="next"></div>
+    <div id="nextline"></div>
   </div>
 
   <script>
@@ -76,7 +76,7 @@
     const ev = T && T.event;
     const win = T && T.window && T.window.getCurrentWindow ? T.window.getCurrentWindow() : null;
     const $ = (id) => document.getElementById(id);
-    const $bar = $('bar'), $cur = $('cur'), $next = $('next'), $ticon = $('ticon'), $panel = $('panel'), $fval = $('fval');
+    const $bar = $('bar'), $cur = $('cur'), $next = $('nextline'), $ticon = $('ticon'), $panel = $('panel'), $fval = $('fval');
     const ICON_PLAY = 'M8 5v14l11-7z';
     const ICON_PAUSE = 'M6 5h4v14H6zm8 0h4v14h-4z';
     let shown = false, locked = false;
