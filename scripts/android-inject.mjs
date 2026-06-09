@@ -2,16 +2,21 @@
 //  1) 用我们的 MainActivity.kt（加载 Rust 库 + JNI）覆盖生成的版本
 //  2) 拷入 MusicService.kt（前台服务 + MediaSession）
 //  3) 给 AndroidManifest.xml 补权限与 <service> 声明
+//  4) 给 proguard-rules.pro 补 keep 规则（release 默认 isMinifyEnabled=true，
+//     R8 会删掉「只被 JNI 调用、Kotlin 侧无引用」的静态方法 start/updateNowPlaying/
+//     setPlaying → 运行时 NoSuchMethodError 闪退。必须 -keep。）
 // 这样不必把整个 gen/android 入库，CI 每次重新生成后打补丁即可。
-import { readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const root = new URL('..', import.meta.url);
 const conf = JSON.parse(readFileSync(new URL('src-tauri/tauri.conf.json', root), 'utf8'));
-const pkgPath = conf.identifier.replace(/-/g, '_').split('.').join('/'); // li.saki.anonmusic -> li/saki/anonmusic
+const pkg = conf.identifier.replace(/-/g, '_');            // li.saki.anonmusic（点分包名）
+const pkgPath = pkg.split('.').join('/');                  // li/saki/anonmusic（路径）
 
 const genJava = new URL(`src-tauri/gen/android/app/src/main/java/${pkgPath}/`, root);
 const manifestPath = new URL('src-tauri/gen/android/app/src/main/AndroidManifest.xml', root);
+const proguardPath = new URL('src-tauri/gen/android/app/proguard-rules.pro', root);
 
 if (!existsSync(genJava)) {
   console.error('[android-inject] 未找到 gen 目录，请先运行 `tauri android init`:', genJava.pathname);
@@ -62,7 +67,31 @@ if (!mani.includes('MusicService')) {
   console.log('[android-inject] manifest already patched, skip');
 }
 
-// 打印最终 manifest，便于在 CI 日志里核对权限/服务确实写进去了。
+// 4) ProGuard/R8 keep 规则：保留被 JNI 调用的类与方法，防止 release 构建剥离。
+//    （release 的 proguardFiles 会 glob 所有 *.pro，所以追加到 proguard-rules.pro 即生效。）
+const pgMarker = `# === Anon Music JNI keep (${pkg}) ===`;
+const pgExisting = existsSync(proguardPath) ? readFileSync(proguardPath, 'utf8') : '';
+if (!pgExisting.includes(pgMarker)) {
+  const rules = `
+${pgMarker}
+# MusicService / MainActivity 的 start/updateNowPlaying/setPlaying 等只被 Rust 经 JNI 调用，
+# R8 看不到 Kotlin 侧引用会删除/重命名 → 运行时 NoSuchMethodError 崩溃。整类保留。
+-keep class ${pkg}.MusicService { *; }
+-keep class ${pkg}.MainActivity { *; }
+-keepclassmembers class ${pkg}.MusicService {
+    public static *;
+    private native *;
+}
+`;
+  appendFileSync(proguardPath, rules);
+  console.log('[android-inject] proguard-rules.pro patched (JNI keep rules)');
+} else {
+  console.log('[android-inject] proguard rules already present, skip');
+}
+
+// 打印最终 manifest + proguard，便于在 CI 日志里核对确实写进去了。
 console.log('[android-inject] ----- final AndroidManifest.xml -----');
 console.log(readFileSync(manifestPath, 'utf8'));
+console.log('[android-inject] ----- final proguard-rules.pro -----');
+console.log(readFileSync(proguardPath, 'utf8'));
 console.log('[android-inject] done.');
