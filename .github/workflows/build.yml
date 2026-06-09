@@ -88,37 +88,34 @@ jobs:
         run: npm run tauri android init
       - name: Inject native media controls (Kotlin + manifest)
         run: node scripts/android-inject.mjs
-      # 签名：优先用仓库 Secret 里的「正式签名密钥」（每次构建同一把钥匙，用户可覆盖升级）；
-      # 没配 Secret 时回退到临时 debug 密钥（每次都不同，仅供你自己测试，别人/旧版装不上）。
+      # 签名密钥：只需配一个 Secret「ANDROID_KEYSTORE_BASE64」(钥匙的 base64)。
+      # 别名固定 anon、密码固定 anonmusic(写在这里没关系——钥匙本体在 Secret 里、不在仓库，
+      # 光有密码没有钥匙文件也签不了)。配了 Secret = 每次同一把钥匙 → 可免卸载覆盖升级；
+      # 没配则回退临时随机 debug 密钥(每次不同，仅供测试，需卸载重装)。
       - name: Set up signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -e
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > src-tauri/gen/android/app/anon.keystore
             cat > src-tauri/gen/android/keystore.properties <<EOF
           storeFile=anon.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          password=$KEY_PASSWORD
+          password=anonmusic
+          keyAlias=anon
           EOF
-            echo "✅ 使用仓库 Secret 中的正式签名密钥（稳定签名，可覆盖升级）"
+            echo "✅ 使用 Secret 里的固定签名密钥（稳定签名，可免卸载覆盖升级）"
           else
             keytool -genkeypair -v -keystore src-tauri/gen/android/app/anon.keystore -alias anon \
-              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storetype PKCS12 -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass android -keypass android \
               -dname "CN=Anon Music, OU=Dev, O=Anon, L=NA, S=NA, C=NA"
             cat > src-tauri/gen/android/keystore.properties <<EOF
           storeFile=anon.keystore
-          storePassword=android
-          keyAlias=anon
           password=android
+          keyAlias=anon
           EOF
-            echo "⚠️ 未配置签名 Secret，回退到临时 debug 密钥（每次构建不同，仅供测试，别人/旧版可能装不上）"
+            echo "⚠️ 未配置 ANDROID_KEYSTORE_BASE64，回退临时 debug 密钥（每次构建不同，需卸载重装）"
           fi
       - name: Build APK
         env:
