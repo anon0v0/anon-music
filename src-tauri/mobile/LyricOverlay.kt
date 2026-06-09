@@ -17,6 +17,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import org.json.JSONArray
 
 // App 外系统悬浮歌词（浮于其它 App / 桌面之上）。
@@ -54,9 +55,11 @@ object LyricOverlay {
         wantShow = show
         main.post {
             if (show) {
-                if (!canDraw(appCtx!!)) { requestPermission(appCtx!!); return@post }
+                // 直接尝试添加：成功就开始走字；失败(没权限/MIUI 悬浮窗未授权)再引导授权。
+                // 不只看 canDrawOverlays——MIUI/HyperOS 上它常返回 true 但悬浮窗其实没授权，
+                // 导致 addView 静默失败、又不弹授权框。
                 addView()
-                startTick()
+                if (root != null) startTick() else requestPermission(appCtx!!)
             } else {
                 stopTick()
                 removeView()
@@ -64,15 +67,12 @@ object LyricOverlay {
         }
     }
 
-    // 从授权页返回时调用：若已开启且已授权但还没显示，自动补上（免去再点一次）。
+    // 从授权页返回时调用：若已开启但还没显示，自动补上（免去再点一次）。
     @JvmStatic
     fun onActivityResume() {
-        val c = appCtx ?: return
+        if (!wantShow) return
         main.post {
-            if (wantShow && canDraw(c) && root == null) {
-                addView()
-                startTick()
-            }
+            if (root == null) { addView(); if (root != null) startTick() }
         }
     }
 
@@ -137,6 +137,9 @@ object LyricOverlay {
 
     private fun requestPermission(ctx: Context) {
         try {
+            Toast.makeText(ctx, "请开启「显示在其他应用上层 / 悬浮窗」权限后，再点一次「词」", Toast.LENGTH_LONG).show()
+        } catch (_: Exception) {}
+        try {
             ctx.startActivity(
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}"))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -154,7 +157,6 @@ object LyricOverlay {
         val ctx = appCtx ?: return
         try {
             val w = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-            wm = w
             // 整条铺满屏宽、文字居中；窗口设为完全不可触摸(穿透)，纯 HUD，绝不挡下层 App。
             val r = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
@@ -185,7 +187,6 @@ object LyricOverlay {
             }
             r.addView(cv, full)
             r.addView(nv, LinearLayout.LayoutParams(full))
-            curTv = cv; nextTv = nv; root = r
 
             val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -202,12 +203,14 @@ object LyricOverlay {
             )
             p.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             p.y = dp(56)
-            lp = p
-            w.addView(r, p)
+            w.addView(r, p)                 // 没悬浮窗权限会在这里抛异常
+            // 仅在真正加上之后才记录状态；否则 root 保持 null → 上层会去引导授权。
+            wm = w; root = r; curTv = cv; nextTv = nv; lp = p
             lastIdx = -2
             updateLine()
         } catch (e: Exception) {
-            Log.e(TAG, "addView failed: ${e.message}")
+            Log.e(TAG, "addView failed (可能没有悬浮窗权限): ${e.message}")
+            root = null; curTv = null; nextTv = null; lp = null
         }
     }
 
