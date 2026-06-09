@@ -6,7 +6,7 @@
 //     R8 会删掉「只被 JNI 调用、Kotlin 侧无引用」的静态方法 start/updateNowPlaying/
 //     setPlaying → 运行时 NoSuchMethodError 闪退。必须 -keep。）
 // 这样不必把整个 gen/android 入库，CI 每次重新生成后打补丁即可。
-import { readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync, appendFileSync, cpSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const root = new URL('..', import.meta.url);
@@ -30,6 +30,17 @@ for (const f of ['MainActivity.kt', 'MusicService.kt', 'LyricOverlay.kt']) {
   mkdirSync(dirname(dst.pathname), { recursive: true });
   copyFileSync(src, dst);
   console.log('[android-inject] copied', f, '->', dst.pathname);
+}
+
+// 2.5) 启动图标：把 src-tauri/icons/android 的整套 mipmap 覆盖进 gen res，
+// 确保安卓桌面图标=网站 logo（默认生成可能用的是 Tauri 占位图标）。
+const iconsSrc = new URL('src-tauri/icons/android/', root);
+const resDst = new URL('src-tauri/gen/android/app/src/main/res/', root);
+if (existsSync(iconsSrc)) {
+  cpSync(iconsSrc, resDst, { recursive: true, force: true });
+  console.log('[android-inject] launcher icons overwritten with anon logo');
+} else {
+  console.log('[android-inject] no src-tauri/icons/android, skip icon override');
 }
 
 // 3) 打补丁 AndroidManifest.xml

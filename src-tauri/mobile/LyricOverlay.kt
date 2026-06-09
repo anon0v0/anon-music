@@ -13,7 +13,6 @@ import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
@@ -156,16 +155,22 @@ object LyricOverlay {
         try {
             val w = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             wm = w
+            // 整条铺满屏宽、文字居中；窗口设为完全不可触摸(穿透)，纯 HUD，绝不挡下层 App。
             val r = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(18), dp(8), dp(18), dp(8))
+                setPadding(dp(24), dp(6), dp(24), dp(6))
             }
+            val full = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
             val cv = TextView(ctx).apply {
                 setTextColor(Color.WHITE)
-                textSize = 18f
+                textSize = 19f
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER_HORIZONTAL
                 setShadowLayer(8f, 0f, 2f, 0xE6000000.toInt())
                 text = "♪ Anon Music"
             }
@@ -174,11 +179,12 @@ object LyricOverlay {
                 textSize = 14f
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER_HORIZONTAL
                 setShadowLayer(6f, 0f, 1f, 0xE6000000.toInt())
                 visibility = View.GONE
             }
-            r.addView(cv)
-            r.addView(nv)
+            r.addView(cv, full)
+            r.addView(nv, LinearLayout.LayoutParams(full))
             curTv = cv; nextTv = nv; root = r
 
             val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -186,17 +192,17 @@ object LyricOverlay {
             else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
 
             val p = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 type,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT
             )
             p.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            p.y = dp(64)
+            p.y = dp(56)
             lp = p
-            enableDrag()
             w.addView(r, p)
             lastIdx = -2
             updateLine()
@@ -208,24 +214,5 @@ object LyricOverlay {
     private fun removeView() {
         try { root?.let { wm?.removeView(it) } } catch (_: Exception) {}
         root = null; curTv = null; nextTv = null; lp = null
-    }
-
-    private fun enableDrag() {
-        val r = root ?: return
-        val p = lp ?: return
-        val w = wm ?: return
-        var ix = 0; var iy = 0; var dx = 0f; var dy = 0f
-        r.setOnTouchListener { _, e ->
-            when (e.action) {
-                MotionEvent.ACTION_DOWN -> { ix = p.x; iy = p.y; dx = e.rawX; dy = e.rawY; true }
-                MotionEvent.ACTION_MOVE -> {
-                    p.x = ix + (e.rawX - dx).toInt()
-                    p.y = iy + (e.rawY - dy).toInt()
-                    try { w.updateViewLayout(r, p) } catch (_: Exception) {}
-                    true
-                }
-                else -> false
-            }
-        }
     }
 }
