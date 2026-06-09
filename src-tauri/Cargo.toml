@@ -23,3 +23,9 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# 安卓原生媒体控制(锁屏/通知/媒体键)：通过 JNI 调用 Kotlin 前台服务。
+# 仅 android 目标编译，桌面构建不引入这些依赖。
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+ndk-context = "0.1"
+

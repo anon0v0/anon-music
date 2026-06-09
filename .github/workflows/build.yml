@@ -86,6 +86,8 @@ jobs:
         run: node scripts/set-app-url.mjs "$APP_URL"
       - name: Init Android project
         run: npm run tauri android init
+      - name: Inject native media controls (Kotlin + manifest)
+        run: node scripts/android-inject.mjs
       - name: Generate signing keystore (debug-grade, 可 sideload 安装)
         run: |
           KS="src-tauri/gen/android/app/anon.keystore"

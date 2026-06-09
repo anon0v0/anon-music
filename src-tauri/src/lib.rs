@@ -1,3 +1,7 @@
+// 安卓原生媒体控制（锁屏/通知/媒体键）桥接，仅 android 编译。
+#[cfg(target_os = "android")]
+mod media_android;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -140,6 +144,35 @@ pub fn run() {
                         }
                     });
                 }
+            }
+
+            // 安卓：监听前端发来的播放元数据/状态/进度事件 → JNI 驱动前台服务/MediaSession。
+            // 前端控制(媒体键回传)经 media_android 的 JNI 回调 emit 'and-ctl'/'and-seek'。
+            #[cfg(target_os = "android")]
+            {
+                use tauri::Listener;
+                media_android::set_app_handle(app.handle().clone());
+
+                app.listen("and-now", |ev| {
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(ev.payload()) {
+                        let s = |k: &str| v.get(k).and_then(|x| x.as_str()).unwrap_or("").to_string();
+                        let dur = v.get("duration").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                        media_android::update_now_playing(&s("title"), &s("artist"), &s("album"), dur, &s("cover"));
+                    }
+                });
+                app.listen("and-state", |ev| {
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(ev.payload()) {
+                        let playing = v.get("playing").and_then(|x| x.as_bool()).unwrap_or(false);
+                        media_android::set_playing(playing);
+                    }
+                });
+                app.listen("and-pos", |ev| {
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(ev.payload()) {
+                        let pos = v.get("position").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                        let dur = v.get("duration").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                        media_android::update_position(pos, dur);
+                    }
+                });
             }
             Ok(())
         })
