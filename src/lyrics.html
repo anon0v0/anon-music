@@ -48,6 +48,13 @@
       opacity: .6; color: var(--hl, #fff); filter: drop-shadow(0 2px 8px rgba(0,0,0,.9)); display: none;
       transition: opacity .25s; }
     body.two #nextline { display: block; }
+    /* 锁定后悬停出现的解锁按钮 */
+    #unlockpill { position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+      display: none; align-items: center; gap: 5px; padding: 5px 12px 5px 10px; border-radius: 14px;
+      background: rgba(20,20,28,.94); border: 1px solid rgba(255,255,255,.16); color: #fff;
+      font-size: 12.5px; cursor: pointer; z-index: 5; }
+    #unlockpill svg { width: 14px; height: 14px; fill: currentColor; }
+    #unlockpill.show { display: inline-flex; }
   </style>
 </head>
 <body>
@@ -69,6 +76,7 @@
 
     <div id="cur">♪ Anon Music</div>
     <div id="nextline"></div>
+    <button id="unlockpill"><svg viewBox="0 0 24 24"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0z"/></svg>解锁</button>
   </div>
 
   <script>
@@ -95,9 +103,14 @@
       $('dbl').classList.toggle('on', !!p.doubleRow);
     }
 
+    const emitLock = (v) => { if (ev) { try { ev.emit('lyric-lock', { locked: v }); } catch (e) {} } };
+    const $pill = $('unlockpill');
     if (ev) {
       ev.listen('desk-lyric', (e) => { const p = e.payload || {}; if (p.show === false) { setShown(false); return; } setShown(true); render(p); });
-      ev.listen('desk-unlock', () => { locked = false; document.body.classList.remove('locked'); if (win) win.setIgnoreCursorEvents(false).catch(() => {}); });
+      // 锁定态由 Rust 主导（穿透 + 光标轮询）
+      ev.listen('lyric-locked-changed', (e) => { locked = !!e.payload; document.body.classList.toggle('locked', locked); if (!locked && $pill) $pill.classList.remove('show'); });
+      // 锁定时光标进入/离开窗口区域 → 显隐解锁按钮
+      ev.listen('lyric-hover', (e) => { if (locked && $pill) $pill.classList.toggle('show', !!e.payload); });
     }
 
     // 拖动：在歌词条任意非按钮处按住即可拖（含歌词文字本身）
@@ -114,7 +127,8 @@
     $('next').onclick = (e) => { e.stopPropagation(); emitCtl('next'); };
     $('close').onclick = (e) => { e.stopPropagation(); emitCtl('off'); setShown(false); };
     $('settings').onclick = (e) => { e.stopPropagation(); $panel.classList.toggle('open'); };
-    $('lock').onclick = (e) => { e.stopPropagation(); locked = true; document.body.classList.add('locked'); $panel.classList.remove('open'); if (win) win.setIgnoreCursorEvents(true).catch(() => {}); };
+    $('lock').onclick = (e) => { e.stopPropagation(); $panel.classList.remove('open'); emitLock(true); };
+    if ($pill) $pill.onclick = (e) => { e.stopPropagation(); emitLock(false); };
     $('fdec').onclick = (e) => { e.stopPropagation(); emitCtl('fontDown'); };
     $('finc').onclick = (e) => { e.stopPropagation(); emitCtl('fontUp'); };
     $('single').onclick = (e) => { e.stopPropagation(); emitCtl('rows', 'single'); };
