@@ -88,19 +88,38 @@ jobs:
         run: npm run tauri android init
       - name: Inject native media controls (Kotlin + manifest)
         run: node scripts/android-inject.mjs
-      - name: Generate signing keystore (debug-grade, 可 sideload 安装)
+      # 签名：优先用仓库 Secret 里的「正式签名密钥」（每次构建同一把钥匙，用户可覆盖升级）；
+      # 没配 Secret 时回退到临时 debug 密钥（每次都不同，仅供你自己测试，别人/旧版装不上）。
+      - name: Set up signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          KS="src-tauri/gen/android/app/anon.keystore"
-          keytool -genkeypair -v -keystore "$KS" -alias anon \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Anon Music, OU=Dev, O=Anon, L=NA, S=NA, C=NA"
-          cat > src-tauri/gen/android/keystore.properties <<EOF
+          set -e
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > src-tauri/gen/android/app/anon.keystore
+            cat > src-tauri/gen/android/keystore.properties <<EOF
+          storeFile=anon.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          password=$KEY_PASSWORD
+          EOF
+            echo "✅ 使用仓库 Secret 中的正式签名密钥（稳定签名，可覆盖升级）"
+          else
+            keytool -genkeypair -v -keystore src-tauri/gen/android/app/anon.keystore -alias anon \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Anon Music, OU=Dev, O=Anon, L=NA, S=NA, C=NA"
+            cat > src-tauri/gen/android/keystore.properties <<EOF
           storeFile=anon.keystore
           storePassword=android
           keyAlias=anon
           password=android
           EOF
+            echo "⚠️ 未配置签名 Secret，回退到临时 debug 密钥（每次构建不同，仅供测试，别人/旧版可能装不上）"
+          fi
       - name: Build APK
         run: npm run tauri android build -- --apk
       - name: Upload APK (Artifacts)
