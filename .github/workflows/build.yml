@@ -121,6 +121,11 @@ jobs:
             echo "⚠️ 未配置签名 Secret，回退到临时 debug 密钥（每次构建不同，仅供测试，别人/旧版可能装不上）"
           fi
       - name: Build APK
+        # 关键：Tauri 生成的 build.gradle.kts 从环境变量 ANDROID_KEYSTORE_PROPERTIES
+        # 读取签名配置；不设这个变量 → release 无 signingConfig → 产出「未签名」APK
+        # （别人装不上）。指向上一步写好的 keystore.properties 即可正常签名。
+        env:
+          ANDROID_KEYSTORE_PROPERTIES: ${{ github.workspace }}/src-tauri/gen/android/keystore.properties
         run: npm run tauri android build -- --apk
       - name: Upload APK (Artifacts)
         uses: actions/upload-artifact@v4
