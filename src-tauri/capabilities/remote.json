@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "remote-music",
+  "description": "允许受信任的远程站点(主窗口加载的对外域名，构建时由 APP_URL 注入)收发 Tauri 事件，用于驱动桌面歌词悬浮窗。仅授予事件权限，不授予文件/系统能力。",
+  "platforms": [
+    "windows",
+    "macOS",
+    "linux"
+  ],
+  "windows": [
+    "main"
+  ],
+  "remote": {
+    "urls": [
+      "https://music.example.com"
+    ]
+  },
+  "permissions": [
+    "core:event:default"
+  ]
+}
