@@ -186,6 +186,20 @@ pub fn run() {
                         media_android::lyric_set_shown(show);
                     }
                 });
+
+                // 媒体卡片：我喜欢 / 词 按钮的状态
+                app.listen("and-liked", |ev| {
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(ev.payload()) {
+                        let liked = v.get("liked").and_then(|x| x.as_bool()).unwrap_or(false);
+                        media_android::set_liked(liked);
+                    }
+                });
+                app.listen("and-lyrics-active", |ev| {
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(ev.payload()) {
+                        let active = v.get("active").and_then(|x| x.as_bool()).unwrap_or(false);
+                        media_android::set_lyrics_active(active);
+                    }
+                });
             }
             Ok(())
         })

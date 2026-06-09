@@ -10,6 +10,11 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.drawable.Icon
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
@@ -35,6 +40,8 @@ class MusicService : Service() {
         const val ACTION_NEXT = "li.saki.anonmusic.NEXT"
         const val ACTION_PREV = "li.saki.anonmusic.PREV"
         const val ACTION_STOP = "li.saki.anonmusic.STOP"
+        const val ACTION_LIKE = "li.saki.anonmusic.LIKE"
+        const val ACTION_LYRICS = "li.saki.anonmusic.LYRICS"
 
         @Volatile var instance: MusicService? = null
 
@@ -44,6 +51,8 @@ class MusicService : Service() {
         @Volatile private var pendingAlbum = ""
         @Volatile private var pendingDurationMs = 0L
         @Volatile private var pendingCoverUrl = ""
+        @Volatile private var pendingLiked = false
+        @Volatile private var pendingLyrics = false
 
         @JvmStatic
         fun start(context: Context) {
@@ -75,6 +84,14 @@ class MusicService : Service() {
         fun updatePlaybackPosition(positionMs: Long, durationMs: Long) {
             instance?.updatePositionInternal(positionMs, durationMs)
         }
+
+        // 当前歌是否已收藏（控制爱心实心/空心）
+        @JvmStatic
+        fun setLiked(liked: Boolean) { pendingLiked = liked; instance?.setLikedInternal(liked) }
+
+        // 悬浮歌词是否开启（控制「词」按钮打勾）
+        @JvmStatic
+        fun setLyricsActive(active: Boolean) { pendingLyrics = active; instance?.setLyricsInternal(active) }
     }
 
     private external fun nativePlayerCommand(cmd: String)
@@ -93,11 +110,18 @@ class MusicService : Service() {
     private var nowPlaying = false
     private var lastPositionMs = 0L
     private var lastDurationMs = 0L
+    private var liked = false
+    private var lyricsActive = false
+
+    fun setLikedInternal(v: Boolean) { liked = v; updateNotification() }
+    fun setLyricsInternal(v: Boolean) { lyricsActive = v; updateNotification() }
 
     // ---- 生命周期 ----
     override fun onCreate() {
         super.onCreate()
         instance = this
+        liked = pendingLiked
+        lyricsActive = pendingLyrics
         try {
             createChannel()
             setupSession()
@@ -211,7 +235,17 @@ class MusicService : Service() {
         val ppText = if (nowPlaying) "暂停" else "播放"
         val ppAction = if (nowPlaying) ACTION_PAUSE else ACTION_PLAY
 
-        val style = Notification.MediaStyle().setShowActionsInCompactView(0, 1, 2)
+        // 仿 QQ 音乐：[我喜欢] 上一首 播放/暂停 下一首 [词]。
+        // 展开视图显示全部 5 键；折叠视图只显示中间 3 键(索引 1/2/3)。
+        val actions = listOf(
+            Notification.Action.Builder(heartIcon(liked), if (liked) "取消喜欢" else "喜欢", actionIntent(ACTION_LIKE, 4)).build(),
+            Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_media_previous), "上一首", actionIntent(ACTION_PREV, 1)).build(),
+            Notification.Action.Builder(Icon.createWithResource(this, ppIcon), ppText, actionIntent(ppAction, 2)).build(),
+            Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_media_next), "下一首", actionIntent(ACTION_NEXT, 3)).build(),
+            Notification.Action.Builder(lyricIcon(lyricsActive), "歌词", actionIntent(ACTION_LYRICS, 5)).build()
+        )
+
+        val style = Notification.MediaStyle().setShowActionsInCompactView(1, 2, 3)
         mediaSession?.sessionToken?.let { style.setMediaSession(it) }
 
         val builder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -223,12 +257,66 @@ class MusicService : Service() {
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(nowPlaying)
             .setOnlyAlertOnce(true)
-            .addAction(android.R.drawable.ic_media_previous, "上一首", actionIntent(ACTION_PREV, 1))
-            .addAction(ppIcon, ppText, actionIntent(ppAction, 2))
-            .addAction(android.R.drawable.ic_media_next, "下一首", actionIntent(ACTION_NEXT, 3))
             .setStyle(style)
+        for (a in actions) builder.addAction(a)
         coverBitmap?.let { builder.setLargeIcon(it) }
         return builder.build()
+    }
+
+    // ---- 通知按钮图标（运行时画成 Bitmap；通知 action 图标会被系统染成单色，
+    //      故只能靠「形状」区分状态：实心/空心心、词/词+√，颜色无效）----
+    private fun dpi(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    private fun heartIcon(filled: Boolean): Icon {
+        val s = dpi(24)
+        val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = if (filled) Paint.Style.FILL else Paint.Style.STROKE
+            strokeWidth = s * 0.085f
+            strokeJoin = Paint.Join.ROUND
+        }
+        val w = s.toFloat()
+        val path = Path().apply {
+            moveTo(w * 0.5f, w * 0.30f)
+            cubicTo(w * 0.42f, w * 0.12f, w * 0.05f, w * 0.18f, w * 0.05f, w * 0.42f)
+            cubicTo(w * 0.05f, w * 0.62f, w * 0.30f, w * 0.78f, w * 0.5f, w * 0.92f)
+            cubicTo(w * 0.70f, w * 0.78f, w * 0.95f, w * 0.62f, w * 0.95f, w * 0.42f)
+            cubicTo(w * 0.95f, w * 0.18f, w * 0.58f, w * 0.12f, w * 0.5f, w * 0.30f)
+            close()
+        }
+        c.drawPath(path, p)
+        return Icon.createWithBitmap(bmp)
+    }
+
+    private fun lyricIcon(on: Boolean): Icon {
+        val s = dpi(24)
+        val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val tp = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textAlign = Paint.Align.CENTER
+            textSize = s * (if (on) 0.6f else 0.72f)
+            isFakeBoldText = true
+        }
+        val fm = tp.fontMetrics
+        val cx = if (on) s * 0.42f else s * 0.5f
+        val cy = s / 2f - (fm.ascent + fm.descent) / 2f - (if (on) s * 0.06f else 0f)
+        c.drawText("词", cx, cy, tp)
+        if (on) {
+            val cp = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE; style = Paint.Style.STROKE
+                strokeWidth = s * 0.09f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+            }
+            val path = Path().apply {
+                moveTo(s * 0.58f, s * 0.66f)
+                lineTo(s * 0.70f, s * 0.82f)
+                lineTo(s * 0.97f, s * 0.46f)
+            }
+            c.drawPath(path, cp)
+        }
+        return Icon.createWithBitmap(bmp)
     }
 
     private fun updateNotification() {
@@ -248,6 +336,8 @@ class MusicService : Service() {
             ACTION_PAUSE -> nativePlayerCommand("pause")
             ACTION_NEXT -> nativePlayerCommand("next")
             ACTION_PREV -> nativePlayerCommand("prev")
+            ACTION_LIKE -> nativePlayerCommand("like")
+            ACTION_LYRICS -> nativePlayerCommand("lyrics")
             ACTION_STOP -> {
                 nativePlayerCommand("stop")
                 stopForeground(STOP_FOREGROUND_REMOVE)

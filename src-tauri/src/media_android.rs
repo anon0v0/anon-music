@@ -186,6 +186,28 @@ pub fn update_position(position_secs: f64, duration_secs: f64) {
     });
 }
 
+pub fn set_liked(liked: bool) {
+    with_class(&MUSIC_SERVICE_CLASS, |env, class| {
+        let _ = env.call_static_method(
+            class,
+            "setLiked",
+            "(Z)V",
+            &[jni::objects::JValue::Bool(if liked { 1 } else { 0 })],
+        );
+    });
+}
+
+pub fn set_lyrics_active(active: bool) {
+    with_class(&MUSIC_SERVICE_CLASS, |env, class| {
+        let _ = env.call_static_method(
+            class,
+            "setLyricsActive",
+            "(Z)V",
+            &[jni::objects::JValue::Bool(if active { 1 } else { 0 })],
+        );
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Rust → Kotlin：App 外系统悬浮歌词（LyricOverlay 单例）。
 // 歌词整段一次性下发，原生用「上次进度 + 经过时间」插值推进当前行，
