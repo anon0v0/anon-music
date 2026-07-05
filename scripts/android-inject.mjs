@@ -91,12 +91,14 @@ ${pgMarker}
 -keep class ${pkg}.MusicService { *; }
 -keep class ${pkg}.MainActivity { *; }
 -keep class ${pkg}.LyricOverlay { *; }
+-keep class ${pkg}.LyricOverlay$* { *; }
 -keepclassmembers class ${pkg}.MusicService {
     public static *;
     private native *;
 }
 -keepclassmembers class ${pkg}.LyricOverlay {
     public static *;
+    private native *;
 }
 `;
   appendFileSync(proguardPath, rules);

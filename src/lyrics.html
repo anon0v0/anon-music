@@ -8,15 +8,22 @@
     html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
       font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
       user-select: none; cursor: default; }
-    /* 整窗透明，不再给整窗加底色（之前"背景太大"就是整窗变暗）。歌词靠投影看清，
-       工具条/设置自带底色。仿 QQ/网易桌面歌词。 */
+    /* 整窗透明：歌词靠投影可读，工具条/设置面板自带底色（仿 QQ/网易桌面歌词）。
+       布局：顶部 42px 预留给悬停工具条，其下是歌词区，面板打开时窗口临时加高。 */
     #bar { position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 4px; padding: 6px 16px; box-sizing: border-box; }
+      align-items: center; justify-content: flex-start; gap: 5px;
+      padding: 42px 18px 12px; box-sizing: border-box; }
+    body[data-align="left"] #bar { align-items: flex-start; }
+    body[data-align="right"] #bar { align-items: flex-end; }
+    /* 双行交错（QQ 式）：左对齐时次行靠右，右对齐时次行靠左 */
+    body[data-align="left"].two #nextline { align-self: flex-end; }
+    body[data-align="right"].two #nextline { align-self: flex-start; }
+
     /* 工具条：悬停显示；锁定时不显示 */
-    #tools { position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 12px;
+    #tools { position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 3px; padding: 4px 8px; border-radius: 12px;
       background: rgba(20,20,28,.94); border: 1px solid rgba(255,255,255,.1);
-      opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 3; }
+      opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 3; white-space: nowrap; }
     #bar:hover #tools { opacity: 1; pointer-events: auto; }
     body.locked #tools { display: none; }
     #tools button { background: none; border: none; color: rgba(255,255,255,.82); cursor: pointer;
@@ -24,30 +31,48 @@
     #tools button:hover { background: rgba(255,255,255,.16); color: #fff; }
     #tools svg { width: 17px; height: 17px; display: block; fill: currentColor; }
     #tools .sep { width: 1px; height: 16px; background: rgba(255,255,255,.18); margin: 0 3px; }
-    /* 设置小窗 */
-    #panel { position: absolute; top: 36px; left: 50%; transform: translateX(-50%);
+    #tools .txt { width: auto; padding: 0 7px; font-size: 12.5px; font-weight: 700; }
+    #schemeBtn i { display: block; width: 15px; height: 15px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--hlA,#2fd06f), var(--hlB,#a8ff78)); border: 1.5px solid rgba(255,255,255,.5); }
+
+    /* 设置面板：打开时窗口临时加高，面板显示在歌词下方 */
+    #panel { position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
       background: rgba(22,22,30,.98); border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
-      padding: 8px 12px; min-width: 210px; box-shadow: 0 16px 44px rgba(0,0,0,.6); z-index: 4; display: none; }
-    #bar:hover #panel.open { display: block; }
+      padding: 8px 14px; min-width: 300px; box-shadow: 0 16px 44px rgba(0,0,0,.6); z-index: 4; display: none; }
+    #panel.open { display: block; }
     #panel .pr { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 7px 2px; color: #e8e8ef; font-size: 13px; }
     #panel .pr + .pr { border-top: 1px solid rgba(255,255,255,.08); }
     #panel .grp { display: flex; align-items: center; gap: 8px; }
     #panel .grp button { background: rgba(255,255,255,.08); border: none; color: #e8e8ef; width: 26px; height: 24px; border-radius: 6px; cursor: pointer; font-size: 14px; }
     #panel .grp button:hover { background: rgba(255,255,255,.18); }
     #panel .seg { display: flex; background: rgba(255,255,255,.07); border-radius: 7px; overflow: hidden; }
-    #panel .seg button { background: none; border: none; color: #9a9aa6; padding: 4px 13px; cursor: pointer; font-size: 12.5px; }
-    #panel .seg button.on { background: var(--accent, #22c55e); color: #04210f; font-weight: 700; }
+    #panel .seg button { background: none; border: none; color: #9a9aa6; padding: 4px 11px; cursor: pointer; font-size: 12.5px; }
+    #panel .seg button.on { background: #22c55e; color: #04210f; font-weight: 700; }
     #fval { min-width: 26px; text-align: center; font-variant-numeric: tabular-nums; }
-    /* 歌词文本：当前行(逐字) + 下一行(双行时显示) */
-    #cur { max-width: 96%; font-weight: 800; line-height: 1.4; white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; color: var(--hl, #fff); transition: font-size .15s;
-      filter: drop-shadow(0 2px 8px rgba(0,0,0,.92)) drop-shadow(0 0 2px rgba(0,0,0,.95)); }
-    #cur .kw { background: linear-gradient(90deg, var(--hl,#fff) calc(var(--p,0%) - 1.5%), rgba(255,255,255,.42) calc(var(--p,0%) + 1.5%));
+    #panel .swatches { display: flex; gap: 7px; }
+    #panel .swatches .sw { width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; box-sizing: border-box; }
+    #panel .swatches .sw.on { border-color: #fff; }
+    #panel input[type="range"] { width: 120px; accent-color: #22c55e; }
+
+    /* 歌词文本：当前行(逐字) + 下一行(双行时显示)。透明度只作用于文字，不影响工具条。 */
+    #cur { max-width: 100%; font-weight: 800; line-height: 1.4; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; color: var(--hlA, #fff); transition: font-size .15s; opacity: var(--lyO, 1); }
+    #cur .kw { background: linear-gradient(90deg,
+        var(--hlA,#fff) 0%,
+        var(--hlB,#fff) calc(var(--p,0%) - 1.5%),
+        var(--base, rgba(255,255,255,.42)) calc(var(--p,0%) + 1.5%));
       -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
-    #nextline { max-width: 92%; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      opacity: .6; color: var(--hl, #fff); filter: drop-shadow(0 2px 8px rgba(0,0,0,.9)); display: none;
-      transition: opacity .25s; }
+    #nextline { max-width: 96%; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      color: var(--hlA, #fff); display: none; transition: opacity .25s; opacity: calc(var(--lyO, 1) * .6); }
     body.two #nextline { display: block; }
+    /* 投影强度（drop-shadow 才能给渐变透明填充文字加阴影，text-shadow 无效） */
+    body[data-shadow="soft"] #cur { filter: drop-shadow(0 2px 8px rgba(0,0,0,.92)) drop-shadow(0 0 2px rgba(0,0,0,.95)); }
+    body[data-shadow="soft"] #nextline { filter: drop-shadow(0 2px 8px rgba(0,0,0,.9)); }
+    body[data-shadow="strong"] #cur { filter: drop-shadow(0 2px 6px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(0,0,0,1)) drop-shadow(0 0 10px rgba(0,0,0,.9)); }
+    body[data-shadow="strong"] #nextline { filter: drop-shadow(0 2px 6px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(0,0,0,1)); }
+    body[data-shadow="off"] #cur, body[data-shadow="off"] #nextline { filter: none; }
+
     /* 锁定后悬停出现的解锁按钮 */
     #unlockpill { position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
       display: none; align-items: center; gap: 5px; padding: 5px 12px 5px 10px; border-radius: 14px;
@@ -57,12 +82,16 @@
     #unlockpill.show { display: inline-flex; }
   </style>
 </head>
-<body>
+<body data-align="center" data-shadow="soft">
   <div id="bar">
     <div id="tools">
-      <button id="prev"><svg viewBox="0 0 24 24"><path d="M7 6h2.2v12H7zm3.3 6 9 6V6z"/></svg></button>
+      <button id="prev" title=""><svg viewBox="0 0 24 24"><path d="M7 6h2.2v12H7zm3.3 6 9 6V6z"/></svg></button>
       <button id="toggle"><svg id="ticon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
       <button id="next"><svg viewBox="0 0 24 24"><path d="M14.8 6H17v12h-2.2zM5 18l9-6-9-6z"/></svg></button>
+      <span class="sep"></span>
+      <button id="fdec" class="txt">A−</button>
+      <button id="finc" class="txt">A+</button>
+      <button id="schemeBtn"><i></i></button>
       <span class="sep"></span>
       <button id="lock"><svg viewBox="0 0 24 24"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0z"/></svg></button>
       <button id="settings"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7.3 7.3 0 0 0-2-1.2l-.4-2.6H9.9l-.4 2.6a7.3 7.3 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 3 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1c.6.5 1.3.9 2 1.2l.4 2.6h4.2l.4-2.6c.7-.3 1.4-.7 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg></button>
@@ -70,8 +99,14 @@
     </div>
 
     <div id="panel">
-      <div class="pr"><span>字体大小</span><span class="grp"><button id="fdec">A−</button><b id="fval">30</b><button id="finc">A+</button></span></div>
+      <div class="pr"><span>字体大小</span><span class="grp"><button id="pfdec">A−</button><b id="fval">30</b><button id="pfinc">A+</button></span></div>
+      <div class="pr"><span>配色方案</span><span class="swatches" id="swatches"></span></div>
       <div class="pr"><span>显示</span><span class="seg"><button id="single">单行</button><button id="dbl">双行</button></span></div>
+      <div class="pr"><span>对齐</span><span class="seg" id="alignSeg">
+        <button data-v="left">左</button><button data-v="center">中</button><button data-v="right">右</button></span></div>
+      <div class="pr"><span>文字投影</span><span class="seg" id="shadowSeg">
+        <button data-v="off">关</button><button data-v="soft">柔和</button><button data-v="strong">加强</button></span></div>
+      <div class="pr"><span>不透明度</span><span class="grp"><input type="range" id="opRange" min="30" max="100" value="100"><b id="opVal">100%</b></span></div>
     </div>
 
     <div id="cur">♪ Anon Music</div>
@@ -83,56 +118,179 @@
     const T = window.__TAURI__;
     const ev = T && T.event;
     const win = T && T.window && T.window.getCurrentWindow ? T.window.getCurrentWindow() : null;
+    const LSz = T && T.dpi && T.dpi.LogicalSize;
+    const DEMO = /(\?|&)demo=1/.test(location.search);   // 浏览器脱壳自测：lyrics.html?demo=1
     const $ = (id) => document.getElementById(id);
-    const $bar = $('bar'), $cur = $('cur'), $next = $('nextline'), $ticon = $('ticon'), $panel = $('panel'), $fval = $('fval');
+    const $bar = $('bar'), $cur = $('cur'), $next = $('nextline'), $ticon = $('ticon'),
+          $panel = $('panel'), $fval = $('fval'), $pill = $('unlockpill');
     const ICON_PLAY = 'M8 5v14l11-7z';
     const ICON_PAUSE = 'M6 5h4v14H6zm8 0h4v14h-4z';
-    let shown = false, locked = false;
 
-    async function setShown(v) { if (!win || v === shown) return; shown = v; try { v ? await win.show() : await win.hide(); } catch (e) {} }
-    const emitCtl = (action, value) => { if (ev) { try { ev.emit('lyrics-ctl', { action, value }); } catch (e) {} } };
+    // 配色方案（已唱渐变 hlA→hlB / 未唱 base）。与主窗 appext.js 的 LYRIC_SCHEMES 保持一致。
+    const SCHEMES = [
+      { id: 'green',  hlA: '#2fd06f', hlB: '#a8ff78', base: 'rgba(255,255,255,.45)' },
+      { id: 'blue',   hlA: '#38bdf8', hlB: '#a5e8ff', base: 'rgba(255,255,255,.45)' },
+      { id: 'violet', hlA: '#a78bfa', hlB: '#e3d5ff', base: 'rgba(255,255,255,.45)' },
+      { id: 'orange', hlA: '#fb923c', hlB: '#ffd9a8', base: 'rgba(255,255,255,.45)' },
+      { id: 'pink',   hlA: '#f472b6', hlB: '#ffd1e8', base: 'rgba(255,255,255,.45)' },
+      { id: 'gold',   hlA: '#f5c518', hlB: '#fff3b0', base: 'rgba(255,255,255,.45)' },
+      { id: 'white',  hlA: '#ffffff', hlB: '#ffffff', base: 'rgba(255,255,255,.38)' },
+    ];
 
-    function render(p) {
-      if (p.fontSize) { $cur.style.fontSize = p.fontSize + 'px'; $next.style.fontSize = Math.max(13, p.fontSize - 8) + 'px'; $fval.textContent = p.fontSize; }
-      if (p.color) document.documentElement.style.setProperty('--hl', p.color);
-      if (typeof p.html === 'string') $cur.innerHTML = p.html;
-      document.body.classList.toggle('two', !!p.doubleRow);
-      if (p.doubleRow) $next.textContent = p.next || '';
-      $ticon.querySelector('path').setAttribute('d', p.playing ? ICON_PAUSE : ICON_PLAY);
-      $('single').classList.toggle('on', !p.doubleRow);
-      $('dbl').classList.toggle('on', !!p.doubleRow);
+    // 本地样式缓存：启动首帧即用上次样式渲染，不等主窗第一个事件（重启不再回默认样式）
+    let S = { fontSize: 30, scheme: 'green', hlA: '#2fd06f', hlB: '#a8ff78', base: 'rgba(255,255,255,.45)',
+              doubleRow: false, align: 'center', opacity: 1, shadow: 'soft' };
+    try { Object.assign(S, JSON.parse(localStorage.getItem('lyrDeskStyle') || '{}')); } catch (e) {}
+    let _saveT = null;
+    function cacheStyle() {   // 尾沿防抖：保证最后一次样式变更一定落 localStorage
+      clearTimeout(_saveT);
+      _saveT = setTimeout(() => { try { localStorage.setItem('lyrDeskStyle', JSON.stringify(S)); } catch (e) {} }, 300);
     }
 
+    let shown = false, locked = false, panelOpen = false;
+
+    function applyStyle() {
+      const rs = document.documentElement.style;
+      rs.setProperty('--hlA', S.hlA); rs.setProperty('--hlB', S.hlB); rs.setProperty('--base', S.base);
+      rs.setProperty('--lyO', String(S.opacity));
+      $cur.style.fontSize = S.fontSize + 'px';
+      $next.style.fontSize = Math.max(13, S.fontSize - 8) + 'px';
+      $fval.textContent = S.fontSize;
+      document.body.classList.toggle('two', !!S.doubleRow);
+      document.body.dataset.align = S.align || 'center';
+      document.body.dataset.shadow = S.shadow || 'soft';
+      $('single').classList.toggle('on', !S.doubleRow);
+      $('dbl').classList.toggle('on', !!S.doubleRow);
+      document.querySelectorAll('#alignSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === (S.align || 'center')));
+      document.querySelectorAll('#shadowSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === (S.shadow || 'soft')));
+      document.querySelectorAll('#swatches .sw').forEach(b => b.classList.toggle('on', b.dataset.id === S.scheme));
+      $('opRange').value = Math.round(S.opacity * 100); $('opVal').textContent = Math.round(S.opacity * 100) + '%';
+      autoSize();
+      cacheStyle();
+    }
+
+    // 窗口高度随 字号/单双行/面板 自动调整（宽度保留用户手动调的值）
+    let _lastH = 0;
+    function autoSize() {
+      if (!win || !LSz) return;
+      const fs = S.fontSize;
+      let h = 42 + Math.ceil(fs * 1.45) + 14;                       // 工具条预留 + 当前行 + 底 padding
+      if (S.doubleRow) h += Math.ceil(Math.max(13, fs - 8) * 1.4) + 6;
+      if (panelOpen) h += 320;                                       // 设置面板展开的临时空间
+      h = Math.max(96, h);
+      if (Math.abs(h - _lastH) < 2) return;
+      _lastH = h;
+      try { win.setSize(new LSz(Math.max(360, window.innerWidth), h)).catch(() => {}); } catch (e) {}
+    }
+
+    async function setShown(v) {
+      if (v === shown) return; shown = v;
+      if (win) { try { v ? await win.show() : await win.hide(); } catch (e) {} }
+      // 告知 Rust 当前可见性（锁定光标轮询只在 锁定+可见 时运行）
+      if (ev) { try { ev.emit('lyric-visible', { visible: v }); } catch (e) {} }
+    }
+    const emitCtl = (action, value) => { if (ev) { try { ev.emit('lyrics-ctl', { action, value }); } catch (e) {} } };
     const emitLock = (v) => { if (ev) { try { ev.emit('lyric-lock', { locked: v }); } catch (e) {} } };
-    const $pill = $('unlockpill');
+
+    // 主窗 desk-lyric 事件：v1 字段(fontSize/color/html/next/doubleRow/playing/show) + v2 新字段(hlA/hlB/base/align/opacity/shadow)。
+    // v2 缺失时回退 v1 的 color（兼容旧主窗理论路径；实际 web 端总是新版）。
+    function render(p) {
+      let dirty = false;
+      const num = (v) => typeof v === 'number' && isFinite(v);
+      if (num(p.fontSize) && p.fontSize !== S.fontSize) { S.fontSize = p.fontSize; dirty = true; }
+      if (typeof p.doubleRow === 'boolean' && p.doubleRow !== S.doubleRow) { S.doubleRow = p.doubleRow; dirty = true; }
+      if (p.hlA) { if (p.hlA !== S.hlA || p.hlB !== S.hlB) { S.hlA = p.hlA; S.hlB = p.hlB || p.hlA; S.base = p.base || S.base; dirty = true; } }
+      else if (p.color && p.color !== S.hlA) { S.hlA = p.color; S.hlB = p.color; dirty = true; }
+      if (p.scheme && p.scheme !== S.scheme) { S.scheme = p.scheme; dirty = true; }
+      if (p.align && p.align !== S.align) { S.align = p.align; dirty = true; }
+      if (num(p.opacity) && p.opacity !== S.opacity) { S.opacity = p.opacity; dirty = true; }
+      if (p.shadow && p.shadow !== S.shadow) { S.shadow = p.shadow; dirty = true; }
+      if (dirty) applyStyle();
+      if (typeof p.html === 'string') $cur.innerHTML = p.html;
+      if (S.doubleRow) $next.textContent = p.next || '';
+      $ticon.querySelector('path').setAttribute('d', p.playing ? ICON_PAUSE : ICON_PLAY);
+    }
+
     if (ev) {
       ev.listen('desk-lyric', (e) => { const p = e.payload || {}; if (p.show === false) { setShown(false); return; } setShown(true); render(p); });
       // 锁定态由 Rust 主导（穿透 + 光标轮询）
-      ev.listen('lyric-locked-changed', (e) => { locked = !!e.payload; document.body.classList.toggle('locked', locked); if (!locked && $pill) $pill.classList.remove('show'); });
+      ev.listen('lyric-locked-changed', (e) => { locked = !!e.payload; document.body.classList.toggle('locked', locked); if (!locked) $pill.classList.remove('show'); });
       // 锁定时光标进入/离开窗口区域 → 显隐解锁按钮
-      ev.listen('lyric-hover', (e) => { if (locked && $pill) $pill.classList.toggle('show', !!e.payload); });
+      ev.listen('lyric-hover', (e) => { if (locked) $pill.classList.toggle('show', !!e.payload); });
     }
 
-    // 拖动：在歌词条任意非按钮处按住即可拖（含歌词文字本身）
-    if ($bar && win) {
-      $bar.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
-        if (e.target.closest('button') || e.target.closest('#panel')) return;
-        win.startDragging().catch(() => {});
-      });
-    }
+    // 拖动：在歌词条任意非按钮/非面板处按住即可拖（含歌词文字本身）
+    $bar.addEventListener('mousedown', (e) => {
+      if (e.button !== 0 || !win) return;
+      if (e.target.closest('button') || e.target.closest('#panel')) return;
+      win.startDragging().catch(() => {});
+    });
 
+    function setPanel(v) { panelOpen = v; $panel.classList.toggle('open', v); autoSize(); }
+
+    // ---- 控件绑定：老 action 名（fontUp/fontDown/rows/off/prev/next/playpause）原样保留，新增走新 action ----
     $('prev').onclick = (e) => { e.stopPropagation(); emitCtl('prev'); };
     $('toggle').onclick = (e) => { e.stopPropagation(); emitCtl('playpause'); };
     $('next').onclick = (e) => { e.stopPropagation(); emitCtl('next'); };
-    $('close').onclick = (e) => { e.stopPropagation(); emitCtl('off'); setShown(false); };
-    $('settings').onclick = (e) => { e.stopPropagation(); $panel.classList.toggle('open'); };
-    $('lock').onclick = (e) => { e.stopPropagation(); $panel.classList.remove('open'); emitLock(true); };
-    if ($pill) $pill.onclick = (e) => { e.stopPropagation(); emitLock(false); };
-    $('fdec').onclick = (e) => { e.stopPropagation(); emitCtl('fontDown'); };
-    $('finc').onclick = (e) => { e.stopPropagation(); emitCtl('fontUp'); };
-    $('single').onclick = (e) => { e.stopPropagation(); emitCtl('rows', 'single'); };
-    $('dbl').onclick = (e) => { e.stopPropagation(); emitCtl('rows', 'double'); };
+    $('close').onclick = (e) => { e.stopPropagation(); emitCtl('off'); setPanel(false); setShown(false); };
+    $('settings').onclick = (e) => { e.stopPropagation(); setPanel(!panelOpen); };
+    $('lock').onclick = (e) => { e.stopPropagation(); setPanel(false); emitLock(true); };
+    $pill.onclick = (e) => { e.stopPropagation(); emitLock(false); };
+
+    const fontDelta = (d) => {   // 本地即时生效 + 通知主窗持久化
+      S.fontSize = Math.max(12, Math.min(72, S.fontSize + d)); applyStyle();
+      emitCtl(d > 0 ? 'fontUp' : 'fontDown');
+    };
+    $('fdec').onclick = (e) => { e.stopPropagation(); fontDelta(-2); };
+    $('finc').onclick = (e) => { e.stopPropagation(); fontDelta(2); };
+    $('pfdec').onclick = (e) => { e.stopPropagation(); fontDelta(-2); };
+    $('pfinc').onclick = (e) => { e.stopPropagation(); fontDelta(2); };
+    $('single').onclick = (e) => { e.stopPropagation(); S.doubleRow = false; applyStyle(); emitCtl('rows', 'single'); };
+    $('dbl').onclick = (e) => { e.stopPropagation(); S.doubleRow = true; applyStyle(); emitCtl('rows', 'double'); };
+
+    function setScheme(sc) { S.scheme = sc.id; S.hlA = sc.hlA; S.hlB = sc.hlB; S.base = sc.base; applyStyle(); emitCtl('scheme', sc.id); }
+    $('schemeBtn').onclick = (e) => {   // 工具条配色键：循环切换
+      e.stopPropagation();
+      const i = SCHEMES.findIndex(s => s.id === S.scheme);
+      setScheme(SCHEMES[(i + 1) % SCHEMES.length]);
+    };
+    const $sw = $('swatches');
+    SCHEMES.forEach(sc => {
+      const b = document.createElement('span');
+      b.className = 'sw'; b.dataset.id = sc.id;
+      b.style.background = `linear-gradient(135deg, ${sc.hlA}, ${sc.hlB})`;
+      b.onclick = (e) => { e.stopPropagation(); setScheme(sc); };
+      $sw.appendChild(b);
+    });
+    document.querySelectorAll('#alignSeg button').forEach(b => b.onclick = (e) => {
+      e.stopPropagation(); S.align = b.dataset.v; applyStyle(); emitCtl('align', b.dataset.v); });
+    document.querySelectorAll('#shadowSeg button').forEach(b => b.onclick = (e) => {
+      e.stopPropagation(); S.shadow = b.dataset.v; applyStyle(); emitCtl('shadow', b.dataset.v); });
+    $('opRange').oninput = (e) => {
+      S.opacity = (+e.target.value) / 100; applyStyle(); emitCtl('opacity', S.opacity); };
+
+    applyStyle();   // 启动即按缓存样式渲染
+
+    // ---- 浏览器脱壳自测（?demo=1）：假逐字数据循环播放 ----
+    if (DEMO) {
+      const demoLines = [
+        { text: '这是桌面歌词的演示第一句', next: '第二句会在双行模式显示' },
+        { text: 'Anon Music 桌面歌词演示', next: '拖动 字号 配色 都可以试' },
+      ];
+      let li = 0, t0 = performance.now();
+      document.body.classList.add('demo');
+      setInterval(() => {
+        const el = (performance.now() - t0) / 1000, DUR = 6;
+        if (el > DUR) { t0 = performance.now(); li = (li + 1) % demoLines.length; return; }
+        const line = demoLines[li], chars = line.text.split('');
+        const per = DUR / chars.length, prog = el / per;
+        $cur.innerHTML = chars.map((c, i) => {
+          const p = Math.max(0, Math.min(1, prog - i)) * 100;
+          return `<span class="kw" style="--p:${p.toFixed(1)}%">${c}</span>`;
+        }).join('');
+        if (S.doubleRow) $next.textContent = line.next;
+      }, 50);
+    }
   </script>
 </body>
 </html>
