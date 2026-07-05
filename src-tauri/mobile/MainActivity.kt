@@ -51,11 +51,13 @@ class MainActivity : TauriActivity() {
         if (MusicService.instance?.isPlaying() == true) {
             webView?.onResume()
         }
+        // 悬浮歌词「仅在App外显示」：退到后台时通知补显
+        try { LyricOverlay.setAppForeground(false) } catch (_: Exception) {}
     }
 
     override fun onResume() {
         super.onResume()
-        // 从「显示在其它应用上层」授权页返回时，自动补显悬浮歌词。
+        // 从「显示在其它应用上层」授权页返回时，自动补显悬浮歌词；同时驱动「仅在App外显示」。
         try { LyricOverlay.onActivityResume() } catch (_: Exception) {}
     }
 }

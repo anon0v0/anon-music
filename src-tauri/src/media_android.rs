@@ -91,6 +91,26 @@ pub extern "system" fn Java_li_saki_anonmusic_MusicService_nativePlayerCommand(
     }
 }
 
+// 悬浮歌词工具条（锁定/关闭）动作 → 同 nativePlayerCommand 一样转成 and-ctl 事件回传前端。
+// 独立出口是因为 nativePlayerCommand 是 MusicService 的私有实例方法，LyricOverlay 调不到。
+#[no_mangle]
+pub extern "system" fn Java_li_saki_anonmusic_LyricOverlay_nativeOverlayCommand(
+    mut env: jni::JNIEnv,
+    _this: jni::objects::JObject,
+    cmd: jni::objects::JString,
+) {
+    let cmd_str: String = match env.get_string(&cmd) {
+        Ok(s) => s.into(),
+        Err(e) => {
+            eprintln!("[Android] nativeOverlayCommand get_string failed: {e}");
+            return;
+        }
+    };
+    if let Some(app) = ANDROID_APP_HANDLE.get() {
+        let _ = app.emit("and-ctl", &cmd_str);
+    }
+}
+
 #[no_mangle]
 pub extern "system" fn Java_li_saki_anonmusic_MusicService_nativePlayerSeek(
     _env: jni::JNIEnv,
@@ -262,6 +282,48 @@ pub fn lyric_set_playing(playing: bool) {
             "setPlaying",
             "(Z)V",
             &[jni::objects::JValue::Bool(if playing { 1 } else { 0 })],
+        );
+    });
+}
+
+// and-lyric-style：样式 JSON({fontSize,hlA,hlB,base,doubleRow,align,opacity,onlyBackground})
+// 原样透传给 Kotlin 解析并写 SharedPreferences 持久化。
+pub fn lyric_set_style(json: &str) {
+    with_class(&LYRIC_OVERLAY_CLASS, |env, class| {
+        let activity = unsafe {
+            jni::objects::JObject::from_raw(
+                ndk_context::android_context().context() as jni::sys::jobject
+            )
+        };
+        let j = env.new_string(json).unwrap_or_default();
+        let _ = env.call_static_method(
+            class,
+            "setStyle",
+            "(Landroid/content/Context;Ljava/lang/String;)V",
+            &[
+                jni::objects::JValue::Object(&activity),
+                jni::objects::JValue::Object(&j),
+            ],
+        );
+    });
+}
+
+// and-lyric-lock：锁定=完全穿透不可拖。锁定状态独立于样式推送（避免竞态互相覆盖）。
+pub fn lyric_set_locked(locked: bool) {
+    with_class(&LYRIC_OVERLAY_CLASS, |env, class| {
+        let activity = unsafe {
+            jni::objects::JObject::from_raw(
+                ndk_context::android_context().context() as jni::sys::jobject
+            )
+        };
+        let _ = env.call_static_method(
+            class,
+            "setLocked",
+            "(Landroid/content/Context;Z)V",
+            &[
+                jni::objects::JValue::Object(&activity),
+                jni::objects::JValue::Bool(if locked { 1 } else { 0 }),
+            ],
         );
     });
 }
