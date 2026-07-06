@@ -134,7 +134,7 @@ object LyricOverlay {
     fun setStyle(ctx: Context, json: String) {
         try {
             val o = JSONObject(json)
-            if (o.has("fontSize")) fontSp = o.optDouble("fontSize", 19.0).toFloat().coerceIn(12f, 72f)
+            if (o.has("fontSize")) fontSp = o.optDouble("fontSize", 17.0).toFloat().coerceIn(12f, 34f)
             if (o.has("hlA")) hlA = parseColor(o.optString("hlA"), hlA)
             if (o.has("hlB")) hlB = parseColor(o.optString("hlB"), hlB)
             if (o.has("base")) baseCol = parseColor(o.optString("base"), baseCol)
@@ -388,11 +388,19 @@ object LyricOverlay {
     private fun applyLockState() {
         val r = root ?: return
         val p = lp ?: return
-        val base = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-        p.flags = if (locked) base or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else base
+        if (!locked) {
+            // 解锁：部分 ROM(MIUI/HyperOS) 上 updateViewLayout 去掉 FLAG_NOT_TOUCHABLE
+            // 偶发不生效 → 表现为"锁定后无法解锁"。改为重建窗口（位置/样式在 prefs，无感）。
+            removeView()
+            addView()
+            if (wantShow && root != null) startTick()
+            return
+        }
+        p.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         try { wm?.updateViewLayout(r, p) } catch (e: Exception) { Log.e(TAG, "updateViewLayout: ${e.message}") }
-        if (locked) handle?.visibility = View.GONE
+        handle?.visibility = View.GONE
     }
 
     private fun addView() {
