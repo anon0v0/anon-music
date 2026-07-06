@@ -28,10 +28,122 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+// ============ P6 桌面端helpers：下载目录持久化 + 流式下载 ============
+#[cfg(desktop)]
+fn dl_dir_path(app: &tauri::AppHandle) -> std::path::PathBuf {
+    use tauri::Manager;
+    if let Ok(d) = app.path().app_config_dir() {
+        if let Ok(s) = std::fs::read_to_string(d.join("dl_dir.txt")) {
+            let s = s.trim();
+            if !s.is_empty() {
+                let pb = std::path::PathBuf::from(s);
+                if pb.is_dir() {
+                    return pb;
+                }
+            }
+        }
+    }
+    app.path()
+        .download_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("."))
+}
+
+#[cfg(desktop)]
+fn save_dl_dir(app: &tauri::AppHandle, dir: &std::path::Path) {
+    use tauri::Manager;
+    if let Ok(d) = app.path().app_config_dir() {
+        let _ = std::fs::create_dir_all(&d);
+        let _ = std::fs::write(d.join("dl_dir.txt"), dir.to_string_lossy().as_bytes());
+    }
+}
+
+#[cfg(desktop)]
+async fn dl_run(app: tauri::AppHandle, id: String, url: String, filename: String) {
+    use tauri::Emitter;
+    match dl_run_inner(&app, &id, &url, &filename).await {
+        Ok(path) => {
+            let _ = app.emit("dl-done", serde_json::json!({ "id": id, "path": path }));
+        }
+        Err(m) => {
+            let _ = app.emit("dl-error", serde_json::json!({ "id": id, "msg": m }));
+        }
+    }
+}
+
+#[cfg(desktop)]
+async fn dl_run_inner(
+    app: &tauri::AppHandle,
+    id: &str,
+    url: &str,
+    filename: &str,
+) -> Result<String, String> {
+    use futures_util::StreamExt;
+    use std::io::Write;
+    use tauri::Emitter;
+    let dir = dl_dir_path(app);
+    let _ = std::fs::create_dir_all(&dir);
+    let safe: String = filename
+        .chars()
+        .map(|c| if "\\/:*?\"<>|".contains(c) { '_' } else { c })
+        .collect();
+    let path = dir.join(if safe.is_empty() { String::from("song") } else { safe });
+    let resp = reqwest::get(url).await.map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status()));
+    }
+    let total = resp.content_length().unwrap_or(0);
+    let mut file = std::fs::File::create(&path).map_err(|e| e.to_string())?;
+    let mut stream = resp.bytes_stream();
+    let mut received: u64 = 0;
+    let mut last = std::time::Instant::now();
+    while let Some(chunk) = stream.next().await {
+        let c = chunk.map_err(|e| e.to_string())?;
+        file.write_all(&c).map_err(|e| e.to_string())?;
+        received += c.len() as u64;
+        if last.elapsed().as_millis() > 300 {
+            last = std::time::Instant::now();
+            let _ = app.emit(
+                "dl-progress",
+                serde_json::json!({ "id": id, "received": received, "total": total }),
+            );
+        }
+    }
+    Ok(path.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+    // 桌面端插件：目录选择对话框 + 全局快捷键（Ctrl+Alt+P/←/→/L → gs-ctl 事件给网页）
+    #[cfg(desktop)]
+    {
+        use tauri::Emitter;
+        use tauri_plugin_global_shortcut::{Code, Modifiers, ShortcutState};
+        builder = builder.plugin(tauri_plugin_dialog::init()).plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    if event.state() != ShortcutState::Pressed {
+                        return;
+                    }
+                    let m = Modifiers::CONTROL | Modifiers::ALT;
+                    let action = if shortcut.matches(m, Code::KeyP) {
+                        "playpause"
+                    } else if shortcut.matches(m, Code::ArrowLeft) {
+                        "prev"
+                    } else if shortcut.matches(m, Code::ArrowRight) {
+                        "next"
+                    } else if shortcut.matches(m, Code::KeyL) {
+                        "lyrics"
+                    } else {
+                        return;
+                    };
+                    let _ = app.emit("gs-ctl", serde_json::json!({ "action": action }));
+                })
+                .build(),
+        );
+    }
+    builder
         .setup(|app| {
             // 桌面端：悬浮歌词窗口 + 托盘 + 关闭最小化 + 锁定悬停解锁。
             // 安卓不支持多窗口/系统托盘，故整段仅 desktop。
@@ -269,6 +381,90 @@ pub fn run() {
                         }
                     });
                 }
+
+                // ⑤ P6：能力握手 + 下载管理事件桥 + 全局快捷键注册。
+                // 网页 bridge.js 发 shell-hello，这里回 shell-info{ver,caps}——
+                // 旧网页不发=保持沉默；网页在旧壳(≤v0.5)发了没人回=按浏览器路径降级。
+                {
+                    let ah = app.handle().clone();
+                    app.listen("shell-hello", move |_| {
+                        let _ = ah.emit(
+                            "shell-info",
+                            serde_json::json!({ "ver": env!("CARGO_PKG_VERSION"), "caps": ["dl", "gs"] }),
+                        );
+                    });
+                }
+                {
+                    let ah = app.handle().clone();
+                    app.listen("dl-start", move |ev| {
+                        if let Ok(v) = serde_json::from_str::<serde_json::Value>(ev.payload()) {
+                            let id = v.get("id").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                            let url = v.get("url").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                            let filename = v.get("filename").and_then(|x| x.as_str()).unwrap_or("song").to_string();
+                            if id.is_empty() || url.is_empty() {
+                                return;
+                            }
+                            tauri::async_runtime::spawn(dl_run(ah.clone(), id, url, filename));
+                        }
+                    });
+                }
+                {
+                    let ah = app.handle().clone();
+                    app.listen("dl-get-dir", move |_| {
+                        let _ = ah.emit(
+                            "dl-dir",
+                            serde_json::json!({ "path": dl_dir_path(&ah).to_string_lossy() }),
+                        );
+                    });
+                }
+                {
+                    let ah = app.handle().clone();
+                    app.listen("dl-pick-dir", move |_| {
+                        use tauri_plugin_dialog::DialogExt;
+                        let ah2 = ah.clone();
+                        ah.dialog().file().pick_folder(move |p| {
+                            if let Some(fp) = p {
+                                if let Ok(pb) = fp.into_path() {
+                                    save_dl_dir(&ah2, &pb);
+                                    let _ = ah2.emit(
+                                        "dl-dir",
+                                        serde_json::json!({ "path": pb.to_string_lossy() }),
+                                    );
+                                }
+                            }
+                        });
+                    });
+                }
+                {
+                    let ah = app.handle().clone();
+                    app.listen("dl-open-dir", move |ev| {
+                        use tauri_plugin_opener::OpenerExt;
+                        let target = serde_json::from_str::<serde_json::Value>(ev.payload())
+                            .ok()
+                            .and_then(|v| v.get("path").and_then(|x| x.as_str()).map(|s| s.to_string()))
+                            .filter(|s| !s.is_empty());
+                        match target {
+                            Some(p) => {
+                                let _ = ah.opener().reveal_item_in_dir(p);
+                            }
+                            None => {
+                                let _ = ah.opener().open_path(
+                                    dl_dir_path(&ah).to_string_lossy().to_string(),
+                                    None::<&str>,
+                                );
+                            }
+                        }
+                    });
+                }
+                {
+                    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+                    let gs = app.global_shortcut();
+                    for s in ["ctrl+alt+p", "ctrl+alt+left", "ctrl+alt+right", "ctrl+alt+l"] {
+                        if let Err(e) = gs.register(s) {
+                            eprintln!("[gs] register {s} failed: {e}");
+                        }
+                    }
+                }
             }
 
             // 安卓：监听前端发来的播放元数据/状态/进度事件 → JNI 驱动前台服务/MediaSession。
@@ -321,6 +517,10 @@ pub fn run() {
                         let locked = v.get("locked").and_then(|x| x.as_bool()).unwrap_or(false);
                         media_android::lyric_set_locked(locked);
                     }
+                });
+                // 下载：交系统 DownloadManager（通知栏进度，存 Music/AnonMusic/）
+                app.listen("and-download", |ev| {
+                    media_android::download(ev.payload());
                 });
 
                 // 媒体卡片：我喜欢 / 词 按钮的状态
