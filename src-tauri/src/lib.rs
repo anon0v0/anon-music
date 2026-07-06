@@ -82,33 +82,74 @@ async fn dl_run_inner(
     use tauri::Emitter;
     let dir = dl_dir_path(app);
     let _ = std::fs::create_dir_all(&dir);
-    let safe: String = filename
+    let mut safe: String = filename
         .chars()
         .map(|c| if "\\/:*?\"<>|".contains(c) { '_' } else { c })
         .collect();
-    let path = dir.join(if safe.is_empty() { String::from("song") } else { safe });
-    let resp = reqwest::get(url).await.map_err(|e| e.to_string())?;
+    // 去掉尾部点/空格(Windows 非法) + 保底名
+    safe = safe.trim_end_matches([' ', '.']).to_string();
+    if safe.is_empty() {
+        safe = String::from("song");
+    }
+    // 同名不覆盖：已存在则追加 (1)/(2)…（不静默截毁用户已下好的完整文件）
+    let final_path = {
+        let base = dir.join(&safe);
+        if !base.exists() {
+            base
+        } else {
+            let (stem, ext) = match safe.rfind('.') {
+                Some(i) if i > 0 => (safe[..i].to_string(), safe[i..].to_string()),
+                _ => (safe.clone(), String::new()),
+            };
+            let mut p = base.clone();
+            let mut n = 1;
+            while p.exists() && n < 1000 {
+                p = dir.join(format!("{stem} ({n}){ext}"));
+                n += 1;
+            }
+            p
+        }
+    };
+    // 先下到 .part 临时文件，成功后再 rename → 失败不会留半截"看似完整"的文件
+    let part = final_path.with_extension("part");
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(20))
+        .read_timeout(std::time::Duration::from_secs(60)) // 服务器停发 60s 即报错，不永久卡住
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client.get(url).send().await.map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
         return Err(format!("HTTP {}", resp.status()));
     }
     let total = resp.content_length().unwrap_or(0);
-    let mut file = std::fs::File::create(&path).map_err(|e| e.to_string())?;
+    let mut file = std::fs::File::create(&part).map_err(|e| e.to_string())?;
     let mut stream = resp.bytes_stream();
     let mut received: u64 = 0;
     let mut last = std::time::Instant::now();
-    while let Some(chunk) = stream.next().await {
-        let c = chunk.map_err(|e| e.to_string())?;
-        file.write_all(&c).map_err(|e| e.to_string())?;
-        received += c.len() as u64;
-        if last.elapsed().as_millis() > 300 {
-            last = std::time::Instant::now();
-            let _ = app.emit(
-                "dl-progress",
-                serde_json::json!({ "id": id, "received": received, "total": total }),
-            );
+    let dl_result = async {
+        while let Some(chunk) = stream.next().await {
+            let c = chunk.map_err(|e| e.to_string())?;
+            file.write_all(&c).map_err(|e| e.to_string())?;
+            received += c.len() as u64;
+            if last.elapsed().as_millis() > 300 {
+                last = std::time::Instant::now();
+                let _ = app.emit(
+                    "dl-progress",
+                    serde_json::json!({ "id": id, "received": received, "total": total }),
+                );
+            }
         }
+        Ok::<(), String>(())
     }
-    Ok(path.to_string_lossy().to_string())
+    .await;
+    if let Err(e) = dl_result {
+        drop(file);
+        let _ = std::fs::remove_file(&part); // 清掉半截临时文件
+        return Err(e);
+    }
+    drop(file);
+    std::fs::rename(&part, &final_path).map_err(|e| e.to_string())?;
+    Ok(final_path.to_string_lossy().to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
