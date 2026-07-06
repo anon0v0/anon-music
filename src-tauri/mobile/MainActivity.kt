@@ -13,19 +13,76 @@ import androidx.activity.OnBackPressedCallback
 class MainActivity : TauriActivity() {
     companion object {
         init { System.loadLibrary("music_app_lib") }
+
+        @Volatile private var instance: MainActivity? = null
+
+        /** Rust 收到网页 shell-hello（页面加载完成）后经 JNI 调用，移除启动遮罩。 */
+        @JvmStatic
+        fun hideSplash() {
+            val act = instance ?: return
+            act.runOnUiThread { act.removeSplash() }
+        }
     }
 
     private external fun initAndroidContext(activity: android.app.Activity)
     private var webView: WebView? = null
+    private var splashView: android.widget.FrameLayout? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        instance = this
         initAndroidContext(this)
         super.onCreate(savedInstanceState)
+        showSplash()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             try {
                 requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 1001)
             } catch (_: Exception) {}
         }
+    }
+
+    override fun onDestroy() {
+        if (instance === this) instance = null
+        super.onDestroy()
+    }
+
+    /** 启动遮罩：远程页面加载完成前盖住白屏/黑屏等待（shell-hello 后移除，20s 兜底自动消失）。 */
+    private fun showSplash() {
+        try {
+            val f = android.widget.FrameLayout(this)
+            f.setBackgroundColor(0xFF0B0B0F.toInt())
+            val ll = android.widget.LinearLayout(this)
+            ll.orientation = android.widget.LinearLayout.VERTICAL
+            ll.gravity = android.view.Gravity.CENTER
+            val tv = android.widget.TextView(this)
+            tv.text = "Anon Music"
+            tv.setTextColor(0xFFFFFFFF.toInt())
+            tv.textSize = 24f
+            tv.typeface = android.graphics.Typeface.DEFAULT_BOLD
+            tv.gravity = android.view.Gravity.CENTER
+            val pb = android.widget.ProgressBar(this)
+            val pbLp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            pbLp.topMargin = (26 * resources.displayMetrics.density).toInt()
+            pbLp.gravity = android.view.Gravity.CENTER_HORIZONTAL
+            ll.addView(tv)
+            ll.addView(pb, pbLp)
+            f.addView(ll, android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT))
+            (window.decorView as android.view.ViewGroup).addView(f,
+                android.view.ViewGroup.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT))
+            splashView = f
+            f.postDelayed({ removeSplash() }, 20000)   // 兜底：断网/加载失败也不至于永远挡住
+        } catch (_: Exception) {}
+    }
+
+    private fun removeSplash() {
+        splashView?.let { v -> (v.parent as? android.view.ViewGroup)?.removeView(v) }
+        splashView = null
     }
 
     override fun onWebViewCreate(webView: WebView) {

@@ -92,6 +92,7 @@ ${pgMarker}
 # R8 看不到 Kotlin 侧引用会删除/重命名 → 运行时 NoSuchMethodError 崩溃。整类保留。
 -keep class ${pkg}.MusicService { *; }
 -keep class ${pkg}.MainActivity { *; }
+-keep class ${pkg}.MainActivity$* { *; }
 -keep class ${pkg}.LyricOverlay { *; }
 -keep class ${pkg}.LyricOverlay$* { *; }
 -keep class ${pkg}.DownloadHelper { *; }

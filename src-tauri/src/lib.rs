@@ -196,6 +196,31 @@ pub fn run() {
                 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
                 use tauri::{Emitter, Listener, Manager, WebviewUrl, WebviewWindowBuilder};
 
+                // ⓪ 启动 splash：主窗口加载远程页面期间给一个本地加载画面（主窗 decorations=false
+                // 时期的空窗更显生硬）。网页就绪(shell-hello)后关闭；15s 兜底自动关（断网也不挡人）。
+                {
+                    let splash = WebviewWindowBuilder::new(app, "splash", WebviewUrl::App("splash.html".into()))
+                        .title("Anon Music")
+                        .decorations(false)
+                        .resizable(false)
+                        .maximizable(false)
+                        .skip_taskbar(true)
+                        .always_on_top(true)
+                        .center()
+                        .inner_size(380.0, 240.0)
+                        .build();
+                    if let Err(e) = splash {
+                        eprintln!("splash window failed: {e}");
+                    }
+                    let ah = app.handle().clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_secs(15));
+                        if let Some(s) = ah.get_webview_window("splash") {
+                            let _ = s.close();
+                        }
+                    });
+                }
+
                 // 关闭行为：true=最小化到托盘(默认)，false=直接退出（由网页设置项切换）
                 let close_to_tray = Arc::new(AtomicBool::new(true));
                 // 桌面歌词锁定状态
@@ -429,10 +454,15 @@ pub fn run() {
                 {
                     let ah = app.handle().clone();
                     app.listen("shell-hello", move |_| {
+                        // caps: dl=下载桥 gs=全局快捷键 wc=无边框窗口自绘控制（v0.7 起 decorations=false）
                         let _ = ah.emit(
                             "shell-info",
-                            serde_json::json!({ "ver": env!("CARGO_PKG_VERSION"), "caps": ["dl", "gs"] }),
+                            serde_json::json!({ "ver": env!("CARGO_PKG_VERSION"), "caps": ["dl", "gs", "wc"] }),
                         );
+                        // 网页就绪 → 关掉启动 splash
+                        if let Some(s) = ah.get_webview_window("splash") {
+                            let _ = s.close();
+                        }
                     });
                 }
                 {
@@ -512,8 +542,20 @@ pub fn run() {
             // 前端控制(媒体键回传)经 media_android 的 JNI 回调 emit 'and-ctl'/'and-seek'。
             #[cfg(target_os = "android")]
             {
-                use tauri::Listener;
+                use tauri::{Emitter, Listener};
                 media_android::set_app_handle(app.handle().clone());
+
+                // 能力握手 + 关启动遮罩：网页 bridge.js 发 shell-hello（页面已就绪）
+                {
+                    let ah = app.handle().clone();
+                    app.listen("shell-hello", move |_| {
+                        let _ = ah.emit(
+                            "shell-info",
+                            serde_json::json!({ "ver": env!("CARGO_PKG_VERSION"), "caps": ["dl"] }),
+                        );
+                        media_android::hide_splash();
+                    });
+                }
 
                 app.listen("and-now", |ev| {
                     if let Ok(v) = serde_json::from_str::<serde_json::Value>(ev.payload()) {
