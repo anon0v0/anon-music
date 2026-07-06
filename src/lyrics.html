@@ -55,9 +55,14 @@
     #panel .swatches .sw.on { border-color: #fff; }
     #panel input[type="range"] { width: 120px; accent-color: #22c55e; }
 
-    /* 歌词文本：当前行(逐字) + 下一行(双行时显示)。透明度只作用于文字，不影响工具条。 */
+    /* 歌词文本：当前行(逐字) + 下一行(双行时显示)。透明度只作用于文字，不影响工具条。
+       超长行不省略：有逐字数据时跟随唱到的位置平移(#curin translateX)，无逐字来回滚动(marq)。 */
     #cur { max-width: 100%; font-weight: 800; line-height: 1.4; white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; color: var(--hlA, #fff); transition: font-size .15s; opacity: var(--lyO, 1); }
+      color: var(--hlA, #fff); transition: font-size .15s; opacity: var(--lyO, 1); }
+    #cur.ovf { text-align: left; }
+    #curin { display: inline-block; will-change: transform; }
+    #curin.marq { animation: lyrmarq var(--mdur, 8s) ease-in-out infinite alternate; }
+    @keyframes lyrmarq { from { transform: translateX(0); } to { transform: translateX(var(--mdist, -60px)); } }
     #cur .kw { background: linear-gradient(90deg,
         var(--hlA,#fff) 0%,
         var(--hlB,#fff) calc(var(--p,0%) - 1.5%),
@@ -100,6 +105,7 @@
 
     <div id="panel">
       <div class="pr"><span>字体大小</span><span class="grp"><button id="pfdec">A−</button><b id="fval">30</b><button id="pfinc">A+</button></span></div>
+      <div class="pr"><span>窗口宽度</span><span class="grp"><button id="wdec">−</button><b id="wval">900</b><button id="winc">＋</button></span></div>
       <div class="pr"><span>配色方案</span><span class="swatches" id="swatches"></span></div>
       <div class="pr"><span>显示</span><span class="seg"><button id="single">单行</button><button id="dbl">双行</button></span></div>
       <div class="pr"><span>对齐</span><span class="seg" id="alignSeg">
@@ -109,7 +115,7 @@
       <div class="pr"><span>不透明度</span><span class="grp"><input type="range" id="opRange" min="30" max="100" value="100"><b id="opVal">100%</b></span></div>
     </div>
 
-    <div id="cur">♪ Anon Music</div>
+    <div id="cur"><span id="curin">♪ Anon Music</span></div>
     <div id="nextline"></div>
     <button id="unlockpill"><svg viewBox="0 0 24 24"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0z"/></svg>解锁</button>
   </div>
@@ -121,7 +127,7 @@
     const LSz = T && T.dpi && T.dpi.LogicalSize;
     const DEMO = /(\?|&)demo=1/.test(location.search);   // 浏览器脱壳自测：lyrics.html?demo=1
     const $ = (id) => document.getElementById(id);
-    const $bar = $('bar'), $cur = $('cur'), $next = $('nextline'), $ticon = $('ticon'),
+    const $bar = $('bar'), $cur = $('cur'), $curin = $('curin'), $next = $('nextline'), $ticon = $('ticon'),
           $panel = $('panel'), $fval = $('fval'), $pill = $('unlockpill');
     const ICON_PLAY = 'M8 5v14l11-7z';
     const ICON_PAUSE = 'M6 5h4v14H6zm8 0h4v14h-4z';
@@ -206,9 +212,42 @@
       if (num(p.opacity) && p.opacity !== S.opacity) { S.opacity = p.opacity; dirty = true; }
       if (p.shadow && p.shadow !== S.shadow) { S.shadow = p.shadow; dirty = true; }
       if (dirty) applyStyle();
-      if (typeof p.html === 'string') $cur.innerHTML = p.html;
+      if (typeof p.html === 'string') { $curin.innerHTML = p.html; layoutOverflow(); }
       if (S.doubleRow) $next.textContent = p.next || '';
       $ticon.querySelector('path').setAttribute('d', p.playing ? ICON_PAUSE : ICON_PLAY);
+    }
+
+    // 超长行滚动：有逐字数据 → 跟随唱到的位置平移(高亮点锚在 55% 处)；无逐字 → 来回滚动。
+    // 词宽只在换行/换字号时量一次(offsetWidth 强制布局)，每帧只读 --p 字符串(无布局开销)。
+    let _lineKey = '', _wCache = null;
+    function layoutOverflow() {
+      const vw = $cur.clientWidth, tw = $curin.scrollWidth;
+      const over = tw - vw;
+      if (over <= 4) {
+        $cur.classList.remove('ovf'); $curin.classList.remove('marq'); $curin.style.transform = '';
+        return;
+      }
+      $cur.classList.add('ovf');
+      const kws = $curin.querySelectorAll('.kw');
+      if (!kws.length) {   // 整行歌词：来回滚动完整展示
+        $curin.style.transform = '';
+        $curin.style.setProperty('--mdist', -(over + 12) + 'px');
+        $curin.style.setProperty('--mdur', Math.max(6, (over + 12) / 30) + 's');
+        $curin.classList.add('marq');
+        return;
+      }
+      $curin.classList.remove('marq');
+      const key = $curin.textContent + '|' + S.fontSize;
+      if (key !== _lineKey || !_wCache || _wCache.length !== kws.length) {
+        _lineKey = key; _wCache = Array.prototype.map.call(kws, el => el.offsetWidth);
+      }
+      let sung = 0;
+      for (let i = 0; i < kws.length; i++) {
+        const p = parseFloat(kws[i].style.getPropertyValue('--p')) || 0;
+        sung += _wCache[i] * (p / 100);
+      }
+      const shift = Math.max(0, Math.min(over, sung - vw * 0.55));
+      $curin.style.transform = 'translateX(' + (-shift) + 'px)';
     }
 
     if (ev) {
@@ -219,14 +258,27 @@
       ev.listen('lyric-hover', (e) => { if (locked) $pill.classList.toggle('show', !!e.payload); });
     }
 
-    // 拖动：在歌词条任意非按钮/非面板处按住即可拖（含歌词文字本身）
+    // 拖动：在歌词条任意非按钮/非面板处按住即可拖（含歌词文字本身）。
+    // 锁定态禁止拖动——锁定时光标悬停会临时取消穿透(为了点解锁按钮)，此时窗口不能被拖走。
     $bar.addEventListener('mousedown', (e) => {
-      if (e.button !== 0 || !win) return;
+      if (e.button !== 0 || !win || locked) return;
       if (e.target.closest('button') || e.target.closest('#panel')) return;
       win.startDragging().catch(() => {});
     });
 
-    function setPanel(v) { panelOpen = v; $panel.classList.toggle('open', v); autoSize(); }
+    function setPanel(v) {
+      panelOpen = v; $panel.classList.toggle('open', v);
+      if (v) $('wval').textContent = Math.round(window.innerWidth);
+      autoSize();
+    }
+
+    // 窗口宽度：面板 −/＋ 调整（窗口本身不可手动拉伸，避免触发系统贴边/最大化）
+    function setWidth(delta) {
+      if (!win || !LSz) return;
+      const W = Math.max(420, Math.min(1600, Math.round(window.innerWidth + delta)));
+      $('wval').textContent = W;
+      try { win.setSize(new LSz(W, Math.max(96, _lastH || 96))).catch(() => {}); } catch (e) {}
+    }
 
     // ---- 控件绑定：老 action 名（fontUp/fontDown/rows/off/prev/next/playpause）原样保留，新增走新 action ----
     $('prev').onclick = (e) => { e.stopPropagation(); emitCtl('prev'); };
@@ -245,6 +297,8 @@
     $('finc').onclick = (e) => { e.stopPropagation(); fontDelta(2); };
     $('pfdec').onclick = (e) => { e.stopPropagation(); fontDelta(-2); };
     $('pfinc').onclick = (e) => { e.stopPropagation(); fontDelta(2); };
+    $('wdec').onclick = (e) => { e.stopPropagation(); setWidth(-60); };
+    $('winc').onclick = (e) => { e.stopPropagation(); setWidth(60); };
     $('single').onclick = (e) => { e.stopPropagation(); S.doubleRow = false; applyStyle(); emitCtl('rows', 'single'); };
     $('dbl').onclick = (e) => { e.stopPropagation(); S.doubleRow = true; applyStyle(); emitCtl('rows', 'double'); };
 
@@ -284,10 +338,11 @@
         if (el > DUR) { t0 = performance.now(); li = (li + 1) % demoLines.length; return; }
         const line = demoLines[li], chars = line.text.split('');
         const per = DUR / chars.length, prog = el / per;
-        $cur.innerHTML = chars.map((c, i) => {
+        $curin.innerHTML = chars.map((c, i) => {
           const p = Math.max(0, Math.min(1, prog - i)) * 100;
           return `<span class="kw" style="--p:${p.toFixed(1)}%">${c}</span>`;
         }).join('');
+        layoutOverflow();
         if (S.doubleRow) $next.textContent = line.next;
       }, 50);
     }

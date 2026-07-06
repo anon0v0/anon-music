@@ -66,6 +66,9 @@ pub fn run() {
                     ))
                 });
 
+                // resizable(false)+maximizable(false)：歌词窗不可手动拉伸——否则 Windows 会对它
+                // 触发贴边分屏/拖到顶最大化(Aero Snap)。尺寸全部由 lyrics.html 程序化 setSize
+                // （字号定高、面板宽度按钮定宽），programmatic resize 不受 resizable(false) 影响。
                 let mut lyr_b = WebviewWindowBuilder::new(app, "lyrics", WebviewUrl::App("lyrics.html".into()))
                     .title("桌面歌词")
                     .transparent(true)
@@ -73,7 +76,8 @@ pub fn run() {
                     .always_on_top(true)
                     .skip_taskbar(true)
                     .shadow(false)
-                    .resizable(true)
+                    .resizable(false)
+                    .maximizable(false)
                     .min_inner_size(360.0, 80.0)
                     .visible(false);
                 lyr_b = match saved_geom {
