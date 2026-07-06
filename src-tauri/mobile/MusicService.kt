@@ -42,6 +42,7 @@ class MusicService : Service() {
         const val ACTION_STOP = "li.saki.anonmusic.STOP"
         const val ACTION_LIKE = "li.saki.anonmusic.LIKE"
         const val ACTION_LYRICS = "li.saki.anonmusic.LYRICS"
+        const val ACTION_LYRIC_LOCK = "li.saki.anonmusic.LYRIC_LOCK"
 
         @Volatile var instance: MusicService? = null
 
@@ -92,6 +93,10 @@ class MusicService : Service() {
         // 悬浮歌词是否开启（控制「词」按钮打勾）
         @JvmStatic
         fun setLyricsActive(active: Boolean) { pendingLyrics = active; instance?.setLyricsInternal(active) }
+
+        // LyricOverlay 锁定状态变化时刷新媒体卡片（锁/解锁图标）
+        @JvmStatic
+        fun pokeNotification() { instance?.updateNotification() }
     }
 
     private external fun nativePlayerCommand(cmd: String)
@@ -238,7 +243,14 @@ class MusicService : Service() {
         // 仿 QQ 音乐：[我喜欢] 上一首 播放/暂停 下一首 [词]。
         // 展开视图显示全部 5 键；折叠视图只显示中间 3 键(索引 1/2/3)。
         val actions = listOf(
-            Notification.Action.Builder(heartIcon(liked), if (liked) "取消喜欢" else "喜欢", actionIntent(ACTION_LIKE, 4)).build(),
+            // 悬浮歌词开启时，第 1 格从「喜欢」换成「锁定/解锁歌词」（仿 QQ 音乐；
+            // Android 13+ 媒体卡最多 5 个动作位，不能加第 6 个）
+            if (lyricsActive) {
+                val locked = try { LyricOverlay.isLocked() } catch (_: Throwable) { false }
+                Notification.Action.Builder(lockIcon(locked), if (locked) "解锁歌词" else "锁定歌词", actionIntent(ACTION_LYRIC_LOCK, 6)).build()
+            } else {
+                Notification.Action.Builder(heartIcon(liked), if (liked) "取消喜欢" else "喜欢", actionIntent(ACTION_LIKE, 4)).build()
+            },
             Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_media_previous), "上一首", actionIntent(ACTION_PREV, 1)).build(),
             Notification.Action.Builder(Icon.createWithResource(this, ppIcon), ppText, actionIntent(ppAction, 2)).build(),
             Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_media_next), "下一首", actionIntent(ACTION_NEXT, 3)).build(),
@@ -290,6 +302,33 @@ class MusicService : Service() {
         return Icon.createWithBitmap(bmp)
     }
 
+    // 挂锁：锁定=闭合锁扣，未锁定=锁扣向右开口（tint 单色下靠形状区分）
+    private fun lockIcon(locked: Boolean): Icon {
+        val s = dpi(24)
+        val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val w = s.toFloat()
+        val body = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.FILL }
+        val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; style = Paint.Style.STROKE
+            strokeWidth = w * 0.11f; strokeCap = Paint.Cap.ROUND
+        }
+        // 锁体
+        c.drawRoundRect(w * 0.22f, w * 0.46f, w * 0.78f, w * 0.90f, w * 0.08f, w * 0.08f, body)
+        // 锁扣
+        if (locked) {
+            val r = android.graphics.RectF(w * 0.30f, w * 0.14f, w * 0.70f, w * 0.54f)
+            c.drawArc(r, 180f, 180f, false, arc)
+            c.drawLine(w * 0.30f, w * 0.34f, w * 0.30f, w * 0.48f, arc)
+            c.drawLine(w * 0.70f, w * 0.34f, w * 0.70f, w * 0.48f, arc)
+        } else {
+            val r = android.graphics.RectF(w * 0.38f, w * 0.10f, w * 0.86f, w * 0.50f)
+            c.drawArc(r, 180f, 160f, false, arc)   // 开口的锁扣，右脚翘起
+            c.drawLine(w * 0.38f, w * 0.30f, w * 0.38f, w * 0.48f, arc)
+        }
+        return Icon.createWithBitmap(bmp)
+    }
+
     private fun lyricIcon(on: Boolean): Icon {
         val s = dpi(24)
         val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
@@ -338,6 +377,13 @@ class MusicService : Service() {
             ACTION_PREV -> nativePlayerCommand("prev")
             ACTION_LIKE -> nativePlayerCommand("like")
             ACTION_LYRICS -> nativePlayerCommand("lyrics")
+            ACTION_LYRIC_LOCK -> {
+                // 直接原生切换锁定（同进程调用，不走 JNI 往返），再通知 web 同步设置状态
+                val newLocked = !(try { LyricOverlay.isLocked() } catch (_: Throwable) { false })
+                try { LyricOverlay.setLocked(applicationContext, newLocked) } catch (_: Throwable) {}
+                nativePlayerCommand(if (newLocked) "lyriclock" else "lyricunlock")
+                updateNotification()
+            }
             ACTION_STOP -> {
                 nativePlayerCommand("stop")
                 stopForeground(STOP_FOREGROUND_REMOVE)

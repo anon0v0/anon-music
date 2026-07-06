@@ -4,11 +4,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PixelFormat
+import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -24,8 +27,8 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
@@ -52,10 +55,12 @@ object LyricOverlay {
     private var kCur: KaraokeView? = null
     private var kNext: KaraokeView? = null
     private var handle: LinearLayout? = null
+    private var playBtn: ImageView? = null
     private var lp: WindowManager.LayoutParams? = null
     private var ticking = false
     private var lastIdx = -2
     private var screenReceiver: BroadcastReceiver? = null
+    private val hideHandle = Runnable { handle?.visibility = View.GONE }
 
     // Rust 经 JNI 调（收词条工具条动作 → and-ctl 回传前端）。类经 proguard -keep 保留。
     private external fun nativeOverlayCommand(cmd: String)
@@ -147,12 +152,19 @@ object LyricOverlay {
         } catch (e: Exception) { Log.e(TAG, "setStyle failed: ${e.message}") }
     }
 
-    // and-lyric-lock（web 设置面板）或工具条锁定按钮 → 锁定=完全穿透不可拖
+    // 媒体卡片锁定按钮需要读当前状态（同进程直调，不走 JNI）
+    @JvmStatic
+    fun isLocked(): Boolean = locked
+
+    // and-lyric-lock（web 设置面板）/ 工具条锁定 / 媒体卡片锁定 → 锁定=完全穿透不可拖
     @JvmStatic
     fun setLocked(ctx: Context, v: Boolean) {
         locked = v
         try { prefs(ctx.applicationContext).edit().putBoolean("locked", v).apply() } catch (_: Exception) {}
-        main.post { applyLockState() }
+        main.post {
+            applyLockState()
+            try { MusicService.pokeNotification() } catch (_: Throwable) {}   // 刷新媒体卡片锁图标
+        }
     }
 
     @JvmStatic
@@ -201,6 +213,7 @@ object LyricOverlay {
         posBaseMs = curMs()             // 冻结当前推算值，避免暂停/恢复跳变
         posBaseWall = SystemClock.elapsedRealtime()
         playing = p
+        main.post { if (handle?.visibility == View.VISIBLE) refreshPlayIcon() }
     }
 
     private fun curMs(): Double =
@@ -318,6 +331,54 @@ object LyricOverlay {
     private fun sp(v: Float): Float =
         v * (appCtx?.resources?.displayMetrics?.scaledDensity ?: 2.6f)
 
+    // ---- 工具条图标（运行时画 Bitmap，白色描边/填充，深色药丸底上清晰）----
+    private fun glyphBitmap(kind: String, px: Int): Bitmap {
+        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val w = px.toFloat()
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.FILL }
+        val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; style = Paint.Style.STROKE
+            strokeWidth = w * 0.11f; strokeCap = Paint.Cap.ROUND
+        }
+        when (kind) {
+            "prev" -> {
+                c.drawRect(w * 0.14f, w * 0.22f, w * 0.24f, w * 0.78f, fill)
+                c.drawPath(Path().apply { moveTo(w * 0.86f, w * 0.22f); lineTo(w * 0.86f, w * 0.78f); lineTo(w * 0.34f, w * 0.5f); close() }, fill)
+            }
+            "next" -> {
+                c.drawPath(Path().apply { moveTo(w * 0.14f, w * 0.22f); lineTo(w * 0.14f, w * 0.78f); lineTo(w * 0.66f, w * 0.5f); close() }, fill)
+                c.drawRect(w * 0.76f, w * 0.22f, w * 0.86f, w * 0.78f, fill)
+            }
+            "play" -> c.drawPath(Path().apply { moveTo(w * 0.30f, w * 0.18f); lineTo(w * 0.30f, w * 0.82f); lineTo(w * 0.88f, w * 0.5f); close() }, fill)
+            "pause" -> {
+                c.drawRect(w * 0.24f, w * 0.20f, w * 0.42f, w * 0.80f, fill)
+                c.drawRect(w * 0.58f, w * 0.20f, w * 0.76f, w * 0.80f, fill)
+            }
+            "lock" -> {
+                c.drawRoundRect(w * 0.24f, w * 0.48f, w * 0.76f, w * 0.88f, w * 0.08f, w * 0.08f, fill)
+                c.drawArc(RectF(w * 0.32f, w * 0.16f, w * 0.68f, w * 0.56f), 180f, 180f, false, stroke)
+            }
+            "close" -> {
+                c.drawLine(w * 0.27f, w * 0.27f, w * 0.73f, w * 0.73f, stroke)
+                c.drawLine(w * 0.73f, w * 0.27f, w * 0.27f, w * 0.73f, stroke)
+            }
+        }
+        return bmp
+    }
+    private fun refreshPlayIcon() {
+        playBtn?.setImageBitmap(glyphBitmap(if (playing) "pause" else "play", dp(20)))
+    }
+    private fun showHandle() {
+        handle?.visibility = View.VISIBLE
+        refreshPlayIcon()
+        bumpHandleTimer()
+    }
+    private fun bumpHandleTimer() {   // 5s 无操作自动收起
+        main.removeCallbacks(hideHandle)
+        main.postDelayed(hideHandle, 5000)
+    }
+
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private fun loadPrefs(ctx: Context) {
         try {
@@ -418,28 +479,40 @@ object LyricOverlay {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
-            // 轻点悬浮歌词弹出的小工具条：锁定 / 关闭
+            // 轻点悬浮歌词弹出的小工具条（仿 QQ）：上一首/播放暂停/下一首 ｜ 锁定/关闭，5s 自动收起
             val hd = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
                 visibility = View.GONE
                 background = GradientDrawable().apply {
-                    setColor(0xE6141420.toInt()); cornerRadius = dp(14).toFloat()
+                    setColor(0xE6141420.toInt()); cornerRadius = dp(16).toFloat()
                 }
-                setPadding(dp(10), dp(2), dp(10), dp(2))
+                setPadding(dp(8), dp(2), dp(8), dp(2))
             }
-            fun toolBtn(label: String, cmd: () -> Unit) = TextView(ctx).apply {
-                text = label; textSize = 13f; setTextColor(Color.WHITE)
-                setPadding(dp(10), dp(4), dp(10), dp(4))
-                setOnClickListener { cmd() }
+            fun iconBtn(kind: String, cmd: () -> Unit) = ImageView(ctx).apply {
+                setImageBitmap(glyphBitmap(kind, dp(20)))
+                setPadding(dp(11), dp(8), dp(11), dp(8))
+                setOnClickListener { bumpHandleTimer(); cmd() }
             }
-            hd.addView(toolBtn("锁定") {
+            fun sep() = View(ctx).apply {
+                setBackgroundColor(0x33FFFFFF)
+                layoutParams = LinearLayout.LayoutParams(dp(1), dp(16)).apply {
+                    gravity = Gravity.CENTER_VERTICAL; leftMargin = dp(4); rightMargin = dp(4)
+                }
+            }
+            hd.addView(iconBtn("prev") { safeCommand("prev") })
+            val pb = iconBtn(if (playing) "pause" else "play") { safeCommand("playpause") }
+            hd.addView(pb)
+            hd.addView(iconBtn("next") { safeCommand("next") })
+            hd.addView(sep())
+            hd.addView(iconBtn("lock") {
                 locked = true
                 try { prefs(ctx).edit().putBoolean("locked", true).apply() } catch (_: Exception) {}
                 applyLockState()
-                safeCommand("lyriclock")   // 回传 web 同步设置面板状态（解锁在 App 设置里）
+                safeCommand("lyriclock")   // 回传 web 同步设置面板状态
+                try { MusicService.pokeNotification() } catch (_: Throwable) {}   // 媒体卡片出现解锁按钮
             })
-            hd.addView(toolBtn("✕") { safeCommand("lyrics") })   // 走 web 的 DeskLyric.toggle，保持两端状态一致
+            hd.addView(iconBtn("close") { safeCommand("lyrics") })   // 走 web 的 DeskLyric.toggle，两端状态一致
 
             val cv = KaraokeView(ctx)
             val nv = KaraokeView(ctx).apply { dimWhole = true; visibility = View.GONE }
@@ -479,7 +552,7 @@ object LyricOverlay {
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         if (moved) { try { prefs(ctx).edit().putInt("posY", p.y).apply() } catch (_: Exception) {} }
-                        else hd.visibility = if (hd.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                        else { if (hd.visibility == View.VISIBLE) hd.visibility = View.GONE else showHandle() }
                         true
                     }
                     else -> false
@@ -488,7 +561,7 @@ object LyricOverlay {
 
             w.addView(r, p)                 // 没悬浮窗权限会在这里抛异常
             // 仅在真正加上之后才记录状态；否则 root 保持 null → 上层会去引导授权。
-            wm = w; root = r; kCur = cv; kNext = nv; handle = hd; lp = p
+            wm = w; root = r; kCur = cv; kNext = nv; handle = hd; playBtn = pb; lp = p
             lastIdx = -2
             applyStyle()
             cv.setLine("♪ Anon Music")
@@ -504,7 +577,8 @@ object LyricOverlay {
         try { root?.let { wm?.removeView(it) } } catch (_: Exception) {}
         try { screenReceiver?.let { appCtx?.unregisterReceiver(it) } } catch (_: Exception) {}
         screenReceiver = null
-        root = null; kCur = null; kNext = null; handle = null; lp = null
+        main.removeCallbacks(hideHandle)
+        root = null; kCur = null; kNext = null; handle = null; playBtn = null; lp = null
         setSmooth(false)
     }
 
