@@ -240,24 +240,28 @@ class MusicService : Service() {
         val ppText = if (nowPlaying) "暂停" else "播放"
         val ppAction = if (nowPlaying) ACTION_PAUSE else ACTION_PLAY
 
-        // 仿 QQ 音乐：[我喜欢] 上一首 播放/暂停 下一首 [词]。
-        // 展开视图显示全部 5 键；折叠视图只显示中间 3 键(索引 1/2/3)。
+        // 仿 QQ 音乐：[我喜欢] 上一首 播放/暂停 下一首 [词/解锁]。
+        // 第 5 格「词」三态：歌词关→开启歌词 / 歌词开未锁→关闭歌词 / 歌词开已锁→解锁。
+        // 锁定后悬浮歌词完全穿透点不到，故解锁入口必须在媒体卡；且锁定时把它放进折叠视图
+        // (紧凑视图只显 3 键)，保证锁屏也能一键解锁——这是用户反馈"锁定后无法解锁"的根因修复。
+        val locked = try { LyricOverlay.isLocked() } catch (_: Throwable) { false }
+        val lyricAction = if (lyricsActive && locked) {
+            Notification.Action.Builder(lockIcon(false), "解锁歌词", actionIntent(ACTION_LYRIC_LOCK, 6)).build()
+        } else {
+            Notification.Action.Builder(lyricIcon(lyricsActive), if (lyricsActive) "关闭歌词" else "桌面歌词", actionIntent(ACTION_LYRICS, 5)).build()
+        }
         val actions = listOf(
-            // 悬浮歌词开启时，第 1 格从「喜欢」换成「锁定/解锁歌词」（仿 QQ 音乐；
-            // Android 13+ 媒体卡最多 5 个动作位，不能加第 6 个）
-            if (lyricsActive) {
-                val locked = try { LyricOverlay.isLocked() } catch (_: Throwable) { false }
-                Notification.Action.Builder(lockIcon(locked), if (locked) "解锁歌词" else "锁定歌词", actionIntent(ACTION_LYRIC_LOCK, 6)).build()
-            } else {
-                Notification.Action.Builder(heartIcon(liked), if (liked) "取消喜欢" else "喜欢", actionIntent(ACTION_LIKE, 4)).build()
-            },
+            Notification.Action.Builder(heartIcon(liked), if (liked) "取消喜欢" else "喜欢", actionIntent(ACTION_LIKE, 4)).build(),
             Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_media_previous), "上一首", actionIntent(ACTION_PREV, 1)).build(),
             Notification.Action.Builder(Icon.createWithResource(this, ppIcon), ppText, actionIntent(ppAction, 2)).build(),
             Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_media_next), "下一首", actionIntent(ACTION_NEXT, 3)).build(),
-            Notification.Action.Builder(lyricIcon(lyricsActive), "歌词", actionIntent(ACTION_LYRICS, 5)).build()
+            lyricAction
         )
 
-        val style = Notification.MediaStyle().setShowActionsInCompactView(1, 2, 3)
+        // 锁定时把解锁键(索引4)放进折叠视图，替掉下一首 → 锁屏一键解锁
+        val style = Notification.MediaStyle().setShowActionsInCompactView(
+            *(if (lyricsActive && locked) intArrayOf(1, 2, 4) else intArrayOf(1, 2, 3))
+        )
         mediaSession?.sessionToken?.let { style.setMediaSession(it) }
 
         val builder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
