@@ -18,6 +18,7 @@ static ANDROID_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 static MUSIC_SERVICE_CLASS: OnceLock<jni::objects::GlobalRef> = OnceLock::new();
 static LYRIC_OVERLAY_CLASS: OnceLock<jni::objects::GlobalRef> = OnceLock::new();
 static DOWNLOAD_HELPER_CLASS: OnceLock<jni::objects::GlobalRef> = OnceLock::new();
+static MAIN_ACTIVITY_CLASS: OnceLock<jni::objects::GlobalRef> = OnceLock::new();
 
 /// 在 setup 阶段保存 AppHandle，供 JNI 回调里 emit 事件给前端。
 pub fn set_app_handle(app: AppHandle) {
@@ -67,6 +68,11 @@ pub extern "system" fn Java_li_saki_anonmusic_MainActivity_initAndroidContext(
     if let Ok(class) = env.find_class("li/saki/anonmusic/DownloadHelper") {
         if let Ok(global_ref) = env.new_global_ref(&class) {
             let _ = DOWNLOAD_HELPER_CLASS.set(global_ref);
+        }
+    }
+    if let Ok(class) = env.find_class("li/saki/anonmusic/MainActivity") {
+        if let Ok(global_ref) = env.new_global_ref(&class) {
+            let _ = MAIN_ACTIVITY_CLASS.set(global_ref);
         }
     }
 
@@ -149,6 +155,13 @@ where
         let _ = env.exception_clear();
     }
     Some(result)
+}
+
+/// 网页加载完成（shell-hello）→ 移除启动 splash 遮罩。
+pub fn hide_splash() {
+    with_class(&MAIN_ACTIVITY_CLASS, |env, class| {
+        let _ = env.call_static_method(class, "hideSplash", "()V", &[]);
+    });
 }
 
 fn call_start(env: &mut jni::JNIEnv, class: &jni::objects::JClass) {

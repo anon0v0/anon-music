@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Anon Music</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0b0f; color: #fff;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; user-select: none; cursor: default; }
+  .box { text-align: center; }
+  /* 音乐律动条（与站内加载动画同款） */
+  .eq { width: 46px; height: 30px; margin: 0 auto 20px;
+    --b: linear-gradient(#22c55e 0 0);
+    background: var(--b) 0% 100%, var(--b) 25% 100%, var(--b) 50% 100%, var(--b) 75% 100%, var(--b) 100% 100%;
+    background-size: 6px 40%; background-repeat: no-repeat;
+    animation: eq .9s infinite ease-in-out; }
+  @keyframes eq {
+    0%, 100% { background-size: 6px 36%, 6px 66%, 6px 100%, 6px 66%, 6px 36%; }
+    25%      { background-size: 6px 66%, 6px 100%, 6px 66%, 6px 36%, 6px 66%; }
+    50%      { background-size: 6px 100%, 6px 66%, 6px 36%, 6px 66%, 6px 100%; }
+    75%      { background-size: 6px 66%, 6px 36%, 6px 66%, 6px 100%, 6px 66%; }
+  }
+  h1 { font-size: 21px; margin: 0 0 8px; letter-spacing: 1px; }
+  p { margin: 0; font-size: 12px; color: #8a8a95; }
+</style>
+</head>
+<body data-tauri-drag-region>
+  <div class="box">
+    <div class="eq"></div>
+    <h1>Anon Music</h1>
+    <p>正在启动…</p>
+  </div>
+</body>
+</html>
