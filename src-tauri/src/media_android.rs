@@ -17,6 +17,7 @@ use tauri::{AppHandle, Emitter};
 static ANDROID_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 static MUSIC_SERVICE_CLASS: OnceLock<jni::objects::GlobalRef> = OnceLock::new();
 static LYRIC_OVERLAY_CLASS: OnceLock<jni::objects::GlobalRef> = OnceLock::new();
+static DOWNLOAD_HELPER_CLASS: OnceLock<jni::objects::GlobalRef> = OnceLock::new();
 
 /// 在 setup 阶段保存 AppHandle，供 JNI 回调里 emit 事件给前端。
 pub fn set_app_handle(app: AppHandle) {
@@ -61,6 +62,11 @@ pub extern "system" fn Java_li_saki_anonmusic_MainActivity_initAndroidContext(
     if let Ok(class) = env.find_class("li/saki/anonmusic/LyricOverlay") {
         if let Ok(global_ref) = env.new_global_ref(&class) {
             let _ = LYRIC_OVERLAY_CLASS.set(global_ref);
+        }
+    }
+    if let Ok(class) = env.find_class("li/saki/anonmusic/DownloadHelper") {
+        if let Ok(global_ref) = env.new_global_ref(&class) {
+            let _ = DOWNLOAD_HELPER_CLASS.set(global_ref);
         }
     }
 
@@ -303,6 +309,41 @@ pub fn lyric_set_style(json: &str) {
             &[
                 jni::objects::JValue::Object(&activity),
                 jni::objects::JValue::Object(&j),
+            ],
+        );
+    });
+}
+
+// and-download：{url,filename,mime} → 系统 DownloadManager（DownloadHelper.enqueue）
+pub fn download(json: &str) {
+    let v: serde_json::Value = match serde_json::from_str(json) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    let url = v.get("url").and_then(|x| x.as_str()).unwrap_or("").to_string();
+    let filename = v.get("filename").and_then(|x| x.as_str()).unwrap_or("song").to_string();
+    let mime = v.get("mime").and_then(|x| x.as_str()).unwrap_or("audio/mpeg").to_string();
+    if url.is_empty() {
+        return;
+    }
+    with_class(&DOWNLOAD_HELPER_CLASS, |env, class| {
+        let activity = unsafe {
+            jni::objects::JObject::from_raw(
+                ndk_context::android_context().context() as jni::sys::jobject
+            )
+        };
+        let u = env.new_string(&url).unwrap_or_default();
+        let f = env.new_string(&filename).unwrap_or_default();
+        let m = env.new_string(&mime).unwrap_or_default();
+        let _ = env.call_static_method(
+            class,
+            "enqueue",
+            "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+            &[
+                jni::objects::JValue::Object(&activity),
+                jni::objects::JValue::Object(&u),
+                jni::objects::JValue::Object(&f),
+                jni::objects::JValue::Object(&m),
             ],
         );
     });

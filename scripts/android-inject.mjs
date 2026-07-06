@@ -24,7 +24,7 @@ if (!existsSync(genJava)) {
 }
 
 // 1) + 2) 拷贝 Kotlin 源
-for (const f of ['MainActivity.kt', 'MusicService.kt', 'LyricOverlay.kt']) {
+for (const f of ['MainActivity.kt', 'MusicService.kt', 'LyricOverlay.kt', 'DownloadHelper.kt']) {
   const src = new URL(`src-tauri/mobile/${f}`, root);
   const dst = new URL(f, genJava);
   mkdirSync(dirname(dst.pathname), { recursive: true });
@@ -55,7 +55,9 @@ if (!mani.includes('MusicService')) {
     'android.permission.SYSTEM_ALERT_WINDOW', // App 外悬浮歌词
   ]
     .map((p) => `    <uses-permission android:name="${p}" />`)
-    .join('\n');
+    .join('\n')
+    // 系统下载到公共 Music 目录：API 24-28 需要写权限，29+ 不需要（P6 DownloadHelper）
+    + '\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />';
 
   // 权限：插在 <application 之前
   mani = mani.replace(/(\n\s*<application)/, `\n${perms}\n$1`);
@@ -92,6 +94,7 @@ ${pgMarker}
 -keep class ${pkg}.MainActivity { *; }
 -keep class ${pkg}.LyricOverlay { *; }
 -keep class ${pkg}.LyricOverlay$* { *; }
+-keep class ${pkg}.DownloadHelper { *; }
 -keepclassmembers class ${pkg}.MusicService {
     public static *;
     private native *;
