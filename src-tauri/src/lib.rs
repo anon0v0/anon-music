@@ -155,7 +155,21 @@ async fn dl_run_inner(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[allow(unused_mut)]
-    let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+    let mut builder = tauri::Builder::default();
+    // 单实例（桌面）：必须最先注册。再次双击 exe 时新进程不建窗口，直接把已在运行的
+    // 主窗口显示/取消最小化/聚焦到前台 —— 解决"可以无限打开窗口"的问题。
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            use tauri::Manager;
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }));
+    }
+    builder = builder.plugin(tauri_plugin_opener::init());
     // 桌面端插件：目录选择对话框 + 全局快捷键（Ctrl+Alt+P/←/→/L → gs-ctl 事件给网页）
     #[cfg(desktop)]
     {
@@ -192,7 +206,7 @@ pub fn run() {
             {
                 use std::sync::atomic::{AtomicBool, Ordering};
                 use std::sync::{Arc, Mutex};
-                use tauri::menu::{Menu, MenuItem};
+                use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
                 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
                 use tauri::{Emitter, Listener, Manager, WebviewUrl, WebviewWindowBuilder};
 
@@ -333,22 +347,75 @@ pub fn run() {
                     });
                 }
 
-                // ② 系统托盘（解锁歌词 / 退出；左键点击恢复主窗）
+                // ② 系统托盘右键菜单（仿 QQ 音乐）：播放控制 + 桌面歌词 + 设置 + 退出。
+                //   播放/暂停·上一首·下一首·喜欢·显示歌词 → gs-ctl 事件回传网页(与全局快捷键同通道)；
+                //   打开主界面·设置·退出 在 Rust 侧直接处理。左键点击托盘图标=打开主窗。
+                let mi_play = MenuItem::with_id(app, "playpause", "播放 / 暂停", true, None::<&str>)?;
+                let mi_prev = MenuItem::with_id(app, "prev", "上一首", true, None::<&str>)?;
+                let mi_next = MenuItem::with_id(app, "next", "下一首", true, None::<&str>)?;
+                let mi_like = MenuItem::with_id(app, "like", "喜欢当前歌曲", true, None::<&str>)?;
+                let mi_lyric = MenuItem::with_id(app, "lyrics", "显示 / 隐藏桌面歌词", true, None::<&str>)?;
                 let unlock = MenuItem::with_id(app, "unlock", "解锁桌面歌词", true, None::<&str>)?;
+                let mi_show = MenuItem::with_id(app, "show", "打开主界面", true, None::<&str>)?;
+                let mi_set = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
                 let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-                let menu = Menu::with_items(app, &[&unlock, &quit])?;
+                let sep1 = PredefinedMenuItem::separator(app)?;
+                let sep2 = PredefinedMenuItem::separator(app)?;
+                let sep3 = PredefinedMenuItem::separator(app)?;
+                let menu = Menu::with_items(
+                    app,
+                    &[
+                        &mi_play, &mi_prev, &mi_next,
+                        &sep1,
+                        &mi_like, &mi_lyric, &unlock,
+                        &sep2,
+                        &mi_show, &mi_set,
+                        &sep3,
+                        &quit,
+                    ],
+                )?;
                 let ll_tray = lyric_locked.clone();
                 let tray = TrayIconBuilder::new()
                     .icon(app.default_window_icon().unwrap().clone())
                     .tooltip("Anon Music")
                     .menu(&menu)
                     .on_menu_event(move |app, event| match event.id().as_ref() {
+                        "playpause" => {
+                            let _ = app.emit("gs-ctl", serde_json::json!({ "action": "playpause" }));
+                        }
+                        "prev" => {
+                            let _ = app.emit("gs-ctl", serde_json::json!({ "action": "prev" }));
+                        }
+                        "next" => {
+                            let _ = app.emit("gs-ctl", serde_json::json!({ "action": "next" }));
+                        }
+                        "like" => {
+                            let _ = app.emit("gs-ctl", serde_json::json!({ "action": "like" }));
+                        }
+                        "lyrics" => {
+                            let _ = app.emit("gs-ctl", serde_json::json!({ "action": "lyrics" }));
+                        }
                         "unlock" => {
                             ll_tray.store(false, Ordering::Relaxed);
                             if let Some(w) = app.get_webview_window("lyrics") {
                                 let _ = w.set_ignore_cursor_events(false);
                             }
                             let _ = app.emit("lyric-locked-changed", false);
+                        }
+                        "show" => {
+                            if let Some(w) = app.get_webview_window("main") {
+                                let _ = w.show();
+                                let _ = w.unminimize();
+                                let _ = w.set_focus();
+                            }
+                        }
+                        "settings" => {
+                            if let Some(w) = app.get_webview_window("main") {
+                                let _ = w.show();
+                                let _ = w.unminimize();
+                                let _ = w.set_focus();
+                            }
+                            let _ = app.emit("gs-ctl", serde_json::json!({ "action": "settings" }));
                         }
                         "quit" => app.exit(0),
                         _ => {}
@@ -362,6 +429,7 @@ pub fn run() {
                         {
                             if let Some(w) = tray.app_handle().get_webview_window("main") {
                                 let _ = w.show();
+                                let _ = w.unminimize();
                                 let _ = w.set_focus();
                             }
                         }
