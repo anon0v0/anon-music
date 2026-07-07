@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "splash-window",
+  "description": "启动 splash 窗口：只授予拖动能力，使 body 的 data-tauri-drag-region 生效。",
+  "platforms": [
+    "windows",
+    "macOS",
+    "linux"
+  ],
+  "windows": [
+    "splash"
+  ],
+  "permissions": [
+    "core:window:allow-start-dragging"
+  ]
+}
