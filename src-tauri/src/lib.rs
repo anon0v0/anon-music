@@ -212,11 +212,25 @@ pub fn run() {
                     if let Err(e) = splash {
                         eprintln!("splash window failed: {e}");
                     }
+                    // 无边框主窗兜底：网页 bridge.js 挂好自绘标题栏后 emit 'wc-ready'。
+                    // 若旧缓存页/错误页拿不到新 bridge → 15s 内收不到 → 给主窗恢复系统标题栏，
+                    // 否则用户没有任何拖动/关闭窗口的手柄。
+                    let wc_ready = Arc::new(AtomicBool::new(false));
+                    {
+                        let wr = wc_ready.clone();
+                        app.listen("wc-ready", move |_| { wr.store(true, Ordering::SeqCst); });
+                    }
                     let ah = app.handle().clone();
+                    let wr = wc_ready.clone();
                     std::thread::spawn(move || {
                         std::thread::sleep(std::time::Duration::from_secs(15));
                         if let Some(s) = ah.get_webview_window("splash") {
                             let _ = s.close();
+                        }
+                        if !wr.load(Ordering::SeqCst) {
+                            if let Some(main) = ah.get_webview_window("main") {
+                                let _ = main.set_decorations(true);   // 页面没接管标题栏 → 还给系统栏
+                            }
                         }
                     });
                 }
