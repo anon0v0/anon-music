@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie管理 - Anonの点歌姬</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 16px;
+            color: #e0e0e0;
+        }
+        .card {
+            background: rgba(255,255,255,0.07);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 36px 32px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        .card h2 { font-size: 22px; color: #fff; margin-bottom: 6px; }
+        .card .subtitle { font-size: 13px; color: rgba(255,255,255,0.45); margin-bottom: 28px; }
+
+        .form-group { margin-bottom: 16px; text-align: left; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.65); margin-bottom: 6px; }
+        .form-group input {
+            width: 100%; padding: 12px 14px;
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+            font-size: 15px; outline: none; background: rgba(255,255,255,0.06); color: #fff;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus { border-color: #7c6cf0; background: rgba(255,255,255,0.1); }
+        .form-group input::placeholder { color: rgba(255,255,255,0.25); }
+
+        .btn-primary {
+            width: 100%; padding: 13px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff; border: none; border-radius: 10px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s; margin-top: 8px;
+        }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .error-msg { color: #ff6b6b; font-size: 13px; margin-top: 12px; min-height: 18px; }
+
+        /* QR 区域 */
+        .qr-section { display: none; }
+        .qr-box {
+            width: 200px; height: 200px; margin: 0 auto 16px;
+            border-radius: 16px; overflow: hidden;
+            background: rgba(255,255,255,0.05);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .qr-box img { width: 100%; height: 100%; object-fit: contain; }
+        .qr-placeholder { color: rgba(255,255,255,0.3); font-size: 14px; animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        .qr-status { font-size: 14px; color: rgba(255,255,255,0.55); margin-bottom: 8px; }
+        .qr-status.success { color: #4ade80; font-weight: 600; }
+        .qr-status.warn { color: #fbbf24; }
+
+        .bottom-bar { display: flex; justify-content: center; gap: 24px; margin-top: 24px; }
+        .bottom-link {
+            color: rgba(255,255,255,0.4); text-decoration: none; font-size: 13px;
+            transition: color 0.2s; cursor: pointer; border: none; background: none; font-family: inherit;
+        }
+        .bottom-link:hover { color: rgba(255,255,255,0.8); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <!-- 管理员认证 -->
+        <div id="authSection">
+            <h2>🔐 管理员认证</h2>
+            <p class="subtitle">请输入管理员凭证以管理 QQ音乐 Cookie</p>
+            <form id="adminForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" autocomplete="username" placeholder="请输入用户名" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" autocomplete="current-password" placeholder="请输入密码" required>
+                </div>
+                <button type="submit" class="btn-primary" id="loginBtn">登 录</button>
+            </form>
+            <div class="error-msg" id="authError"></div>
+            <div class="bottom-bar"><a href="/" class="bottom-link">← 返回搜索页</a></div>
+        </div>
+
+        <!-- 扫码区域 -->
+        <div id="qrSection" class="qr-section">
+            <h2>📱 扫码刷新 Cookie</h2>
+            <p class="subtitle">使用 QQ 或 QQ音乐 扫描二维码</p>
+            <div class="qr-box" id="qrContainer">
+                <span class="qr-placeholder">加载中...</span>
+            </div>
+            <div class="qr-status" id="statusText">正在获取二维码...</div>
+            <div class="bottom-bar">
+                <a href="/" class="bottom-link">← 返回搜索页</a>
+                <button class="bottom-link" onclick="handleLogout()">登出管理</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let checkTimer = null;
+
+        (async function init() {
+            try {
+                const res = await fetch('/api/admin/status');
+                const json = await res.json();
+                if (json.code === 0) showQR();
+            } catch (e) {}
+        })();
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const errEl = document.getElementById('authError');
+            btn.disabled = true; btn.textContent = '验证中...'; errEl.textContent = '';
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value.trim(),
+                        password: document.getElementById('password').value
+                    })
+                });
+                const json = await res.json();
+                if (json.code === 0) { showQR(); return; }
+                errEl.textContent = json.msg || '认证失败';
+            } catch (err) { errEl.textContent = '网络错误'; }
+            btn.disabled = false; btn.textContent = '登 录';
+        }
+
+        function showQR() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('qrSection').style.display = 'block';
+            initQR();
+        }
+
+        async function initQR() {
+            const box = document.getElementById('qrContainer');
+            const st = document.getElementById('statusText');
+            try {
+                const res = await fetch('/api/login/qrcode');
+                const json = await res.json();
+                if (json.code === 0) {
+                    box.textContent = '';
+                    const img = document.createElement('img');
+                    img.src = json.image; img.alt = 'QR';
+                    box.appendChild(img);
+                    st.textContent = '请使用 QQ / QQ音乐 扫码';
+                    pollStatus(json.qrsig);
+                } else { st.textContent = '获取失败: ' + (json.msg || ''); }
+            } catch (e) { st.textContent = '网络错误'; }
+        }
+
+        function pollStatus(qrsig) {
+            if (checkTimer) clearInterval(checkTimer);
+            checkTimer = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/login/status?qrsig=' + encodeURIComponent(qrsig));
+                    const json = await res.json();
+                    const st = document.getElementById('statusText');
+                    if (json.code === 0) {
+                        clearInterval(checkTimer);
+                        st.className = 'qr-status success';
+                        st.textContent = '✅ Cookie 已更新！3秒后返回首页...';
+                        setTimeout(() => { window.location.href = '/'; }, 3000);
+                    } else if (json.code === 2) {
+                        st.className = 'qr-status warn';
+                        st.textContent = '⚠️ 二维码已失效';
+                        clearInterval(checkTimer);
+                        setTimeout(() => initQR(), 4000);
+                    } else if (json.code === 3) {
+                        st.textContent = '📱 扫码成功，请在手机上确认';
+                    }
+                } catch (e) {}
+            }, 3000);
+        }
+
+        async function handleLogout() {
+            try { await fetch('/api/admin/logout', { method: 'POST' }); } catch (e) {}
+            if (checkTimer) clearInterval(checkTimer);
+            document.getElementById('qrSection').style.display = 'none';
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('password').value = '';
+            document.getElementById('authError').textContent = '';
+            document.getElementById('loginBtn').disabled = false;
+            document.getElementById('loginBtn').textContent = '登 录';
+        }
+    </script>
+</body>
+</html>

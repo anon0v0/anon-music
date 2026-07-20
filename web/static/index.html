@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonの点歌姬 - 网页下载</title>
+    <link rel="icon" type="image/png" href="/static/music-logo.png?v=20260707u">
+    <meta name="color-scheme" content="light">
+    <meta name="referrer" content="no-referrer">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        document.write('<link rel="stylesheet" href="/static/player.css?v=' + Date.now() + '">');
+    </script>
+    <style>
+        body { background-color: #f3f4f6; }
+        @media (max-width: 640px) {
+            .group .dl-btn-wrap { opacity: 1 !important; }
+            .song-item { padding: 12px !important; }
+            .song-cover { width: 44px !important; height: 44px !important; }
+        }
+        @media (hover: none) and (pointer: coarse) {
+            .group .dl-btn-wrap { opacity: 1 !important; }
+        }
+        /* 个人信息弹出卡片 */
+        .profile-popup {
+            display: none; position: absolute; right: 0; top: 100%;
+            margin-top: 8px; z-index: 100; width: 280px;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(16px);
+            border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+            border: 1px solid rgba(0,0,0,0.06);
+            padding: 20px; animation: popIn 0.2s ease-out;
+        }
+        .profile-popup.show { display: block; }
+        @keyframes popIn { from { opacity:0; transform:translateY(-8px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+        .profile-popup .pp-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .profile-popup .pp-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid #e5e7eb; }
+        .profile-popup .pp-name { font-size: 16px; font-weight: 700; color: #111; }
+        .profile-popup .pp-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: 700; margin-top: 3px;
+        }
+        .pp-badge-vip { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #5a3e00; }
+        .pp-badge-normal { background: #f3f4f6; color: #9ca3af; }
+        .profile-popup .pp-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+        }
+        .profile-popup .pp-item {
+            background: #f9fafb; border-radius: 10px; padding: 10px; text-align: center;
+        }
+        .profile-popup .pp-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+        .profile-popup .pp-value { font-size: 15px; font-weight: 700; color: #374151; margin-top: 2px; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-56">
+
+    <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-6 sm:mb-8 text-center relative">
+            <a href="/go/player" class="flex justify-center mb-3 sm:absolute sm:left-0 sm:top-0 sm:mb-0 items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-1.5 px-3.5 rounded-lg shadow-sm transition-colors w-max mx-auto sm:mx-0" title="进入在线播放器">
+                🎵 在线播放器
+            </a>
+            <div id="userStatusContainer" class="flex justify-center mb-3 sm:absolute sm:right-0 sm:top-0 sm:mb-0 items-center gap-2">
+                <!-- 动态渲染登录状态 -->
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-blue-600 mb-1 sm:mb-2 flex items-center justify-center gap-2">
+                Anonの点歌姬
+                <script>
+                    document.write('<img src="/static/' + (Math.random() > 0.5 ? 'anon1.jpg' : 'anon2.jpg') + '" alt="Anon" class="h-8 sm:h-10 w-auto rounded-full object-cover shadow-sm">');
+                </script>
+            </h1>
+            <p class="text-sm sm:text-base text-gray-500">仅供学习交流使用，请勿用于商业用途</p>
+        </header>
+
+        <main class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300">
+            <div class="p-6 border-b border-gray-100 bg-gray-50 flex items-center gap-2 sm:gap-4">
+                <div class="relative flex-1">
+                    <input type="search" name="q" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-form-type="other" id="searchInput" placeholder="输入歌名或歌手名..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-10" onkeypress="if(event.key === 'Enter') search()">
+                    <button onclick="clearSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-200 transition-colors" title="清空搜索">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+                <button onclick="search()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 sm:px-6 rounded-lg transition-colors shadow-sm whitespace-nowrap">
+                    搜索
+                </button>
+            </div>
+
+            <div id="loading" class="hidden p-12 text-center text-gray-500">
+                <svg class="animate-spin h-8 w-8 mx-auto mb-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                正在搜索中...
+            </div>
+
+            <ul id="resultsList" class="divide-y divide-gray-100">
+                <!-- 结果将通过 JS 渲染在这里 -->
+            </ul>
+        </main>
+
+        <!-- 全局迷你播放器挂载点 -->
+        <div class="netease-mini-player" id="globalPlayer" data-position="bottom-left" data-theme="light" style="display: none;"></div>
+
+        <div id="pagination" class="hidden fixed bottom-4 sm:bottom-8 left-0 right-0 mx-auto w-fit max-w-[96vw] sm:max-w-3xl bg-white/90 backdrop-blur-xl border border-white/60 shadow-lg p-2 rounded-full flex items-center gap-1.5 z-40 overflow-x-auto" style="scrollbar-width: none;">
+            <!-- 分页控件 -->
+        </div>
+
+        <footer class="mt-12 text-center text-sm text-gray-400">
+            仅供学习交流使用，请勿用于商业用途。
+        </footer>
+    </div>
+
+    <!-- 下载模态框 -->
+    <div id="downloadModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-xl transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800" id="modalTitle">选择下载音质</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <img id="modalCover" src="" class="w-16 h-16 rounded shadow-sm object-cover" alt="cover">
+                <div class="overflow-hidden">
+                    <p id="modalSongName" class="font-bold text-gray-800 truncate"></p>
+                    <p id="modalArtist" class="text-sm text-gray-500 truncate"></p>
+                </div>
+            </div>
+
+            <div class="space-y-3" id="qualityOptions">
+                <!-- 选项将通过 JS 渲染 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人信息弹出卡片 (会通过JS动态填充) -->
+    <div class="profile-popup" id="profilePopup"></div>
+
+    <script>
+        let currentSongId = '';
+        let currentPage = 1;
+        let currentQuery = '';
+
+        window.onload = async () => {
+            checkUserStatus();
+        };
+
+        // 缓存用户数据
+        let cachedUserData = null;
+
+        async function checkUserStatus() {
+            const container = document.getElementById('userStatusContainer');
+            container.textContent = '';
+
+            // 始终显示"登录管理"按钮
+            const loginLink = document.createElement('a');
+            loginLink.href = '/login';
+            loginLink.className = 'text-sm text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-1.5 rounded-full transition-colors font-medium border border-blue-100';
+            loginLink.textContent = '🔑 登录管理';
+            container.appendChild(loginLink);
+
+            // 检查 QQ 音乐登录状态
+            try {
+                const res = await fetch('/api/user/status');
+                const json = await res.json();
+                if (json.code === 0) {
+                    cachedUserData = json;
+
+                    const avatarBtn = document.createElement('button');
+                    avatarBtn.title = json.nickname || '个人信息';
+                    avatarBtn.className = 'flex items-center gap-2 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer';
+                    avatarBtn.onclick = function(e) { e.stopPropagation(); toggleProfilePopup(); };
+
+                    const avatarImg = document.createElement('img');
+                    avatarImg.src = json.avatar;
+                    avatarImg.className = 'w-6 h-6 rounded-full';
+                    avatarImg.alt = 'avatar';
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'text-sm font-medium text-gray-700 hidden sm:inline';
+                    nameSpan.textContent = json.nickname || '已登录';
+
+                    avatarBtn.appendChild(avatarImg);
+                    avatarBtn.appendChild(nameSpan);
+                    container.appendChild(avatarBtn);
+                }
+            } catch (e) {}
+        }
+
+        function toggleProfilePopup() {
+            const popup = document.getElementById('profilePopup');
+            if (popup.classList.contains('show')) {
+                popup.classList.remove('show');
+                return;
+            }
+            // 定位到头像按钮下方
+            const container = document.getElementById('userStatusContainer');
+            const rect = container.getBoundingClientRect();
+            popup.style.position = 'fixed';
+            popup.style.top = (rect.bottom + 8) + 'px';
+            popup.style.right = (window.innerWidth - rect.right) + 'px';
+
+            renderProfilePopup(popup, cachedUserData);
+            popup.classList.add('show');
+        }
+
+        function renderProfilePopup(popup, data) {
+            popup.textContent = '';
+            if (!data) return;
+
+            // 头部
+            const header = document.createElement('div');
+            header.className = 'pp-header';
+            const av = document.createElement('img');
+            av.className = 'pp-avatar'; av.src = data.avatar; av.alt = '';
+            const nameBox = document.createElement('div');
+            const name = document.createElement('div');
+            name.className = 'pp-name'; name.textContent = data.nickname;
+            const badge = document.createElement('div');
+            badge.className = 'pp-badge ' + (data.is_vip ? 'pp-badge-vip' : 'pp-badge-normal');
+            badge.textContent = data.is_vip ? ('🌟 ' + (data.vip_type || 'VIP')) : '普通用户';
+            nameBox.appendChild(name); nameBox.appendChild(badge);
+            header.appendChild(av); header.appendChild(nameBox);
+            popup.appendChild(header);
+
+            // 信息网格
+            const grid = document.createElement('div');
+            grid.className = 'pp-grid';
+            const items = [
+                { label: '音乐等级', value: 'Lv.' + (data.music_level || 0) },
+                { label: '会员积分', value: String(data.score || 0) },
+                { label: 'VIP到期', value: data.vip_expire || '--' },
+                { label: 'Cookie', value: '✅ 有效' },
+            ];
+            items.forEach(item => {
+                const el = document.createElement('div'); el.className = 'pp-item';
+                const lb = document.createElement('div'); lb.className = 'pp-label'; lb.textContent = item.label;
+                const vl = document.createElement('div'); vl.className = 'pp-value'; vl.textContent = item.value;
+                el.appendChild(lb); el.appendChild(vl); grid.appendChild(el);
+            });
+            popup.appendChild(grid);
+        }
+
+        // 点击页面其他地方关闭弹窗
+        document.addEventListener('click', function() {
+            const popup = document.getElementById('profilePopup');
+            if (popup) popup.classList.remove('show');
+        });
+
+        async function search(page = 1) {
+            const input = document.getElementById('searchInput').value.trim();
+            if (!input) return;
+
+            currentQuery = input;
+            currentPage = page;
+
+            const loading = document.getElementById('loading');
+            const list = document.getElementById('resultsList');
+            const pagination = document.getElementById('pagination');
+
+            // 每次请求时自动滚动到顶部
+            document.getElementById('searchInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // 如果是翻页（列表已有内容），不直接清空，而是让列表半透明并禁用点击
+            if (list.innerHTML.trim() !== '') {
+                list.style.opacity = '0.4';
+                list.style.pointerEvents = 'none';
+            } else {
+                loading.classList.remove('hidden');
+                pagination.classList.add('hidden');
+            }
+
+            try {
+                const res = await fetch(`/api/search?keyword=${encodeURIComponent(input)}&page=${page}`);
+                const json = await res.json();
+
+                // 恢复列表状态
+                list.style.opacity = '1';
+                list.style.pointerEvents = 'auto';
+                list.innerHTML = '';
+
+                loading.classList.add('hidden');
+
+                if (json.code !== 0) {
+                    list.innerHTML = `<li class="p-8 text-center text-red-500">搜索失败: ${json.msg}</li>`;
+                    return;
+                }
+
+                if (!json.data || json.data.length === 0) {
+                    list.innerHTML = `<li class="p-8 text-center text-gray-500">未找到相关歌曲</li>`;
+                    return;
+                }
+
+                window.currentSongList = json.data;
+
+                json.data.forEach(song => {
+                    const li = document.createElement('li');
+                    li.className = 'song-item p-3 sm:p-4 hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center justify-between gap-3 sm:gap-4 group cursor-pointer';
+                    li.onclick = () => playSong(song);
+
+                    let badges = '';
+                    if (song.sources) {
+                        if (song.sources.includes('qq')) {
+                            badges += `<img src="/static/qqmusic.png" alt="QQ" class="h-4 w-auto rounded shrink-0 object-contain" title="QQ音乐">`;
+                        }
+                        if (song.sources.includes('netease')) {
+                            badges += `<img src="/static/wyyyy.jpg" alt="Netease" class="h-4 w-auto rounded shrink-0 object-contain" title="网易云音乐">`;
+                        }
+                    }
+
+                    li.innerHTML = `
+                        <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                            <img src="${song.pic || 'https://y.qq.com/mediastyle/global/img/album_300.png'}" class="song-cover w-11 h-11 sm:w-12 sm:h-12 rounded shadow-sm object-cover flex-shrink-0" alt="cover">
+                            <div class="flex-1 min-w-0 flex flex-col justify-center">
+                                <div class="flex items-center gap-2 mb-0.5 max-w-full">
+                                    <p class="font-medium text-gray-900 truncate text-sm sm:text-base">${escapeHTML(song.name)}</p>
+                                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">${badges}</div>
+                                </div>
+                                <p class="text-xs sm:text-sm text-gray-500 truncate">${escapeHTML(song.artist)}</p>
+                            </div>
+                        </div>
+                        <div class="dl-btn-wrap opacity-0 group-hover:opacity-100 transition-opacity flex flex-wrap justify-end items-center gap-1 sm:gap-2 flex-shrink-0">
+                            ${(() => {
+                                let btns = '';
+                                if (song.sources && song.sources.includes('qq')) {
+                                    btns += `<button class="dl-btn bg-blue-100 text-blue-600 px-2 py-1 sm:px-3 sm:py-1.5 rounded font-medium text-[10px] sm:text-xs hover:bg-blue-200 active:bg-blue-300 transition-colors" data-source="qq">下载(QQ)</button>`;
+                                }
+                                if (song.sources && song.sources.includes('netease')) {
+                                    btns += `<button class="dl-btn bg-red-100 text-red-600 px-2 py-1 sm:px-3 sm:py-1.5 rounded font-medium text-[10px] sm:text-xs hover:bg-red-200 active:bg-red-300 transition-colors" data-source="netease">下载(网易)</button>`;
+                                }
+                                if (!btns) {
+                                    btns = `<button class="dl-btn bg-gray-100 text-gray-600 px-2 py-1 sm:px-3 sm:py-1.5 rounded font-medium text-[10px] sm:text-xs hover:bg-gray-200 active:bg-gray-300 transition-colors" data-source="auto">下载</button>`;
+                                }
+                                return btns;
+                            })()}
+                        </div>
+                    `;
+
+                    const dlBtns = li.querySelectorAll('.dl-btn');
+                    dlBtns.forEach(btn => {
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            openModal(song, btn.getAttribute('data-source'));
+                        };
+                    });
+
+                    list.appendChild(li);
+                });
+
+                renderPagination(json.total, json.limit || 20, page);
+
+            } catch (err) {
+                list.style.opacity = '1';
+                list.style.pointerEvents = 'auto';
+                loading.classList.add('hidden');
+                list.innerHTML = `<li class="p-8 text-center text-red-500">网络请求失败</li>`;
+            }
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            const list = document.getElementById('resultsList');
+            list.innerHTML = '';
+            document.getElementById('pagination').classList.add('hidden');
+        }
+
+        function renderPagination(total, limit, current) {
+            const container = document.getElementById('pagination');
+            container.innerHTML = '';
+            if (total <= limit) return;
+
+            container.classList.remove('hidden');
+            // QQ音乐接口限制了深层翻页（total常常是虚假的估算值，直接翻到末页会报错）
+            // 因此把最大页码限制为 30 页（约 600 条结果），完全足够日常搜索
+            const maxPage = Math.min(Math.ceil(total / limit), 30);
+
+            // First page
+            container.appendChild(createPageBtn('首页', 1, current === 1));
+            // Prev page
+            container.appendChild(createPageBtn('上一页', current - 1, current === 1));
+
+            // Calculate range dynamically based on screen width
+            const isMobile = window.innerWidth <= 640;
+            const visiblePages = isMobile ? 3 : 5;
+            const half = Math.floor(visiblePages / 2);
+
+            let start = Math.max(1, current - half);
+            let end = Math.min(maxPage, start + visiblePages - 1);
+            if (end - start < visiblePages - 1) {
+                start = Math.max(1, end - (visiblePages - 1));
+            }
+
+            for (let i = start; i <= end; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                btn.className = `min-w-[36px] h-9 flex items-center justify-center rounded-full text-sm font-medium transition-all ${i === current ? 'bg-blue-500 text-white shadow-md' : 'bg-transparent text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`;
+                btn.onclick = () => search(i);
+                container.appendChild(btn);
+            }
+
+            // Next page
+            container.appendChild(createPageBtn('下一页', current + 1, current === maxPage));
+        }
+
+        function createPageBtn(text, targetPage, disabled) {
+            const btn = document.createElement('button');
+            btn.textContent = text;
+            btn.disabled = disabled;
+            btn.className = `px-3 h-9 flex items-center justify-center rounded-full text-sm font-medium transition-all whitespace-nowrap ${disabled ? 'bg-transparent text-gray-400 cursor-not-allowed opacity-50' : 'bg-transparent text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`;
+            if (!disabled) {
+                btn.onclick = () => search(targetPage);
+            }
+            return btn;
+        }
+
+        async function openModal(song, source = 'auto') {
+            let targetId = song.id;
+            let sourceName = '';
+            if (source === 'qq') {
+                const match = song.id.split('|').find(x => x.startsWith('qq:'));
+                if (match) targetId = match;
+                sourceName = ' (QQ)';
+            } else if (source === 'netease') {
+                const match = song.id.split('|').find(x => x.startsWith('netease:'));
+                if (match) targetId = match;
+                sourceName = ' (网易)';
+            }
+
+            currentSongId = targetId;
+            currentSongSource = source;
+            document.getElementById('modalTitle').textContent = `选择音质${sourceName}`;
+            document.getElementById('modalCover').src = song.pic || 'https://y.qq.com/mediastyle/global/img/album_300.png';
+            document.getElementById('modalSongName').textContent = song.name;
+            document.getElementById('modalArtist').textContent = song.artist;
+
+            const optionsContainer = document.getElementById('qualityOptions');
+            optionsContainer.innerHTML = '<div class="text-center w-full py-8 text-gray-500 font-medium">计算文件大小中...</div>';
+            document.getElementById('downloadModal').classList.remove('hidden');
+            document.getElementById('downloadModal').classList.add('flex');
+
+            let sizes = { "master": "未知", "flac": "未知", "hq": "未知", "standard": "未知" };
+            let fetchSuccess = false;
+            try {
+                const sizeRes = await fetch(`/api/song_sizes?mid=${encodeURIComponent(targetId)}`);
+                const sizeJson = await sizeRes.json();
+                if (sizeJson.code === 0 && sizeJson.sizes) {
+                    sizes = sizeJson.sizes;
+                    fetchSuccess = true;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+
+            let qualities = [];
+            if (source === 'netease') {
+                qualities = [
+                    { id: 'master', name: 'Hi-Res (臻音)', desc: '最高音质', color: 'border-purple-200 hover:border-purple-500 bg-purple-50' },
+                    { id: 'flac', name: 'SQ 无损', desc: 'FLAC 格式', color: 'border-green-200 hover:border-green-500 bg-green-50' },
+                    { id: 'hq', name: '极高品质', desc: 'MP3 320k', color: 'border-blue-200 hover:border-blue-500 bg-blue-50' },
+                    { id: 'standard', name: '标准音质', desc: 'MP3 128k', color: 'border-gray-200 hover:border-gray-500 bg-white' }
+                ];
+            } else {
+                qualities = [
+                    { id: 'master', name: '臻品母带', desc: '最高音质', color: 'border-purple-200 hover:border-purple-500 bg-purple-50' },
+                    { id: 'flac', name: 'SQ 无损', desc: 'FLAC 格式', color: 'border-green-200 hover:border-green-500 bg-green-50' },
+                    { id: 'hq', name: 'HQ 高品质', desc: 'MP3 320k', color: 'border-blue-200 hover:border-blue-500 bg-blue-50' },
+                    { id: 'standard', name: '标准音质', desc: 'MP3 128k', color: 'border-gray-200 hover:border-gray-500 bg-white' }
+                ];
+            }
+
+            if (fetchSuccess) {
+                qualities = qualities.filter(q => sizes[q.id] !== "未知" && sizes[q.id] !== "0.0 MB");
+            }
+
+            optionsContainer.innerHTML = '';
+            if (qualities.length === 0) {
+                optionsContainer.innerHTML = '<div class="text-center w-full py-8 text-gray-500 font-medium">暂无可用音质</div>';
+            }
+            qualities.forEach(q => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-4 rounded-lg border-2 ${q.color} transition-all group flex justify-between items-center`;
+                btn.onclick = (e) => getDownloadUrl(q.id, e);
+                btn.innerHTML = `
+                    <div>
+                        <div class="font-bold text-gray-800">${q.name}</div>
+                        <div class="text-sm text-gray-500 mt-1">${q.desc} <span class="ml-2 px-1.5 py-0.5 rounded bg-gray-100/50 text-gray-500 font-mono text-xs border border-gray-200/50 shadow-sm">${sizes[q.id]}</span></div>
+                    </div>
+                    <svg class="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                `;
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('downloadModal').classList.add('hidden');
+            document.getElementById('downloadModal').classList.remove('flex');
+        }
+
+        async function getDownloadUrl(quality, event) {
+            const btnContainer = event.currentTarget;
+            const originalHtml = btnContainer.innerHTML;
+            btnContainer.innerHTML = '<div class="text-center w-full py-2 text-blue-600 font-medium">正在获取链接...</div>';
+
+            try {
+                const res = await fetch(`/api/song_url?mid=${currentSongId}&quality=${quality}`);
+                const json = await res.json();
+
+                if (json.code === 0 && json.url) {
+                    const songName = document.getElementById('modalSongName').textContent;
+                    const artistName = document.getElementById('modalArtist').textContent;
+                    const ext = json.url.includes('.flac') ? '.flac' : '.mp3';
+                    const filename = `${songName} - ${artistName}${ext}`.replace(/[\\/:*?"<>|]/g, '_');
+                    // json.url 现在是官方 CDN 直链（QQ/网易都直连）。浏览器内直连取流→Blob 保存：
+                    // 下载流量不过本服务器、且保留文件名（CDN CORS 全开 fetch 可跨域读）。
+                    try {
+                        const resp = await fetch(json.url);
+                        if (!resp.ok) throw new Error('http ' + resp.status);
+                        const blob = await resp.blob();
+                        const obj = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = obj; a.download = filename;
+                        document.body.appendChild(a); a.click(); a.remove();
+                        setTimeout(() => URL.revokeObjectURL(obj), 60000);
+                    } catch (err) {
+                        console.warn('直连下载失败:', err);
+                        throw err;  // 交给外层 catch 提示网络错误
+                        // ===== 回退（按要求先注释；直连出问题时：删掉上面那行 throw、取消注释下面，即恢复经服务器 /api/download 代理下载）=====
+                        // const downloadUrl = `/api/download?url=${encodeURIComponent(json.url)}&filename=${encodeURIComponent(filename)}`;
+                        // window.open(downloadUrl, '_blank');
+                    }
+                    closeModal();
+                } else {
+                    btnContainer.innerHTML = `<div class="text-center w-full py-2 text-red-500 font-medium">${json.msg || '获取失败'}</div>`;
+                    setTimeout(() => {
+                        btnContainer.innerHTML = originalHtml;
+                    }, 2000);
+                }
+            } catch (e) {
+                btnContainer.innerHTML = `<div class="text-center w-full py-2 text-red-500 font-medium">网络错误</div>`;
+                setTimeout(() => {
+                    btnContainer.innerHTML = originalHtml;
+                }, 2000);
+            }
+        }
+
+        function escapeHTML(str) {
+            return String(str).replace(/[&<>'"]/g,
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        }
+
+        async function playSong(song) {
+            if (window.qqPlayer) {
+                try {
+                    const res = await fetch(`/api/song_url?mid=${song.id}&quality=standard`);
+                    const json = await res.json();
+                    if (json.code === 0 && json.url) {
+                        document.getElementById('globalPlayer').style.display = '';
+
+                        // 构建整个播放列表
+                        const playlist = (window.currentSongList || [song]).map(s => ({
+                            id: s.id,
+                            name: s.name,
+                            artists: s.artist,
+                            album: '',
+                            picUrl: s.pic,
+                            url: s.id === song.id ? json.url : null,
+                            duration: 0
+                        }));
+
+                        const startIndex = playlist.findIndex(s => s.id === song.id);
+                        window.qqPlayer.playQQMusicPlaylist(playlist, startIndex !== -1 ? startIndex : 0);
+                    } else {
+                        alert('获取播放地址失败: ' + (json.msg || '无权限，需重新扫码刷新凭证'));
+                    }
+                } catch (e) {
+                    alert('播放出错: ' + e.message + '\n' + e.stack);
+                    btnContainer.innerHTML = `<div class="text-center w-full py-2 text-red-500 font-medium">${e.message}</div>`;
+                }
+            }
+        }
+    </script>
+    <script>
+        document.write('<script src="/static/player.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        window.qqPlayer = NeteaseMiniPlayer.initPlayer(document.getElementById('globalPlayer'));
+        window.player = window.qqPlayer;
+        document.getElementById('globalPlayer').setAttribute('data-initialized', 'true');
+    </script>
+    <!-- 全屏歌词（点击左下角迷你播放器的歌曲信息区进入） -->
+    <link rel="stylesheet" href="/static/nowplaying.css?v=20260707u">
+    <script src="/static/nowplaying.js?v=20260707u"></script>
+</body>
+</html>

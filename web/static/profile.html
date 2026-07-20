@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人信息 - Anonの点歌姬</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(160deg, #0f0c29 0%, #302b63 40%, #24243e 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #e0e0e0;
+            padding: 24px 16px;
+        }
+        .container { max-width: 520px; margin: 0 auto; }
+
+        /* 返回按钮 */
+        .back-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px;
+            margin-bottom: 24px; transition: color 0.2s;
+        }
+        .back-btn:hover { color: #fff; }
+
+        /* 头部卡片 */
+        .profile-card {
+            background: rgba(255,255,255,0.07);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .profile-banner {
+            height: 100px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+        }
+        .profile-header {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            padding: 0 28px;
+            margin-top: -40px;
+            position: relative;
+            z-index: 1;
+        }
+        .avatar-ring {
+            width: 84px; height: 84px;
+            border-radius: 50%;
+            padding: 3px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            flex-shrink: 0;
+        }
+        .avatar-ring img {
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #1a1a2e;
+        }
+        .profile-name-box { padding-bottom: 12px; }
+        .profile-name {
+            font-size: 22px; font-weight: 700; color: #fff;
+            line-height: 1.2;
+        }
+        .profile-id {
+            font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 3px;
+        }
+
+        .badge-row { padding: 0 28px 20px; margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: 700;
+        }
+        .badge-vip { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #1a1a2e; }
+        .badge-normal { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); }
+        .badge-expired { background: rgba(255,100,100,0.15); color: #ff6b6b; }
+        .badge-level { background: rgba(102,126,234,0.2); color: #8b9cf7; }
+
+        /* 信息区 */
+        .info-card {
+            background: rgba(255,255,255,0.07);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 24px 28px;
+            margin-bottom: 20px;
+        }
+        .info-title {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.35); font-weight: 700; margin-bottom: 16px;
+        }
+        .info-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        }
+        .info-item {
+            background: rgba(255,255,255,0.04);
+            border-radius: 14px; padding: 16px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .info-label {
+            font-size: 11px; color: rgba(255,255,255,0.35);
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+        }
+        .info-value { font-size: 18px; font-weight: 700; color: #fff; }
+        .info-value.gold { color: #ffd700; }
+        .info-value.green { color: #4ade80; }
+        .info-value.red { color: #ff6b6b; }
+
+        /* 加载/错误状态 */
+        .state-msg {
+            text-align: center; padding: 60px 20px;
+            color: rgba(255,255,255,0.4); font-size: 15px;
+        }
+        .state-msg .icon { font-size: 48px; margin-bottom: 16px; }
+        .state-msg .hint { font-size: 13px; margin-top: 8px; }
+        .state-msg .hint a { color: #8b9cf7; text-decoration: none; }
+        .state-msg .hint a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← 返回搜索页</a>
+        <div id="content">
+            <div class="state-msg">
+                <div class="icon">⏳</div>
+                <div>正在加载账号信息...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (async function loadProfile() {
+            const content = document.getElementById('content');
+            try {
+                const res = await fetch('/api/user/status');
+                const data = await res.json();
+                content.textContent = '';
+
+                if (data.code !== 0) {
+                    renderError(content, data.msg || '未登录');
+                    return;
+                }
+                renderProfile(content, data);
+            } catch (e) {
+                content.textContent = '';
+                renderError(content, '获取账号信息失败');
+            }
+        })();
+
+        function renderProfile(root, data) {
+            // === 头部卡片 ===
+            const card = document.createElement('div');
+            card.className = 'profile-card';
+
+            // banner
+            const banner = document.createElement('div');
+            banner.className = 'profile-banner';
+            card.appendChild(banner);
+
+            // header: avatar + name
+            const header = document.createElement('div');
+            header.className = 'profile-header';
+
+            const ring = document.createElement('div');
+            ring.className = 'avatar-ring';
+            const avatarImg = document.createElement('img');
+            avatarImg.src = data.avatar;
+            avatarImg.alt = 'avatar';
+            ring.appendChild(avatarImg);
+
+            const nameBox = document.createElement('div');
+            nameBox.className = 'profile-name-box';
+            const nameEl = document.createElement('div');
+            nameEl.className = 'profile-name';
+            nameEl.textContent = data.nickname || 'Unknown';
+            const idEl = document.createElement('div');
+            idEl.className = 'profile-id';
+            idEl.textContent = 'QQ: ' + (data.musicid || '');
+            nameBox.appendChild(nameEl);
+            nameBox.appendChild(idEl);
+
+            header.appendChild(ring);
+            header.appendChild(nameBox);
+            card.appendChild(header);
+
+            // 徽章
+            const badgeRow = document.createElement('div');
+            badgeRow.className = 'badge-row';
+
+            // VIP 徽章
+            const vipBadge = document.createElement('span');
+            vipBadge.className = 'badge';
+            if (data.is_vip) {
+                vipBadge.className += ' badge-vip';
+                vipBadge.textContent = '🌟 绿钻VIP';
+            } else if (data.vip_expire) {
+                vipBadge.className += ' badge-expired';
+                vipBadge.textContent = 'VIP 已过期';
+            } else {
+                vipBadge.className += ' badge-normal';
+                vipBadge.textContent = '普通用户';
+            }
+            badgeRow.appendChild(vipBadge);
+
+            // 等级徽章
+            if (data.music_level) {
+                const lvBadge = document.createElement('span');
+                lvBadge.className = 'badge badge-level';
+                lvBadge.textContent = '🎵 Lv.' + data.music_level;
+                badgeRow.appendChild(lvBadge);
+            }
+
+            card.appendChild(badgeRow);
+            root.appendChild(card);
+
+            // === 详细信息 ===
+            const infoCard = document.createElement('div');
+            infoCard.className = 'info-card';
+
+            const title = document.createElement('div');
+            title.className = 'info-title';
+            title.textContent = '账号详情';
+            infoCard.appendChild(title);
+
+            const grid = document.createElement('div');
+            grid.className = 'info-grid';
+
+            const items = [
+                { label: '音乐等级', value: 'Lv.' + (data.music_level || 0), cls: '' },
+                { label: '会员积分', value: String(data.score || 0), cls: '' },
+                { label: 'VIP到期', value: data.vip_expire || '--', cls: data.is_vip ? 'gold' : (data.vip_expire ? 'red' : '') },
+                { label: 'Cookie状态', value: '✅ 有效', cls: 'green' },
+            ];
+
+            items.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'info-item';
+                const label = document.createElement('div');
+                label.className = 'info-label';
+                label.textContent = item.label;
+                const value = document.createElement('div');
+                value.className = 'info-value' + (item.cls ? ' ' + item.cls : '');
+                value.textContent = item.value;
+                el.appendChild(label);
+                el.appendChild(value);
+                grid.appendChild(el);
+            });
+
+            infoCard.appendChild(grid);
+            root.appendChild(infoCard);
+        }
+
+        function renderError(root, msg) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'profile-card';
+
+            const inner = document.createElement('div');
+            inner.className = 'state-msg';
+
+            const icon = document.createElement('div');
+            icon.className = 'icon';
+            icon.textContent = '😴';
+
+            const text = document.createElement('div');
+            text.textContent = msg;
+
+            const hint = document.createElement('div');
+            hint.className = 'hint';
+            const hintLink = document.createElement('a');
+            hintLink.href = '/login';
+            hintLink.textContent = '前往登录管理 →';
+            hint.appendChild(hintLink);
+
+            inner.appendChild(icon);
+            inner.appendChild(text);
+            inner.appendChild(hint);
+            wrapper.appendChild(inner);
+            root.appendChild(wrapper);
+        }
+    </script>
+</body>
+</html>
