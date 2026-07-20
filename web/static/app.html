@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Anon Music · 播放器</title>
+  <link rel="icon" type="image/png" href="/static/music-logo.png?v=20260716b">
+  <!-- PWA：可安装应用（手机/桌面）+ 独立窗口 -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0e0e12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Anon Music">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <!-- 主题预置：CSS 加载前先按 localStorage 设 data-theme，防浅色用户闪黑（完整逻辑在 theme.js） -->
+  <script>try{if(localStorage.getItem('app_theme')==='light')document.documentElement.dataset.theme='light';}catch(e){}</script>
+  <link rel="stylesheet" href="/static/app.css?v=20260716n">
+  <link rel="stylesheet" href="/static/nowplaying.css?v=20260716i">
+</head>
+<body>
+  <!-- 播放引擎（隐藏，仅提供音频/歌词内核） -->
+  <div class="netease-mini-player" id="globalPlayer" data-position="static" data-theme="dark" style="display:none;position:fixed;left:-9999px;"></div>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="side-head">
+        <div class="brand"><img class="brand-logo" src="/static/music-logo.png?v=20260716b" alt=""> Anon Music</div>
+      </div>
+      <div class="side-tools">
+        <button class="icon-btn" id="refreshBtn" title="刷新当前页面">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
+        <button class="icon-btn" id="settingsBtn" title="设置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button class="icon-btn" id="themeBtn" title="切换深色/浅色"></button>
+      </div>
+      <div class="account" id="account"></div>
+      <nav class="nav" id="nav"></nav>
+      <div class="side-title"><span>我的歌单</span><button id="createPlaylist" title="新建歌单">＋</button></div>
+      <div class="myplaylists" id="myPlaylists"></div>
+      <div class="side-title side-title-fav" id="favTitle" style="display:none"><span>收藏歌单</span></div>
+      <div class="myplaylists" id="favPlaylists"></div>
+      <div class="spacer"></div>
+      <div class="side-foot">
+        <div class="back-link" onclick="window.open('/go/download','_blank')" title="去下载歌曲"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <button class="side-collapse" id="sideCollapse" title="收起侧边栏">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="side-expand-btm" id="sideExpandBtm" title="展开侧边栏">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menuBtn" title="菜单">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <button class="icon-btn side-expand" id="sideExpand" title="展开侧边栏">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <form class="search" role="search" autocomplete="off" onsubmit="return false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input id="searchInput" name="q" type="search" inputmode="search" placeholder="搜索音乐" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-form-type="other" aria-label="搜索音乐">
+        </form>
+        <div style="flex:1"></div>
+      </header>
+      <div id="view" class="view"><div class="loading">加载中…</div></div>
+    </div>
+  </div>
+
+  <!-- 底部播放条（仿 Mio Music：进度条置顶 + 三栏布局） -->
+  <footer class="playbar">
+    <!-- 律动波形（封面取色） -->
+    <canvas class="pb-viz" id="pbViz"></canvas>
+    <div class="pb-content">
+      <!-- 左：封面 + 信息 + 操作 -->
+      <div class="pb-left">
+        <div class="pb-cover-wrap">
+          <!-- 移动端：封面外圈环形进度（pathLength=100 → 进度直接 0-100，无需算周长） -->
+          <svg class="pb-ring" viewBox="0 0 52 52" aria-hidden="true">
+            <rect class="pb-ring-bg" x="2.5" y="2.5" width="47" height="47" rx="13" pathLength="100" fill="none" stroke-width="3"/>
+            <rect class="pb-ring-fg" id="pbRing" x="2.5" y="2.5" width="47" height="47" rx="13" pathLength="100" fill="none" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100"/>
+          </svg>
+          <img class="pb-cover" id="pbCover" alt="" src="">
+          <button class="pb-cover-expand" id="pbExpand" title="全屏播放页">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+          </button>
+        </div>
+        <div class="pb-info">
+          <div class="nm" id="pbName">未在播放</div>
+          <div class="ar" id="pbArtist"></div>
+          <div class="pb-lyric-line" id="pbLyricLine"></div>
+        </div>
+        <div class="pb-left-actions">
+          <button class="pb-act" id="pbLike" title="喜欢">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          </button>
+          <button class="pb-act" id="pbAddpl" title="加入歌单">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="pb-act" id="pbDownload" title="下载">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+          </button>
+          <button class="pb-act" id="pbComment" title="评论">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-4.5A2 2 0 0 1 3 15V7a2 2 0 0 1 2-2z"/><path d="M7 8h10M7 12h7M7 16h4"/></svg>
+          </button>
+        </div>
+      </div>
+      <!-- 中：传输控制 + 进度条（仿 QQ：时间在进度条两侧） -->
+      <div class="pb-center">
+        <div class="pb-transport">
+          <button class="pb-ctrl" id="pbPrev" title="上一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+          <button class="pb-ctrl pb-play" id="pbPlay" title="播放/暂停"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+          <button class="pb-ctrl" id="pbNext" title="下一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></button>
+        </div>
+        <div class="pb-seek">
+          <span class="pb-t" id="pbCur">0:00</span>
+          <div class="pb-progress" id="pbBar"><div class="pb-fill" id="pbFill"></div><div class="pb-tip" id="pbTip"></div></div>
+          <span class="pb-t" id="pbDur">0:00</span>
+        </div>
+      </div>
+      <!-- 右：时间 + 扩展控制 -->
+      <div class="pb-right">
+        <div class="pb-extra">
+          <button class="pb-ctrl pb-mode" id="pbMode" title="播放模式"></button>
+          <div class="pb-speed" id="pbSpeed">
+            <button class="pb-speed-btn" id="pbSpeedBtn">1.0x</button>
+            <div class="pb-speed-menu" id="pbSpeedMenu">
+              <div data-s="0.5">0.5x</div><div data-s="0.75">0.75x</div><div data-s="1" class="active">1.0x</div><div data-s="1.25">1.25x</div><div data-s="1.5">1.5x</div><div data-s="2">2.0x</div>
+            </div>
+          </div>
+          <div class="pb-q" id="pbQ">
+            <button class="pb-q-btn" id="pbQualityBtn" title="音质">
+              <span id="pbQualityLabel">标准</span>
+            </button>
+            <div class="pb-q-menu" id="pbQualityMenu">
+              <div class="pb-q-item" data-q="standard"><b>标准</b><span>MP3 128k</span></div>
+              <div class="pb-q-item" data-q="hq"><b>HQ 高品质</b><span>MP3 320k</span></div>
+              <div class="pb-q-item" data-q="flac"><b>无损</b><span>FLAC</span></div>
+              <div class="pb-q-item" data-q="master"><b>母带</b><span>Hi-Res / 母带</span></div>
+            </div>
+          </div>
+          <button class="pb-ctrl pb-word" id="pbLyric" title="桌面歌词显示/隐藏">词</button>
+          <button class="pb-ctrl" id="pbQueue" title="播放列表">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h13M3 18h9M17 14v6l4-2z"/></svg>
+          </button>
+          <div class="pb-vol" id="pbVolWrap">
+            <button class="pb-ctrl" id="pbVolBtn" title="音量">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+            </button>
+            <div class="pb-vol-pop" id="pbVolPop">
+              <div class="pb-vol-track" id="pbVolTrack">
+                <div class="pb-vol-fill" id="pbVolFill"></div>
+                <div class="pb-vol-thumb" id="pbVolThumb"></div>
+              </div>
+              <div class="pb-vol-num" id="pbVolNum">100%</div>
+              <button class="pb-vol-mute" id="pbVolMute" title="静音 / 恢复"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <!-- 播放队列面板 -->
+  <div class="queue-panel" id="queuePanel">
+    <div class="qp-head"><span>播放列表</span><span class="qp-right"><span class="qp-count" id="qpCount"></span><button class="qp-clear" id="qpClear">清空</button><button class="qp-close" id="qpClose" title="关闭">×</button></span></div>
+    <div class="qp-list" id="qpList"></div>
+  </div>
+
+  <!-- 评论面板 -->
+  <div class="cm-mask" id="cmMask"></div>
+  <div class="comment-panel" id="commentPanel">
+    <div class="cm-head">
+      <span class="cm-title">评论 <i class="cm-count" id="cmCount"></i></span>
+      <div class="cm-tabs"><button data-s="hot" class="active">热门</button><button data-s="new">最新</button></div>
+      <button class="cm-close" id="cmClose">×</button>
+    </div>
+    <div class="cm-list" id="cmList"></div>
+  </div>
+
+  <!-- 加入歌单弹窗 -->
+  <div class="modal-mask" id="plModal">
+    <div class="modal">
+      <h3>加入歌单</h3>
+      <div id="plModalList"></div>
+      <div class="pl-opt new" id="plModalNew">＋ 新建歌单…</div>
+    </div>
+  </div>
+
+  <!-- 新建歌单弹窗（替代浏览器原生 prompt） -->
+  <div class="modal-mask" id="npModal">
+    <div class="modal np-new">
+      <h3>新建歌单</h3>
+      <input id="npName" class="np-input" type="text" maxlength="40" placeholder="给歌单起个名字" autocomplete="off">
+      <div class="np-actions"><button class="np-cancel" id="npCancel">取消</button><button class="np-ok" id="npOk">创建</button></div>
+    </div>
+  </div>
+
+  <script src="/static/player.js?v=20260721a"></script>
+  <script>
+    window.player = NeteaseMiniPlayer.initPlayer(document.getElementById('globalPlayer'));
+  </script>
+  <script src="/static/nowplaying.js?v=20260716i"></script>
+  <script src="/static/bridge.js?v=20260716b"></script>
+  <script src="/static/theme.js?v=20260716b"></script>
+  <script src="/static/downloads.js?v=20260716b"></script>
+  <script src="/static/local.js?v=20260716b"></script>
+  <script src="/static/together.js?v=20260716d"></script>
+  <script src="/static/app.js?v=20260721a"></script>
+  <script src="/static/appext.js?v=20260721a"></script>
+  <!-- 注册 PWA Service Worker（作用域 /，由根路径 /service-worker.js 提供） -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+          .catch((e) => console.warn('SW 注册失败:', e));
+      });
+    }
+  </script>
+</body>
+</html>

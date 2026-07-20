@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>桌面歌词</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: rgba(10, 10, 14, 0.86); overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-user-select: none; user-select: none; }
+    #wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 10px 18px; box-sizing: border-box; }
+    #cur { font-weight: 800; line-height: 1.3; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
+    #next { opacity: .55; margin-top: 8px; line-height: 1.3; }
+    #cur .done { opacity: 1; } #cur .todo { opacity: .45; }
+    #idle { color: #aaa; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="cur"></div>
+    <div id="next"></div>
+  </div>
+  <script>
+    const curEl = document.getElementById('cur');
+    const nextEl = document.getElementById('next');
+    function op() { try { return window.opener; } catch (e) { return null; } }
+    function settings() { const o = op(); return (o && o.AppSettings && o.AppSettings.desktopLyrics) || { fontSize: 22, color: '#fff', doubleRow: false }; }
+    function tick() {
+      const o = op();
+      const s = settings();
+      curEl.style.fontSize = (s.fontSize || 22) + 'px';
+      curEl.style.color = s.color || '#fff';
+      nextEl.style.fontSize = Math.max(12, (s.fontSize || 22) - 6) + 'px';
+      nextEl.style.color = s.color || '#fff';
+      nextEl.style.display = s.doubleRow ? 'block' : 'none';
+      if (!o || !o.player || !o.player.currentSong) { curEl.innerHTML = '<span id="idle">♪ 暂无播放</span>'; nextEl.textContent = ''; return; }
+      const p = o.player; const ly = p.lyrics || []; const idx = p.currentLyricIndex;
+      if (!ly.length) { curEl.textContent = p.currentSong.name || '♪'; nextEl.textContent = p.currentSong.artists || ''; return; }
+      const cur = idx >= 0 && ly[idx] ? ly[idx] : null;
+      const nxt = idx >= 0 && ly[idx + 1] ? ly[idx + 1] : null;
+      // 逐字高亮（若有 words）
+      if (cur && cur.words && cur.words.length) {
+        const t = p.currentTime || 0;
+        curEl.innerHTML = cur.words.map(w => `<span class="${t >= w.time ? 'done' : 'todo'}">${escapeHtml(w.text)}</span>`).join('');
+      } else {
+        curEl.textContent = cur ? (cur.text || '♪') : '♪';
+      }
+      nextEl.textContent = nxt ? (nxt.text || '') : '';
+    }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
+    setInterval(tick, 150); tick();
+    // 关闭时同步关掉主窗设置开关
+    window.addEventListener('beforeunload', () => { try { const o = op(); if (o && o.AppSettings) o.AppSettings.desktopLyrics.enabled = false; } catch (e) {} });
+  </script>
+</body>
+</html>

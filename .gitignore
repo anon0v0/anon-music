@@ -30,3 +30,17 @@ keystore.properties
 *.pem
 .env
 .env.*
+!.env.example
+
+# Web 运行状态
+*.db
+*.db-*
+*.sqlite*
+*.log
+qq_device.json
+source_config.json
+backups/
+uploads/
+__pycache__/
+*.pyc
+.pytest_cache/
