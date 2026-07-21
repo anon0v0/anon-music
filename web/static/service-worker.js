@@ -2,30 +2,16 @@
  * 缓存策略（务必配合 app.html 里的 ?v=YYYYMMDDx 热更新机制）：
  *  - 导航请求(/music, app.html) → network-first，离线兜底缓存，保证 ?v= bump 后总能拿到新壳
  *  - /static/*（带 ?v= 版本号）→ cache-first，按完整 URL(含版本)做键，新版本=新缓存条目
- *  - /api/* 与 媒体流 → 不拦截，永远走网络（绝不缓存）
+ *  - /api/*、/healthz、媒体流 → 不拦截，永远走网络（绝不缓存）
  *  - 跨源(CDN 音频/封面) → 不拦截，放行
  *  bump CACHE 版本即可整体失效旧缓存（activate 时清理）。
  */
-const CACHE = 'anon-cache-v15';
+const CACHE = 'anon-cache-v16';
 const OFFLINE_URL = '/music';
-const MAINTENANCE_URL = '/maintenance';
-const MAINTENANCE_ASSETS = [
-  MAINTENANCE_URL,
-  '/static/maintenance.css?v=20260721e',
-  '/static/maintenance.js?v=20260721e',
-  '/static/app-icon.png?v=20260721e',
-  '/static/favicon-32.png?v=20260721e',
-];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    const cache = await caches.open(CACHE);
-    await Promise.all(MAINTENANCE_ASSETS.map(async (url) => {
-      try {
-        const response = await fetch(url, { cache: 'reload' });
-        if (response.ok) await cache.put(url, response);
-      } catch (e) {}
-    }));
+    // 不再预缓存 /maintenance：恢复后它会自动跳 /music，离线时反而造成“维护页死循环”。
     await self.skipWaiting();
   })());
 });
@@ -47,28 +33,38 @@ self.addEventListener('fetch', (event) => {
 
   // 跨源（CDN 音频/封面图等）：放行，不拦截
   if (url.origin !== self.location.origin) return;
-  // 接口与媒体流：永不缓存，直接走网络
-  if (url.pathname.startsWith('/api/')) return;
+  // 接口 / 健康检查 / 媒体流：永不缓存
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname === '/healthz' ||
+    url.pathname === '/readyz' ||
+    url.pathname === '/maintenance'
+  ) return;
 
-  // 导航请求：network-first + 离线兜底
+  // 导航请求：network-first；失败时优先已缓存的播放器，绝不回退到会自动跳转的维护页
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
-        const res = await fetch(req);
+        const res = await fetch(req, { cache: 'no-store' });
         const reqUrl = new URL(req.url);
-        if (res.ok && reqUrl.pathname === '/music') {
+        if (res.ok && (reqUrl.pathname === '/music' || reqUrl.pathname === '/')) {
           const cache = await caches.open(CACHE);
           cache.put(OFFLINE_URL, res.clone());
         }
         return res;
       } catch (err) {
         const cache = await caches.open(CACHE);
-        const maintenance = await cache.match(MAINTENANCE_URL);
         const cached = await cache.match(OFFLINE_URL);
-        return cached || maintenance || new Response('Anon Music 暂时不可用，请稍后重试。', {
-          status: 503,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        });
+        if (cached) return cached;
+        return new Response(
+          '<!doctype html><meta charset="utf-8"><title>Anon Music 离线</title>' +
+          '<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#07111f;color:#e8f1ff;font-family:system-ui,sans-serif">' +
+          '<main style="text-align:center;padding:2rem"><h1>暂时无法连接</h1>' +
+          '<p style="color:#9bb0c7">请检查网络后刷新。服务恢复后即可继续使用。</p>' +
+          '<p><button onclick="location.reload()" style="padding:.6rem 1rem;border-radius:8px;border:0;cursor:pointer">刷新</button></p></main>' +
+          '<script>setInterval(()=>location.reload(),20000)</script></body>',
+          { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } },
+        );
       }
     })());
     return;
@@ -88,8 +84,5 @@ self.addEventListener('fetch', (event) => {
         return cached || Response.error();
       }
     })());
-    return;
   }
-
-  // 其它同源 GET：默认走网络
 });

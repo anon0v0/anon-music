@@ -6,6 +6,8 @@
 name = "anon-music-failover"
 main = "worker.js"
 compatibility_date = "2026-07-01"
+workers_dev = true
+preview_urls = true
 
 # 绑定到正式域名（需 DNS 橙云）
 routes = [
