@@ -114,11 +114,8 @@ def test_ncm_get_uses_request_users_source(monkeypatch=None):
         _, token = make_user(mod)
         req = request_with_token(token)
         original_dns = socket.getaddrinfo
+        # 保存与请求阶段都要模拟公网解析：运行时会重新做 DNS 校验。
         socket.getaddrinfo = lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("1.1.1.1", 443))]
-        try:
-            mod.put_custom_source(req, {"enabled": True, "base_url": "https://api.github.com/api"})
-        finally:
-            socket.getaddrinfo = original_dns
         called = {}
 
         class FakeResponse:
@@ -141,11 +138,54 @@ def test_ncm_get_uses_request_users_source(monkeypatch=None):
         original = mod.httpx.AsyncClient
         mod.httpx.AsyncClient = FakeClient
         try:
+            mod.put_custom_source(req, {"enabled": True, "base_url": "https://api.github.com/api"})
             result = asyncio.run(mod.ncm_get(req, "/cloudsearch", {"keywords": "test"}))
         finally:
             mod.httpx.AsyncClient = original
+            socket.getaddrinfo = original_dns
         assert result["code"] == 200
         assert called["url"] == "https://api.github.com/api/cloudsearch"
+
+
+def test_custom_source_is_revalidated_before_each_request():
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp:
+        mod = load_player_ext(Path(temp) / "rebind.db")
+        _, token = make_user(mod)
+        req = request_with_token(token)
+        original_dns = socket.getaddrinfo
+        socket.getaddrinfo = lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("1.1.1.1", 443))]
+        try:
+            mod.put_custom_source(req, {"enabled": True, "base_url": "https://api.github.com/api"})
+        finally:
+            socket.getaddrinfo = original_dns
+        socket.getaddrinfo = lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))]
+        try:
+            try:
+                asyncio.run(mod.ncm_get(req, "/cloudsearch", {"keywords": "test"}))
+            except Exception as exc:
+                assert getattr(exc, "status_code", None) == 502
+            else:
+                raise AssertionError("DNS rebinding destination was not rejected")
+        finally:
+            socket.getaddrinfo = original_dns
+
+
+def test_favorite_playlist_cover_rejects_attribute_injection():
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp:
+        mod = load_player_ext(Path(temp) / "xss.db")
+        body = {"source": "qq", "id": "1", "name": "x", "cover": 'x\" onerror=\"window.pwned=1'}
+        mod.fav_pl_add(request_with_token(), body)
+        data = mod.fav_pl_list(request_with_token())["data"]
+        assert data[0]["cover"] == ""
+        frontend = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        assert "const attr =" in frontend
+        assert 'src="${attr(httpsify(cover))}"' in frontend
+
+
+def test_playlist_resolver_disables_automatic_redirects():
+    source = (ROOT / "player_ext.py").read_text(encoding="utf-8")
+    assert "follow_redirects=False" in source
+    assert "if not _resolve_host_allowed(current)" in source
 
 
 def test_frontend_only_shows_custom_source_for_logged_in_users():

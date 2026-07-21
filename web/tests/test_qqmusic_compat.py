@@ -1,6 +1,8 @@
 import importlib.util
 import os
 import sys
+import tempfile
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -36,6 +38,47 @@ def test_main_contains_dual_version_lyric_compatibility():
     assert 'hasattr(resp, "decrypt")' in source
     assert 'hasattr(resp_lrc, "decrypt")' in source
     assert "lyric_node is not None" in source
+
+
+def test_qqmusic_069_credential_roundtrip_preserves_refresh_fields():
+    from qqmusic_api import Credential
+    cred = Credential.model_validate({
+        "musicid": 123,
+        "str_musicid": "123",
+        "musickey": "key",
+        "loginType": 2,
+        "refresh_token": "refresh-token",
+        "refresh_key": "refresh-key",
+        "expired_at": 123456,
+        "encryptUin": "encrypted",
+    })
+    dumped = cred.model_dump(by_alias=True, mode="json")
+    assert dumped["loginType"] == 2
+    assert dumped["encryptUin"] == "encrypted"
+    assert dumped["refresh_token"] == "refresh-token"
+    assert dumped["refresh_key"] == "refresh-key"
+    restored = Credential.model_validate(json.loads(json.dumps(dumped)))
+    assert restored.login_type == 2
+    assert restored.refresh_token == "refresh-token"
+
+
+def test_fresh_checkout_creates_runtime_data_parent():
+    old_db = os.environ.get("ANON_MUSIC_DB")
+    try:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp:
+            target = Path(temp) / "missing" / "nested" / "player.db"
+            os.environ["ANON_MUSIC_DB"] = str(target)
+            sys.modules.pop("player_ext", None)
+            spec = importlib.util.spec_from_file_location("fresh_player_ext", ROOT / "player_ext.py")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            module.init_db()
+            assert target.exists()
+    finally:
+        if old_db is None:
+            os.environ.pop("ANON_MUSIC_DB", None)
+        else:
+            os.environ["ANON_MUSIC_DB"] = old_db
 
 
 if __name__ == "__main__":

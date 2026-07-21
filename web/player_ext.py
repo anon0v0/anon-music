@@ -42,6 +42,10 @@ _NCM_BASE_CONTEXT = contextvars.ContextVar("anon_music_ncm_base", default=DEFAUL
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE_PATH = os.environ.get("ANON_MUSIC_DEVICE", os.path.join(_BASE_DIR, "data", "qq_device.json"))
 DB_PATH = os.environ.get("ANON_MUSIC_DB", os.path.join(_BASE_DIR, "data", "player_data.db"))
+for _runtime_path in (DEVICE_PATH, DB_PATH):
+    _runtime_parent = os.path.dirname(os.path.abspath(_runtime_path))
+    if _runtime_parent:
+        os.makedirs(_runtime_parent, mode=0o700, exist_ok=True)
 
 IMAGE_PROXY_HOSTS = {
     "y.gtimg.cn", "p1.music.126.net", "p2.music.126.net", "p3.music.126.net",
@@ -138,6 +142,8 @@ async def ncm_get(
         path = str(request_or_path)
         query = path_or_params if isinstance(path_or_params, dict) else (params or {})
     base_url = get_ncm_base(request) if request is not None else _NCM_BASE_CONTEXT.get()
+    if base_url.rstrip("/") != DEFAULT_NCM_BASE:
+        base_url = _validate_custom_source_runtime(base_url)
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as c:
         r = await c.get(f"{base_url}/{path.lstrip('/')}", params=query)
         if r.status_code == 200:
@@ -649,6 +655,14 @@ def _normalize_custom_source_url(value: object) -> str:
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", ""))
 
 
+def _validate_custom_source_runtime(base_url: str) -> str:
+    """每次向用户音源发请求前重新解析 DNS，阻断保存后 DNS rebinding。"""
+    try:
+        return _normalize_custom_source_url(base_url)
+    except HTTPException as exc:
+        raise HTTPException(502, "music source unavailable") from exc
+
+
 def get_ncm_base(request: Request | None) -> str:
     if request is None:
         return DEFAULT_NCM_BASE
@@ -716,6 +730,14 @@ def end_request_source(token) -> None:
 
 def current_ncm_url(path: str) -> str:
     return f"{_NCM_BASE_CONTEXT.get()}/{str(path).lstrip('/')}"
+
+
+def validate_current_ncm_source() -> str:
+    """供 main.py 中仍使用 current_ncm_url() 的旧路由执行请求前 DNS 复验。"""
+    base_url = _NCM_BASE_CONTEXT.get().rstrip("/")
+    if base_url != DEFAULT_NCM_BASE:
+        return _validate_custom_source_runtime(base_url)
+    return base_url
 
 
 def _new_session(uid: int) -> str:
@@ -995,10 +1017,13 @@ def fav_pl_add(request: Request, body: dict = Body(...)):
     ext_id = str((body or {}).get("id", "")).strip()
     if source not in ("qq", "netease") or not ext_id:
         raise HTTPException(400, "bad source/id")
+    cover = str((body or {}).get("cover", ""))[:1000]
+    if cover and not validate_proxy_url(cover, IMAGE_PROXY_HOSTS):
+        cover = ""
     with _db_lock, _conn() as c:
         c.execute("INSERT OR REPLACE INTO fav_playlists(user_id,source,ext_id,name,cover,creator,song_count,added_at) "
                   "VALUES (?,?,?,?,?,?,?,?)",
-                  (uid, source, ext_id, str((body or {}).get("name", ""))[:120], str((body or {}).get("cover", "")),
+                  (uid, source, ext_id, str((body or {}).get("name", ""))[:120], cover,
                    str((body or {}).get("creator", ""))[:60], int((body or {}).get("songCount") or 0), time.time()))
     return {"code": 0}
 
@@ -1076,14 +1101,26 @@ async def api_playlist_resolve(url: str):
     got = _extract_playlist_id(text)
     if got:
         return {"code": 0, "source": got[0], "id": got[1]}
-    # 短链：跟随重定向，从重定向历史 + 最终地址里逐个提取（taoge.html 可能返 500，但 URL 已含 id）
+    # 短链：手动跟随有限次重定向，每一跳都重新验证域名和解析出的公网 IP。
     if text.startswith("http"):
         if not _resolve_host_allowed(text):
             return {"code": -1, "msg": "没能识别歌单链接"}   # 非官方域名/内网地址：不请求，且不泄露原因
         try:
-            async with httpx.AsyncClient(timeout=8, follow_redirects=True) as c:
-                r = await c.get(text, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-            for u in [str(h.url) for h in r.history] + [str(r.url)]:
+            urls = [text]
+            current = text
+            async with httpx.AsyncClient(timeout=8, follow_redirects=False) as c:
+                for _ in range(5):
+                    if not _resolve_host_allowed(current):
+                        return {"code": -1, "msg": "没能识别歌单链接"}
+                    r = await c.get(current, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+                    if r.status_code not in (301, 302, 303, 307, 308):
+                        break
+                    location = r.headers.get("location", "")
+                    if not location:
+                        break
+                    current = str(httpx.URL(current).join(location))
+                    urls.append(current)
+            for u in urls + [str(r.url)]:
                 got = _extract_playlist_id(u)
                 if got:
                     return {"code": 0, "source": got[0], "id": got[1]}

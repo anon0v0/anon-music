@@ -56,7 +56,9 @@ jobs:
       - name: Inject APP_URL
         if: env.APP_URL != ''
         shell: bash
-        run: node scripts/set-app-url.mjs "$APP_URL"
+        run: |
+          node scripts/set-app-url.mjs "$APP_URL"
+          node -e "const u=new URL(process.env.APP_URL); require('fs').appendFileSync(process.env.GITHUB_ENV, 'ANON_MUSIC_APP_ORIGIN='+u.origin+'\n')"
       - name: Build (Tauri desktop)
         run: npm run tauri build
       - name: Upload installers (Artifacts)
@@ -105,7 +107,9 @@ jobs:
         run: npm ci
       - name: Inject APP_URL
         if: env.APP_URL != ''
-        run: node scripts/set-app-url.mjs "$APP_URL"
+        run: |
+          node scripts/set-app-url.mjs "$APP_URL"
+          node -e "const u=new URL(process.env.APP_URL); require('fs').appendFileSync(process.env.GITHUB_ENV, 'ANON_MUSIC_APP_ORIGIN='+u.origin+'\n')"
       - name: Init Android project
         run: npm run tauri android init
       - name: Inject native media controls (Kotlin + manifest)

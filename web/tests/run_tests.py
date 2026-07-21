@@ -85,6 +85,8 @@ def asset_versioning():
         assert f"/static/{asset}?v=" in html
     assert "reqUrl.pathname === '/music'" in sw
     assert "res.ok" in sw
+    assert "MAINTENANCE_URL" in sw
+    assert "maintenance.css" in sw and "maintenance.js" in sw
 
 
 def playlist_management():

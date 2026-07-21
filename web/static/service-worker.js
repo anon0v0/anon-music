@@ -6,11 +6,28 @@
  *  - 跨源(CDN 音频/封面) → 不拦截，放行
  *  bump CACHE 版本即可整体失效旧缓存（activate 时清理）。
  */
-const CACHE = 'anon-cache-v12';
+const CACHE = 'anon-cache-v14';
 const OFFLINE_URL = '/music';
+const MAINTENANCE_URL = '/maintenance';
+const MAINTENANCE_ASSETS = [
+  MAINTENANCE_URL,
+  '/static/maintenance.css?v=20260721d',
+  '/static/maintenance.js?v=20260721c',
+  '/static/app-icon.png?v=20260721c',
+  '/static/favicon-32.png?v=20260721c',
+];
 
-self.addEventListener('install', () => {
-  self.skipWaiting();
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(MAINTENANCE_ASSETS.map(async (url) => {
+      try {
+        const response = await fetch(url, { cache: 'reload' });
+        if (response.ok) await cache.put(url, response);
+      } catch (e) {}
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
@@ -46,8 +63,9 @@ self.addEventListener('fetch', (event) => {
         return res;
       } catch (err) {
         const cache = await caches.open(CACHE);
+        const maintenance = await cache.match(MAINTENANCE_URL);
         const cached = await cache.match(OFFLINE_URL);
-        return cached || new Response('离线了，请连网后重试。', {
+        return cached || maintenance || new Response('Anon Music 暂时不可用，请稍后重试。', {
           status: 503,
           headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });

@@ -42,7 +42,9 @@
   const fmtTime = (s) => { s = Math.floor(s || 0); if (s < 0) s = 0; const m = Math.floor(s / 60); const ss = s % 60; return m + ':' + (ss < 10 ? '0' : '') + ss; };
   const fmtCount = (n) => { n = +n || 0; if (n >= 1e8) return (n / 1e8).toFixed(1).replace(/\.0$/, '') + '亿'; if (n >= 1e4) return (n / 1e4).toFixed(1).replace(/\.0$/, '') + '万'; return String(n); };
   const esc = (t) => { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; };
-  const picOf = (s) => esc(httpsify(s.pic || s.picUrl) || IMG_PLACEHOLDER);
+  // HTML 文本与属性值必须分开转义。旧 esc() 不转义双引号，不能用于 src/data-* 属性。
+  const attr = (t) => esc(t).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const picOf = (s) => attr(httpsify(s.pic || s.picUrl) || IMG_PLACEHOLDER);
   async function api(path, opts) {
     const r = await fetch(path, opts);
     return r.json();
@@ -273,19 +275,19 @@
   function artistLinks(s) {
     const arr = Array.isArray(s.artists) ? s.artists : null;
     if (arr && arr.length && arr[0] && arr[0].id) return arr.map(a =>
-      `<span class="artist-link" data-aid="${esc(a.id)}">${esc(a.name)}</span>`).join('<span class="ar-sep">, </span>');
+      `<span class="artist-link" data-aid="${attr(a.id)}">${esc(a.name)}</span>`).join('<span class="ar-sep">, </span>');
     const txt = artistStr(s);
     return txt ? `<span class="ar-search" title="搜索该歌手">${esc(txt)}</span>` : '';
   }
   function songRow(s, i, ctx) {
     const liked = Library.isLiked(s.id);
-    return `<div class="song-row ${ctx && ctx.manage ? 'manageable' : ''}" data-id="${esc(s.id)}" data-i="${i}">
+    return `<div class="song-row ${ctx && ctx.manage ? 'manageable' : ''}" data-id="${attr(s.id)}" data-i="${i}">
       <div class="idx"><span class="row-number">${i + 1}</span>${ctx && ctx.manage ? `<input class="song-check" type="checkbox" aria-label="选择 ${esc(s.name)}"><span class="drag-handle" title="拖动排序">⋮⋮</span>` : ''}</div>
       <img class="rc" loading="lazy" src="${picOf(s)}" alt="">
       <div class="ti"><div class="nm">${badge(s)}${esc(s.name)}</div><div class="ar">${artistLinks(s)}</div></div>
       <div class="al">${esc(s.album || '')}</div>
       <div class="act">
-        <button class="iconbtn like ${liked ? 'liked' : ''}" data-like-id="${esc(s.id)}" title="喜欢">${liked ? ICONS.heartF : ICONS.heart}</button>
+        <button class="iconbtn like ${liked ? 'liked' : ''}" data-like-id="${attr(s.id)}" title="喜欢">${liked ? ICONS.heartF : ICONS.heart}</button>
         <button class="iconbtn qadd" title="加入播放列表">${ICONS.qadd}</button>
         <button class="iconbtn dl" title="下载">${ICONS.download}</button>
         <button class="iconbtn addpl" title="加入歌单">${ICONS.plus}</button>
@@ -346,8 +348,8 @@
       : (item.creator ? (item.creator + (item.songCount ? ' · ' + item.songCount + '首' : ''))
         : (item.songCount ? item.songCount + ' 首' : (item.desc || '')));
     const countBadge = (isPl && item.playCount) ? `<span class="cover-count">${ICONS.play}${fmtCount(item.playCount)}</span>` : '';
-    return `<div class="card" role="link" tabindex="0" aria-label="${esc(item.name || '打开歌单')}" data-kind="${kind}" data-source="${item.source}" data-id="${esc(String(item.id))}">
-      <div class="cover"><img loading="lazy" decoding="async" src="${esc(httpsify(item.cover) || IMG_PLACEHOLDER)}" alt="">${countBadge}
+    return `<div class="card" role="link" tabindex="0" aria-label="${attr(item.name || '打开歌单')}" data-kind="${attr(kind)}" data-source="${attr(item.source)}" data-id="${attr(String(item.id))}">
+      <div class="cover"><img loading="lazy" decoding="async" src="${attr(httpsify(item.cover) || IMG_PLACEHOLDER)}" alt="">${countBadge}
         <div class="play-fab">${ICONS.play}</div></div>
       <div class="name">${item.source === 'qq' ? '<span class="badge qq">QQ</span>' : '<span class="badge ncm">网易</span>'}${esc(item.name)}</div>
       <div class="sub">${esc(sub)}</div>
@@ -430,7 +432,7 @@
   function slideHTML(it) {
     const cover = esc(httpsify(it.cover) || IMG_PLACEHOLDER);
     const desc = esc((it.desc || '').replace(/<br\s*\/?>/gi, ' ') || (it.songCount ? it.songCount + ' 首' : ''));
-    return `<div class="cslide" data-source="${it.source}" data-id="${esc(String(it.id))}">
+    return `<div class="cslide" data-source="${attr(it.source)}" data-id="${attr(String(it.id))}">
       <div class="cs-bg" style="background-image:url('${cover}')"></div>
       <div class="cs-main" style="background-image:url('${cover}')">
         <div class="cs-mask"></div>
@@ -597,10 +599,10 @@
     const cover = httpsify(meta.cover || (songs[0] && songs[0].pic) || '') || IMG_PLACEHOLDER;
     view.innerHTML = `
       <div class="detail-hero">
-        <div class="dh-bg" style="background-image:url('${esc(cover)}')"></div>
+        <div class="dh-bg" style="background-image:url(&quot;${attr(cover)}&quot;)"></div>
         <button class="btn-back" id="goBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>返回</button>
         <div class="dh-main">
-          <img class="dh-cover" loading="lazy" src="${esc(cover)}" alt="">
+          <img class="dh-cover" loading="lazy" src="${attr(cover)}" alt="">
           <div class="dh-info">
             <div class="dh-kind">${source === 'qq' ? 'QQ 音乐' : '网易云音乐'} · ${kindLabel}</div>
             <h1>${esc(meta.name || '')}</h1>
@@ -650,10 +652,10 @@
     const hot = a.hot_songs || [];
     view.innerHTML = `
       <div class="detail-hero artist-hero">
-        <div class="dh-bg" style="background-image:url('${esc(httpsify(a.bg || a.pic) || '')}')"></div>
+        <div class="dh-bg" style="background-image:url(&quot;${attr(httpsify(a.bg || a.pic) || '')}&quot;)"></div>
         <button class="btn-back" id="goBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>返回</button>
         <div class="dh-main">
-          <img class="dh-cover dh-avatar" loading="lazy" src="${esc(httpsify(a.pic) || IMG_PLACEHOLDER)}" alt="">
+          <img class="dh-cover dh-avatar" loading="lazy" src="${attr(httpsify(a.pic) || IMG_PLACEHOLDER)}" alt="">
           <div class="dh-info">
             <div class="dh-kind">${source === 'qq' ? 'QQ 音乐' : '网易云音乐'} · 歌手</div>
             <h1>${esc(a.name)}</h1>
@@ -825,9 +827,9 @@
         const s = it.song || {};
         // 有带 id 的 artists 数组 → 可点跳歌手页；否则回退纯文本搜索该歌手
         const arr = artistArr(s);
-        const arHTML = arr ? artistLinks(s) : `<span class="st-ar" data-ar="${esc(s.artist || '')}" title="搜索该歌手">${esc(s.artist || '')}</span>`;
+        const arHTML = arr ? artistLinks(s) : `<span class="st-ar" data-ar="${attr(s.artist || '')}" title="搜索该歌手">${esc(s.artist || '')}</span>`;
         return `<div class="song-row stat-row" data-i="${i}"><div class="idx">${i + 1}</div>
-          <img class="rc" loading="lazy" src="${esc(picOf(s))}"><div class="ti"><div class="nm">${esc(s.name || '')}</div><div class="ar">${arHTML}</div></div>
+          <img class="rc" loading="lazy" src="${picOf(s)}"><div class="ti"><div class="nm">${esc(s.name || '')}</div><div class="ar">${arHTML}</div></div>
           <div class="al">${it.plays} 次 · ${fmtStatDur(it.secs)}</div><div class="act"></div></div>`;
       }).join('')}</div>` : '<div class="empty-tip">还没有足够的收听记录，多听几首吧</div>'}
       <div class="row-head"><h2>最常听的歌手</h2></div>
@@ -981,10 +983,10 @@
     const noteIcon = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>`;
     view.innerHTML = `
       <div class="detail-hero my-playlist-hero ${plCover ? '' : 'dh-lib dh-mypl'}">
-        ${plCover ? `<div class="dh-bg" style="background-image:url('${esc(plCover)}')"></div>` : '<div class="dh-bg"></div>'}
+        ${plCover ? `<div class="dh-bg" style="background-image:url(&quot;${attr(plCover)}&quot;)"></div>` : '<div class="dh-bg"></div>'}
         <button class="btn-back" id="goBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>返回</button>
         <div class="dh-main">
-          ${plCover ? `<img class="dh-cover" loading="lazy" src="${esc(plCover)}" alt="">` : `<div class="dh-cover dh-icon">${noteIcon}</div>`}
+          ${plCover ? `<img class="dh-cover" loading="lazy" src="${attr(plCover)}" alt="">` : `<div class="dh-cover dh-icon">${noteIcon}</div>`}
           <div class="dh-info">
             <div class="dh-kind">自建歌单</div>
             <h1>${esc(meta.name || '')}</h1>
@@ -1095,7 +1097,7 @@
   const _plSrcBadge = (s) => s === 'qq' ? '<img class="pl-src" src="/static/qqmusic.png" alt="QQ" title="QQ 音乐">'
     : (s === 'netease' ? '<img class="pl-src" src="/static/wyyyy.jpg" alt="网易" title="网易云音乐">' : '');
   const _plNoteIcon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>';
-  const _plCover = (cover) => cover ? `<img class="pl-cov" loading="lazy" decoding="async" src="${esc(httpsify(cover))}" alt="">` : `<div class="pl-cov pl-cov-ph">${_plNoteIcon}</div>`;
+  const _plCover = (cover) => cover ? `<img class="pl-cov" loading="lazy" decoding="async" src="${attr(httpsify(cover))}" alt="">` : `<div class="pl-cov pl-cov-ph">${_plNoteIcon}</div>`;
   function renderSidebarPlaylists() {
     $('#myPlaylists').innerHTML = Library.playlists.map(p =>
       `<div class="pl" onclick="location.hash='#/my/${p.id}'"><div class="pl-cw">${_plCover(p.cover)}${_plSrcBadge(p.source)}</div><span class="pl-nm">${esc(p.name)}</span><span class="pl-ct">${p.songCount}</span></div>`
@@ -1766,7 +1768,7 @@
   let cmState = { sort: 'hot', mid: null, page: 1, loading: false, done: false };
   function cmRow(c) {
     return `<div class="cm-row">
-      <img class="cm-av" loading="lazy" src="${esc(httpsify(c.avatar) || IMG_PLACEHOLDER)}" alt="">
+      <img class="cm-av" loading="lazy" src="${attr(httpsify(c.avatar) || IMG_PLACEHOLDER)}" alt="">
       <div class="cm-body">
         <div class="cm-top"><span class="cm-user">${esc(c.user || '匿名')}</span>${c.liked ? `<span class="cm-like">${ICONS.heart} ${fmtCount(c.liked)}</span>` : ''}</div>
         <div class="cm-text">${esc(c.content || '')}</div>
