@@ -1,7 +1,9 @@
-# Cloudflare Worker + 静态维护页
-# 部署见 ../README.md「Cloudflare」一节
+# Cloudflare Worker 故障回退
+# 部署：npx wrangler deploy
 #
-# 前置：域名已接入 CF，music.saki.li 橙云代理到中转/源站 IP
+# 注意：不要启用 assets SPA not_found_handling！
+# 否则 /music 会被静态 index.html（维护页）劫持，出现
+# “healthz ok → 跳 /music → 又是维护页”的死循环。
 
 name = "anon-music-failover"
 main = "worker.js"
@@ -9,16 +11,8 @@ compatibility_date = "2026-07-01"
 workers_dev = true
 preview_urls = true
 
-# 绑定到正式域名（需 DNS 橙云）
 routes = [
   { pattern = "music.saki.li/*", zone_name = "saki.li" }
 ]
 
-[assets]
-directory = "./public"
-binding = "ASSETS"
-not_found_handling = "single-page-application"
-
-# 可选：不用 assets 时，改用独立 Pages 地址
-# [vars]
-# STANDBY_BASE = "https://anon-music-standby.pages.dev"
+# 不绑定 ASSETS / 不做 SPA 回退；维护页内联在 worker.js
