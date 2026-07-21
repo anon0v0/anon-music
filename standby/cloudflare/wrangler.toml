@@ -1,9 +1,10 @@
-# Cloudflare Worker 故障回退
-# 部署：npx wrangler deploy
+# Cloudflare Worker — 可选故障回退（不推荐日常挂在主域名）
 #
-# 注意：不要启用 assets SPA not_found_handling！
-# 否则 /music 会被静态 index.html（维护页）劫持，出现
-# “healthz ok → 跳 /music → 又是维护页”的死循环。
+# 国内访问请勿对 music.saki.li 开橙云 + 绑此 Worker。
+# 日常：DNS 灰云直连中转/源站。
+# 挂了：用 Pages 状态页（见 package.json 的 pages 脚本 / DEPLOY.md）。
+#
+# 仅当你明确需要「主域名橙云故障回退」时才 deploy 并添加路由。
 
 name = "anon-music-failover"
 main = "worker.js"
@@ -11,8 +12,7 @@ compatibility_date = "2026-07-01"
 workers_dev = true
 preview_urls = true
 
-routes = [
-  { pattern = "music.saki.li/*", zone_name = "saki.li" }
-]
-
-# 不绑定 ASSETS / 不做 SPA 回退；维护页内联在 worker.js
+# 默认不绑定 music.saki.li/*，避免拖慢全国访问。
+# routes = [
+#   { pattern = "music.saki.li/*", zone_name = "saki.li" }
+# ]

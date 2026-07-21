@@ -1,16 +1,16 @@
 <!doctype html>
 <html lang="zh-CN"
-  data-target="/music"
-  data-health="/healthz">
+  data-target="https://music.saki.li/music"
+  data-health="https://music.saki.li/healthz">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
   <meta name="robots" content="noindex,nofollow" />
-  <title>Anon Music · 网站维护中</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-  <link rel="apple-touch-icon" href="/app-icon.png" />
-  <link rel="stylesheet" href="/maintenance.css" />
+  <title>Anon Music · 状态页</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
+  <link rel="apple-touch-icon" href="./app-icon.png" />
+  <link rel="stylesheet" href="./maintenance.css" />
 </head>
 <body class="maintenance-standalone">
   <main id="maintenanceRoot" class="maintenance-layer" data-state="offline">
@@ -18,31 +18,45 @@
       <section class="maintenance-game" aria-labelledby="gameTitle">
         <header class="maintenance-notice">
           <div class="maintenance-brand">
-            <img class="maintenance-brand-icon" src="/app-icon.png" alt="Anon Music" />
-            <div><strong>Anon Music</strong><span>网站维护中</span></div>
+            <img class="maintenance-brand-icon" src="./app-icon.png" alt="Anon Music" />
+            <div>
+              <strong>Anon Music</strong>
+              <span>状态页 · Cloudflare</span>
+            </div>
           </div>
           <div class="maintenance-message">
-            <div class="maintenance-status-line"><i class="maintenance-pulse"></i><span data-role="state-label">网站正在维护</span></div>
-            <h1 id="maintenanceTitle" class="maintenance-title">音乐暂时按下了<em>暂停键</em></h1>
-            <p class="maintenance-copy" data-role="reason">维护完成后会自动返回，等待时来玩一局小游戏吧。</p>
+            <div class="maintenance-status-line">
+              <i class="maintenance-pulse"></i>
+              <span data-role="state-label">正在检测主站…</span>
+            </div>
+            <h1 id="maintenanceTitle" class="maintenance-title">主站暂时不可用</h1>
+            <p class="maintenance-copy" data-role="reason">
+              这是独立状态页（不经过主站中转）。主站恢复后会自动跳回播放器；等待时可以玩小游戏。
+            </p>
           </div>
         </header>
         <div class="maintenance-game-head">
-          <div><div class="maintenance-game-kicker">维护小游戏</div><h2 id="gameTitle">节拍跑者</h2></div>
+          <div>
+            <div class="maintenance-game-kicker">等待时</div>
+            <h2 id="gameTitle">节拍跑者</h2>
+          </div>
           <div class="maintenance-game-help">点击画面、空格或 ↑ 跳跃</div>
         </div>
         <div class="maintenance-canvas-wrap">
-          <canvas class="maintenance-canvas" data-role="game" aria-label="离线跳跃小游戏"></canvas>
-          <div class="maintenance-score"><span>本局</span><strong data-role="score">0</strong><small>最高 <b data-role="best">0</b></small></div>
+          <canvas class="maintenance-canvas" data-role="game"></canvas>
+          <div class="maintenance-score">
+            <span>本局</span><strong data-role="score">0</strong>
+            <small>最高 <b data-role="best">0</b></small>
+          </div>
           <div class="maintenance-game-tip" data-role="game-tip">点击画面 / 空格 / ↑ 跳跃</div>
         </div>
         <div class="maintenance-game-foot">
-          <span>躲开故障脉冲，坚持到网站恢复</span>
-          <span>按 <i class="maintenance-key">空格</i> 跳跃</span>
+          <span>主站：music.saki.li</span>
+          <span data-role="checked">自动检测中</span>
         </div>
       </section>
     </div>
   </main>
-  <script src="/maintenance.js"></script>
+  <script src="./maintenance.js"></script>
 </body>
 </html>

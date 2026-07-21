@@ -316,3 +316,18 @@ standby/cloudflare/
 ├── package.json
 └── public/            # 维护页静态资源（部署进 Worker Assets）
 ```
+
+---
+
+## 国内访问建议（2026-07）
+
+**不要**对 `music.saki.li` 全程橙云代理，延迟和丢包会明显升高。
+
+推荐：
+
+1. 主站 DNS **灰云** → 国内中转 / 源站  
+2. 挂了时打开 CF Pages 状态页：见 `cloudflare/DEPLOY.md`  
+   - 项目：`anon-music-standby`  
+   - 默认域名：`https://anon-music-standby.pages.dev`  
+3. 主域名 **不要** 绑定 Worker 路由 `music.saki.li/*`
+
