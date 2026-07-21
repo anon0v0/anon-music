@@ -211,3 +211,108 @@ python -m http.server 8790
 - 备用站只有静态文件，**不能播歌**；只负责告知维护 + 小游戏消磨时间。
 - 恢复跳转依赖正式域名 `healthz` 重新可达；若 DNS 仍指向坏掉的中转，需先修好 DNS/中转。
 - 不要把生产密钥放进备用站；本目录无需任何环境变量。
+
+---
+
+## Cloudflare（推荐：VPS 掉线也能出维护页）
+
+Cloudflare 边缘几乎不挂。把 `music.saki.li` 接入 CF 后，用 **Worker 故障回退**：
+
+```text
+用户 → Cloudflare 边缘
+         ├─ 源站正常 → 透传中转 / VPS
+         └─ 超时 / 502 / 连不上 → 边缘直接返回维护小游戏页
+```
+
+**不需要**再依赖腾讯云 Lucky 的 502 页；VPS 整机掉线时用户仍看到你的维护页。
+
+### 方案 1：Worker + 内置静态资源（同域名，最佳）
+
+前置：
+
+1. 域名 NS 已切到 Cloudflare（或 CNAME 接入）
+2. DNS 记录 `music` → 你的中转/源站 IP，**代理状态：已代理（橙云）**
+3. SSL/TLS 模式建议 **Full**（源站有证书）或 **Full (strict)**
+
+本机部署（需 Node.js + 登录 CF）：
+
+```bash
+cd standby/cloudflare
+npm install
+npx wrangler login
+npx wrangler deploy
+```
+
+然后在 Cloudflare Dashboard：
+
+1. **Workers & Pages** → `anon-music-failover` → **Triggers / 域和路由**
+2. 添加路由：`music.saki.li/*`
+3. 确认 DNS 橙云已开
+
+验证：
+
+```bash
+# 正常时应透传源站
+curl -sS https://music.saki.li/healthz
+
+# 故意停源站或断隧道后，应看到维护页 HTML，而不是 Lucky 502
+curl -sS https://music.saki.li/music | head
+```
+
+响应头里可能有 `x-anon-fallback: assets` 表示已走边缘维护页。
+
+### 方案 2：只挂 Pages 备用域名（最简单）
+
+不改主站路由，单独做一个状态页：
+
+```bash
+cd standby/cloudflare
+npm install
+npx wrangler pages deploy ../ --project-name=anon-music-standby
+# 或只上传 public：
+npx wrangler pages deploy ./public --project-name=anon-music-standby
+```
+
+得到 `https://anon-music-standby.pages.dev`，可再绑 `status.saki.li`。
+
+主站挂了时让用户打开状态页；或在 DNS 宕机切换时把 `music` 指到 Pages（仅静态，不能播歌）。
+
+### 方案 3：Worker 回退到 Pages
+
+若不想把资源打进 Worker，可把 `STANDBY_BASE` 设为 Pages 地址，Worker 只负责探测源站并在失败时 `fetch` Pages。
+
+在 `wrangler.toml`：
+
+```toml
+[vars]
+STANDBY_BASE = "https://anon-music-standby.pages.dev"
+```
+
+### 和现有腾讯云中转怎么配合
+
+| 层级 | 作用 |
+|------|------|
+| Cloudflare | 最外层；源站挂了出维护页 |
+| 腾讯云 Lucky | 可选中转；CF 源站 IP 可仍填中转 |
+| Ubuntu 源站 | 真正的 FastAPI |
+
+也可以 **去掉中转**，CF 直接回源 VPS（若 VPS 有公网且防火墙放行 443）。  
+国内访问 CF 可能偏慢，你当前「CF + 国内中转」的结构可以保留，只要 **DNS 先解析到 CF**。
+
+### 注意
+
+- Worker 免费额度通常足够个人站；超限会另计费，见 CF 文档。
+- 回退页**不能播歌**，只负责提示 + 小游戏。
+- `/healthz` 在源站挂掉时由 Worker 返回 `{"status":"offline"}` 503，维护页会继续等待，不会误跳转。
+- 源站恢复后，维护页探测到 `{"status":"ok"}` 会自动回 `/music`。
+- 若仍看到腾讯云 / DNSPod 拦截页，说明 DNS **没有** 走 CF（还在直连 `106.55.60.29`），请先把域名接入 CF。
+
+### 目录
+
+```text
+standby/cloudflare/
+├── worker.js          # 故障回退逻辑
+├── wrangler.toml
+├── package.json
+└── public/            # 维护页静态资源（部署进 Worker Assets）
+```

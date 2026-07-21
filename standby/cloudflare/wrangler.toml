@@ -1,0 +1,17 @@
+# Cloudflare Worker + 静态维护页
+# 部署见 ../README.md「Cloudflare」一节
+#
+# 前置：域名已接入 CF，music.saki.li 橙云代理到中转/源站 IP
+
+name = "anon-music-failover"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# 可选：不用 assets 时，改用独立 Pages 地址
+# [vars]
+# STANDBY_BASE = "https://anon-music-standby.pages.dev"
