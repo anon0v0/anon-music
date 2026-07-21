@@ -261,7 +261,7 @@ async def read_app_redirect():
 @app.get("/favicon.ico")
 async def favicon():
     from fastapi.responses import FileResponse
-    return FileResponse("static/anon1.jpg", media_type="image/jpeg")
+    return FileResponse("static/favicon-32.png", media_type="image/png")
 
 # PWA Service Worker —— 必须由根路径提供，且带 Service-Worker-Allowed 头，
 # 否则作用域会被限制在 /static/ 下，无法接管 /music 与整站导航。
