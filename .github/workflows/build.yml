@@ -35,7 +35,6 @@ jobs:
       - name: Web regression tests
         run: |
           cd web
-          python tests/test_custom_source.py
           python tests/test_qqmusic_compat.py
           python tests/run_tests.py
 

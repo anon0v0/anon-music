@@ -105,8 +105,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 from player_ext import (
     router as player_router,
     init_db as _player_init_db,
-    begin_request_source,
-    end_request_source,
     current_ncm_url,
 )
 from player_features import router as features_router
@@ -119,11 +117,7 @@ app.include_router(together_router)
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
-    source_token = begin_request_source(request)
-    try:
-        response = await call_next(request)
-    finally:
-        end_request_source(source_token)
+    response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
@@ -301,8 +295,6 @@ async def netease_passthrough(request: Request, endpoint: str):
     if endpoint not in allowed:
         raise HTTPException(status_code=404, detail="unsupported endpoint")
     params = dict(request.query_params)
-    from player_ext import validate_current_ncm_source
-    validate_current_ncm_source()
     async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
         upstream = await client.get(current_ncm_url(endpoint), params=params)
     content_type = upstream.headers.get("content-type", "")
@@ -351,8 +343,6 @@ async def search_song(keyword: str, page: int = Query(1, ge=1, le=1000), limit: 
     netease_total = 0
     try:
         offset = (page - 1) * limit
-        from player_ext import validate_current_ncm_source
-        validate_current_ncm_source()
         async with httpx.AsyncClient(timeout=5) as http_client:
             res = await http_client.get(current_ncm_url("/cloudsearch"), params={"keywords": keyword, "limit": limit, "offset": offset})
             if res.status_code == 200:
@@ -468,8 +458,6 @@ async def get_song_url(mid: str, quality: str = "standard"):
         }
         n_start = n_order.index(quality) if quality in n_order else n_order.index("standard")
         try:
-            from player_ext import validate_current_ncm_source
-            validate_current_ncm_source()
             async with httpx.AsyncClient(timeout=10) as http_client:
                 for q in n_order[n_start:]:
                     n_level = n_quality_map[q]
@@ -536,8 +524,6 @@ async def search_split(keyword: str, page: int = Query(1, ge=1, le=1000), limit:
     netease_songs = []
     try:
         offset = (page - 1) * limit
-        from player_ext import validate_current_ncm_source
-        validate_current_ncm_source()
         async with httpx.AsyncClient(timeout=8) as http_client:
             res = await http_client.get(current_ncm_url("/cloudsearch"),
                                         params={"keywords": keyword, "limit": limit, "offset": offset})
@@ -595,8 +581,6 @@ async def search_playlists(keyword: str, page: int = Query(1, ge=1, le=1000), li
     netease_pls = []
     try:
         offset = (page - 1) * limit
-        from player_ext import validate_current_ncm_source
-        validate_current_ncm_source()
         async with httpx.AsyncClient(timeout=8) as http_client:
             res = await http_client.get(current_ncm_url("/cloudsearch"),
                                         params={"keywords": keyword, "type": 1000, "limit": limit, "offset": offset})
@@ -657,8 +641,6 @@ async def get_lyric(mid: str):
 
     if id_netease:
         try:
-            from player_ext import validate_current_ncm_source
-            validate_current_ncm_source()
             async with httpx.AsyncClient(timeout=10) as http_client:
                 # /lyric/new 带逐字歌词 yrc（网易云逐字）
                 res = await http_client.get(current_ncm_url("/lyric/new"), params={"id": id_netease})
@@ -1038,8 +1020,6 @@ async def get_song_sizes(mid: str):
 
     if id_netease:
         try:
-            from player_ext import validate_current_ncm_source
-            validate_current_ncm_source()
             async with httpx.AsyncClient(timeout=5) as http:
                 r = await http.get(current_ncm_url("/song/detail"), params={"ids": id_netease})
                 if r.status_code == 200:

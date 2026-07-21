@@ -7,19 +7,16 @@ Anon Music 的网页后端与播放器源码。后端使用 FastAPI + SQLite，�
 - QQ 音乐与网易云兼容 API 双源搜索、播放、歌词、歌单和排行榜
 - 账号、收藏、最近播放、自建歌单及一起听
 - PWA、桌面歌词、下载和移动端适配
-- 登录用户个人自定义网易云兼容音源
 
 ## 音源设计
 
 网站维护一个**服务器私有默认网易云兼容 API**：
 
-- 访客始终使用默认音源，不能修改。
-- 登录用户可在 `设置 → 自定义音源` 保存自己的 HTTP(S) API 基础地址。
-- 每个用户的配置按账号隔离；删除配置后自动恢复默认音源。
-- 默认音源地址不会通过设置 API 返回，也不会写入网页、APK 或 EXE。
-- 自定义地址会拒绝 localhost、内网、链路本地、保留地址、云元数据地址、URL 凭据以及非 HTTP(S) 协议。
+- 所有用户统一使用服务器默认音源。
+- 默认音源地址不会通过网页 API 返回，也不会写入网页、APK 或 EXE。
+- 网页端不提供自定义音源设置。
 
-自定义服务需要兼容项目实际调用的网易云 API 路由，例如：
+默认服务需要兼容项目实际调用的网易云 API 路由，例如：
 
 - `/cloudsearch`
 - `/song/url/v1`
@@ -90,7 +87,6 @@ curl http://127.0.0.1:8080/readyz
 ```bash
 .venv/bin/python -m compileall -q main.py player_ext.py player_features.py player_together.py player_config.py
 for f in static/*.js; do node --check "$f"; done
-.venv/bin/python tests/test_custom_source.py
 .venv/bin/python tests/test_qqmusic_compat.py
 .venv/bin/python tests/run_tests.py
 ```
