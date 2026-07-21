@@ -2,9 +2,9 @@
   "name": "anon-music-cf-failover",
   "private": true,
   "scripts": {
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "pages": "wrangler pages deploy .. --project-name=anon-music-standby --commit-dirty=true"
+    "deploy:worker": "wrangler deploy",
+    "deploy:pages": "wrangler pages deploy ./public --project-name=anon-music-standby --commit-dirty=true",
+    "dev": "wrangler dev"
   },
   "devDependencies": {
     "wrangler": "^4.20.0"
