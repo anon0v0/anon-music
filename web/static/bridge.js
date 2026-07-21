@@ -116,19 +116,32 @@
 
   async function healthTick(force = false) {
     if (maintenanceBusy || document.visibilityState === 'hidden') return;
+    // 已在独立维护页时不要再叠一层遮罩，避免与自动跳转打架
+    if (document.body.classList.contains('maintenance-standalone')) return;
     maintenanceBusy = true;
     try {
       const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 5000);
-      const r = await fetch(`${maintenanceHealth}?_=${Date.now()}`, { cache: 'no-store', signal: ctl.signal }).finally(() => clearTimeout(t));
+      const r = await fetch(`${maintenanceHealth}?_=${Date.now()}`, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        signal: ctl.signal,
+      }).finally(() => clearTimeout(t));
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      // 只有明确 ok/ready 才算恢复，避免被网关 HTML/缓存糊弄
+      let body = null;
+      try { body = await r.json(); } catch (_) {}
+      if (body && body.status && !['ok', 'ready'].includes(String(body.status).toLowerCase())) {
+        throw new Error('service not ready');
+      }
       maintenanceFails = 0;
       if (maintenanceRoot && !maintenanceRoot.hidden) maintenanceRoot.hidden = true;
     } catch (e) {
       maintenanceFails++;
-      if (force || maintenanceFails >= 2) mountMaintenance();
+      // 提高阈值：避免偶发网络抖动就把播放器盖成维护页，造成“跳回去又回来”
+      if (force || maintenanceFails >= 4) mountMaintenance();
     } finally { maintenanceBusy = false; }
   }
-  window.addEventListener('offline', () => { maintenanceFails = 2; mountMaintenance(); });
-  window.addEventListener('online', () => healthTick(true));
-  setInterval(healthTick, 15000);
+  window.addEventListener('offline', () => { maintenanceFails = 4; /* 真离线才遮罩 */ mountMaintenance(); });
+  window.addEventListener('online', () => { maintenanceFails = 0; healthTick(true); });
+  setInterval(healthTick, 20000);
 })();

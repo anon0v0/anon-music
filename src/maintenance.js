@@ -32,7 +32,13 @@
         return;
       } catch (_) {}
     }
-    location.replace(target);
+    try {
+      const u = new URL(target, location.href);
+      if (u.pathname === '/music' || u.pathname.endsWith('/music')) u.searchParams.set('_r', String(Date.now()));
+      location.replace(u.pathname + u.search + u.hash);
+    } catch (_) {
+      location.replace(target);
+    }
   }
 
   function nowText() {

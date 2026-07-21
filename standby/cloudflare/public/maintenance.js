@@ -61,7 +61,18 @@
       consecutiveSuccess += 1;
       setStatus('online', '维护即将结束', '网站已经恢复，正在返回 Anon Music…');
       if (checkedLabel) checkedLabel.textContent = `最近检查：${nowText()}`;
-      if (!embedded && (navigate || consecutiveSuccess >= 2)) window.setTimeout(() => location.replace(target), 420);
+      if (!embedded && (navigate || consecutiveSuccess >= 3)) window.setTimeout(() => {
+        try {
+          const u = new URL(target, location.href);
+          // 回到播放器时加时间戳，避免 SW/CDN 命中旧维护页缓存
+          if (u.pathname === '/music' || u.pathname.endsWith('/music')) {
+            u.searchParams.set('_r', String(Date.now()));
+          }
+          location.replace(u.pathname + u.search + u.hash);
+        } catch (_) {
+          location.replace(target);
+        }
+      }, 500);
       return true;
     } catch (err) {
       consecutiveSuccess = 0;

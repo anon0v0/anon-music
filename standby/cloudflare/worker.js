@@ -9,7 +9,7 @@
  * 路由：music.saki.li/*
  */
 
-const ORIGIN_TIMEOUT_MS = 8000;
+const ORIGIN_TIMEOUT_MS = 15000;
 const BAD_STATUSES = new Set([
   500, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 530,
 ]);
@@ -136,7 +136,21 @@ export default {
     }
 
     const bad = BAD_STATUSES.has(originRes.status);
-    if (!bad) return originRes;
+    if (!bad) {
+      // 透传成功响应，并禁止边缘把 healthz/HTML 缓存成“永久在线/离线”
+      const headers = new Headers(originRes.headers);
+      if (isProbePath(path) || isPagePath(path) || path.startsWith('/api/')) {
+        headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        headers.set('CDN-Cache-Control', 'no-store');
+        headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
+      }
+      headers.set('x-anon-origin', 'pass');
+      return new Response(originRes.body, {
+        status: originRes.status,
+        statusText: originRes.statusText,
+        headers,
+      });
+    }
 
     // 探活 / API：不要伪装成维护 HTML，便于客户端判断离线
     if (isProbePath(path) || isApiOrRealtime(path)) {
