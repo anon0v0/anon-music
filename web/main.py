@@ -128,6 +128,12 @@ async def security_headers(request: Request, call_next):
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; "
+        "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https: wss:; "
+        "font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
+    )
     return response
 
 
@@ -221,6 +227,12 @@ async def read_index(request: Request, response: Response):
 async def read_music(response: Response):
     return _no_cache_html(response, "static/app.html")
 
+
+@app.get("/maintenance", response_class=HTMLResponse, include_in_schema=False)
+async def read_maintenance(response: Response):
+    """反向代理可将 502/503/504 错误页指向此地址。页面会自动探测 /healthz 并恢复。"""
+    return _no_cache_html(response, "static/maintenance.html")
+
 # 站内互跳（前端统一用这两个入口，域名怎么配前端都不用改）：
 # /go/download —— 播放器里的「去下载歌曲」
 # /go/player  —— 下载页的「在线播放器」按钮
@@ -289,6 +301,8 @@ async def netease_passthrough(request: Request, endpoint: str):
     if endpoint not in allowed:
         raise HTTPException(status_code=404, detail="unsupported endpoint")
     params = dict(request.query_params)
+    from player_ext import validate_current_ncm_source
+    validate_current_ncm_source()
     async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
         upstream = await client.get(current_ncm_url(endpoint), params=params)
     content_type = upstream.headers.get("content-type", "")
@@ -337,6 +351,8 @@ async def search_song(keyword: str, page: int = Query(1, ge=1, le=1000), limit: 
     netease_total = 0
     try:
         offset = (page - 1) * limit
+        from player_ext import validate_current_ncm_source
+        validate_current_ncm_source()
         async with httpx.AsyncClient(timeout=5) as http_client:
             res = await http_client.get(current_ncm_url("/cloudsearch"), params={"keywords": keyword, "limit": limit, "offset": offset})
             if res.status_code == 200:
@@ -452,6 +468,8 @@ async def get_song_url(mid: str, quality: str = "standard"):
         }
         n_start = n_order.index(quality) if quality in n_order else n_order.index("standard")
         try:
+            from player_ext import validate_current_ncm_source
+            validate_current_ncm_source()
             async with httpx.AsyncClient(timeout=10) as http_client:
                 for q in n_order[n_start:]:
                     n_level = n_quality_map[q]
@@ -518,6 +536,8 @@ async def search_split(keyword: str, page: int = Query(1, ge=1, le=1000), limit:
     netease_songs = []
     try:
         offset = (page - 1) * limit
+        from player_ext import validate_current_ncm_source
+        validate_current_ncm_source()
         async with httpx.AsyncClient(timeout=8) as http_client:
             res = await http_client.get(current_ncm_url("/cloudsearch"),
                                         params={"keywords": keyword, "limit": limit, "offset": offset})
@@ -575,6 +595,8 @@ async def search_playlists(keyword: str, page: int = Query(1, ge=1, le=1000), li
     netease_pls = []
     try:
         offset = (page - 1) * limit
+        from player_ext import validate_current_ncm_source
+        validate_current_ncm_source()
         async with httpx.AsyncClient(timeout=8) as http_client:
             res = await http_client.get(current_ncm_url("/cloudsearch"),
                                         params={"keywords": keyword, "type": 1000, "limit": limit, "offset": offset})
@@ -635,6 +657,8 @@ async def get_lyric(mid: str):
 
     if id_netease:
         try:
+            from player_ext import validate_current_ncm_source
+            validate_current_ncm_source()
             async with httpx.AsyncClient(timeout=10) as http_client:
                 # /lyric/new 带逐字歌词 yrc（网易云逐字）
                 res = await http_client.get(current_ncm_url("/lyric/new"), params={"id": id_netease})
@@ -735,16 +759,9 @@ async def get_login_status(qrsig: str, request: Request):
                 except:
                     pass
 
-            cred_dict = {
-                "musicid": cred.musicid,
-                "str_musicid": cred.str_musicid,
-                "musickey": cred.musickey,
-                "encryptUin": getattr(cred, "encryptUin", ""),
-                "loginType": cred.loginType,
-                "openid": getattr(cred, "openid", ""),
-                "access_token": getattr(cred, "access_token", ""),
-                "unionid": getattr(cred, "unionid", "")
-            }
+            # 0.6.9 使用 login_type 等 snake_case 字段；完整序列化以保留 refresh_token、
+            # refresh_key、expired_at 等续期所需数据，并用 alias 保持模型可重新加载。
+            cred_dict = cred.model_dump(by_alias=True, mode="json")
 
             cfg["tencent_cookie"] = json.dumps(cred_dict, ensure_ascii=False)
             cfg["_tencent_auto_musickey"] = cred.musickey
@@ -1021,6 +1038,8 @@ async def get_song_sizes(mid: str):
 
     if id_netease:
         try:
+            from player_ext import validate_current_ncm_source
+            validate_current_ncm_source()
             async with httpx.AsyncClient(timeout=5) as http:
                 r = await http.get(current_ncm_url("/song/detail"), params={"ids": id_netease})
                 if r.status_code == 200:
@@ -1099,4 +1118,4 @@ async def proxy_download(url: str, filename: str = "song.mp3"):
     return StreamingResponse(stream(), headers=headers)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host=os.environ.get("ANON_MUSIC_HOST", "127.0.0.1"), port=int(os.environ.get("ANON_MUSIC_PORT", "8080")))

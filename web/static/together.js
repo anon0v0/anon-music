@@ -6,6 +6,7 @@
   'use strict';
   const api = (p, o) => fetch(p, o).then(r => r.json());
   const esc = (t) => { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; };
+  const attr = (t) => esc(t).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const jpost = (p, body) => api(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
   // 客户端标识（区分设备会话，guest 也有；刷新不变）
@@ -194,7 +195,7 @@
   }
 
   function renderMembers() {
-    const html = S.members.map(m => `<span class="tg-mem ${m.host ? 'host' : ''}">${esc(m.name)}${S.role === 'host' && !m.host ? `<button data-transfer="${esc(m.member_id)}" title="转让房主">转让</button>` : ''}</span>`).join('');
+    const html = S.members.map(m => `<span class="tg-mem ${m.host ? 'host' : ''}">${esc(m.name)}${S.role === 'host' && !m.host ? `<button data-transfer="${attr(m.member_id)}" title="转让房主">转让</button>` : ''}</span>`).join('');
     const panelEl = body.querySelector('#tgMems'); if (panelEl) panelEl.innerHTML = html;
     const pageEl = document.getElementById('tgpMems'); if (pageEl) pageEl.innerHTML = html;
     document.querySelectorAll('[data-transfer]').forEach(b => b.onclick = async () => { const ok = await window.appConfirm({ title: '转让房主', message: '转让后将由对方控制播放，确定继续吗？', okText: '转让' }); if (ok) { const r = await jpost('/api/together/transfer', { member_token: S.memberToken, room: S.room, target: b.dataset.transfer }); window.appNotice(r.code === 0 ? '房主已转让' : (r.msg || '转让失败'), r.code === 0 ? 'info' : 'error'); pollOnce(); } });
@@ -438,7 +439,7 @@
         <p id="tgpRole">你是 <b style="color:var(--brand)">${S.role === 'host' ? '房主' : '听众'}</b> · ${S.role === 'host' ? '你的播放会同步给房间里所有人' : '正在跟随 ' + esc(S.hostName) + ' 的播放'}</p>
         <div class="tg-roombar"><span class="tg-code">${esc(S.room)}</span><button class="tg-copy" id="tgpCopy">复制房间码</button></div><div class="tg-status ${S.net === 'bad' ? 'bad' : 'ok'}"><i></i><span>${S.net === 'ok' ? '房间连接正常' : (S.net === 'bad' ? '连接中断，正在重连…' : '正在连接房间…')}</span></div>
         <div class="tg-share"><button id="tgpShare">复制邀请链接</button><button id="tgpNativeShare">系统分享</button></div>
-        <div class="tg-mems" id="tgpMems">${S.members.map(m => `<span class="tg-mem ${m.host ? 'host' : ''}">${esc(m.name)}${S.role === 'host' && !m.host ? `<button data-transfer="${esc(m.member_id)}">转让</button>` : ''}</span>`).join('')}</div>
+        <div class="tg-mems" id="tgpMems">${S.members.map(m => `<span class="tg-mem ${m.host ? 'host' : ''}">${esc(m.name)}${S.role === 'host' && !m.host ? `<button data-transfer="${attr(m.member_id)}">转让</button>` : ''}</span>`).join('')}</div>
         <div class="tg-enter">
           <button class="tg-go" id="tgpGo">进入播放厅（全屏 + 弹幕）</button>
           <button class="tg-out" id="tgpLeave">退出房间</button>

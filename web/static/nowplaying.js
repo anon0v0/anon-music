@@ -25,6 +25,7 @@
 
   function fmt(s) { s = Math.floor(s || 0); const m = Math.floor(s / 60); const ss = s % 60; return m + ':' + (ss < 10 ? '0' : '') + ss; }
   function esc(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
+  function attr(t) { return esc(t).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function hexRgb(hex) {
     const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
     if (!m) return null;
@@ -388,7 +389,7 @@
     _artistHTML(s) {
       const arr = Array.isArray(s.artistList) ? s.artistList : (Array.isArray(s.artists) ? s.artists : null);
       if (arr && arr.length && arr[0] && arr[0].id) {
-        return arr.map(a => `<span class="np-ar-link" data-aid="${esc(a.id)}">${esc(a.name)}</span>`).join('<span class="np-ar-sep">, </span>');
+        return arr.map(a => `<span class="np-ar-link" data-aid="${attr(a.id)}">${esc(a.name)}</span>`).join('<span class="np-ar-sep">, </span>');
       }
       const txt = (typeof s.artists === 'string' ? s.artists : '') || s.artist || '';
       return txt ? `<span class="np-ar-search">${esc(txt)}</span>` : '';

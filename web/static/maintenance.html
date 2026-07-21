@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="zh-CN" data-target="https://music.example.com/music" data-health="https://music.example.com/healthz">
+<html lang="zh-CN" data-target="/music" data-health="/healthz">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
   <title>Anon Music · 网站维护中</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon.png" />
-  <link rel="stylesheet" href="maintenance.css" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png?v=20260721c" />
+  <link rel="apple-touch-icon" href="/static/app-icon.png?v=20260721c" />
+  <link rel="stylesheet" href="/static/maintenance.css?v=20260721d" />
 </head>
 <body class="maintenance-standalone">
   <main id="maintenanceRoot" class="maintenance-layer" data-state="offline">
@@ -14,7 +15,7 @@
       <section class="maintenance-game" aria-labelledby="gameTitle">
         <header class="maintenance-notice">
           <div class="maintenance-brand">
-            <img class="maintenance-brand-icon" src="assets/app-icon.png" alt="Anon Music" />
+            <img class="maintenance-brand-icon" src="/static/app-icon.png?v=20260721c" alt="Anon Music" />
             <div><strong>Anon Music</strong><span>网站维护中</span></div>
           </div>
           <div class="maintenance-message">
@@ -39,6 +40,6 @@
       </section>
     </div>
   </main>
-  <script src="maintenance.js"></script>
+  <script src="/static/maintenance.js?v=20260721c"></script>
 </body>
 </html>
