@@ -76,8 +76,13 @@ async function maintenanceResponse(request, env, url) {
       path.endsWith('.js') ||
       path.endsWith('.png') ||
       path.endsWith('.ico') ||
-      path.endsWith('.webmanifest');
-    if (!isAsset) {
+      path.endsWith('.webmanifest') ||
+      path === '/favicon-32.png' ||
+      path === '/app-icon.png' ||
+      path === '/favicon.ico';
+    if (path === '/favicon.ico') {
+      assetUrl.pathname = '/favicon-32.png';
+    } else if (!isAsset) {
       assetUrl.pathname = '/index.html';
     }
     const res = await env.ASSETS.fetch(new Request(assetUrl.toString(), request));
