@@ -7,6 +7,11 @@ name = "anon-music-failover"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 
+# 绑定到正式域名（需 DNS 橙云）
+routes = [
+  { pattern = "music.saki.li/*", zone_name = "saki.li" }
+]
+
 [assets]
 directory = "./public"
 binding = "ASSETS"
