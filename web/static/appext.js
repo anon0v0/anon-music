@@ -414,7 +414,7 @@
       const disp = me.nickname || String(me.email).split('@')[0];
       // 未设 emoji 头像 → 默认用应用 logo（不再用邮箱首字母）
       const avInner = av ? `<div class="av av-emoji" title="编辑资料">${esc(av)}</div>`
-        : `<div class="av av-logo" title="编辑资料"><img src="/static/music-logo.png?v=20260707o" alt=""></div>`;
+        : `<div class="av av-logo" title="编辑资料"><img src="/static/music-logo.png?v=20260721e" alt=""></div>`;
       box.innerHTML = `<div class="user">${avInner}
         <div class="em" title="${esc(me.email)}（点击编辑资料）">${esc(disp)}</div><button class="lo">登出</button></div>`;
       box.querySelector('.lo').onclick = async () => { await api('/api/auth/logout', { method: 'POST' }); location.reload(); };

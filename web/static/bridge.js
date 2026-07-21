@@ -84,7 +84,7 @@
   let maintenanceBusy = false;
   let maintenanceMounted = false;
   let maintenanceRoot = null;
-  const maintenanceVersion = '20260721d';
+  const maintenanceVersion = '20260721e';
 
   function maintenanceMarkup() {
     return `<main id="maintenanceRoot" class="maintenance-layer" data-state="offline">

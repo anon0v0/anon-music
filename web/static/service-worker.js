@@ -6,15 +6,15 @@
  *  - 跨源(CDN 音频/封面) → 不拦截，放行
  *  bump CACHE 版本即可整体失效旧缓存（activate 时清理）。
  */
-const CACHE = 'anon-cache-v14';
+const CACHE = 'anon-cache-v15';
 const OFFLINE_URL = '/music';
 const MAINTENANCE_URL = '/maintenance';
 const MAINTENANCE_ASSETS = [
   MAINTENANCE_URL,
-  '/static/maintenance.css?v=20260721d',
-  '/static/maintenance.js?v=20260721c',
-  '/static/app-icon.png?v=20260721c',
-  '/static/favicon-32.png?v=20260721c',
+  '/static/maintenance.css?v=20260721e',
+  '/static/maintenance.js?v=20260721e',
+  '/static/app-icon.png?v=20260721e',
+  '/static/favicon-32.png?v=20260721e',
 ];
 
 self.addEventListener('install', (event) => {
