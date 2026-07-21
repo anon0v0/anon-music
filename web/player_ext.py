@@ -21,7 +21,6 @@ import secrets
 import threading
 import ipaddress
 import socket
-import contextvars
 from urllib.parse import urlsplit, urlunsplit
 from email.message import EmailMessage
 
@@ -36,9 +35,8 @@ except Exception:
 
 router = APIRouter()
 
-# 生产默认音源仅由服务端环境变量提供。它不会通过任何用户 API 返回。
+# 生产网易云兼容音源仅由服务端环境变量提供，不对前端暴露、也不支持用户自定义。
 DEFAULT_NCM_BASE = os.environ.get("ANON_MUSIC_DEFAULT_NCM_BASE", "http://127.0.0.1:3000").rstrip("/")
-_NCM_BASE_CONTEXT = contextvars.ContextVar("anon_music_ncm_base", default=DEFAULT_NCM_BASE)
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE_PATH = os.environ.get("ANON_MUSIC_DEVICE", os.path.join(_BASE_DIR, "data", "qq_device.json"))
 DB_PATH = os.environ.get("ANON_MUSIC_DB", os.path.join(_BASE_DIR, "data", "player_data.db"))
@@ -141,9 +139,7 @@ async def ncm_get(
         request = None
         path = str(request_or_path)
         query = path_or_params if isinstance(path_or_params, dict) else (params or {})
-    base_url = get_ncm_base(request) if request is not None else _NCM_BASE_CONTEXT.get()
-    if base_url.rstrip("/") != DEFAULT_NCM_BASE:
-        base_url = _validate_custom_source_runtime(base_url)
+    base_url = DEFAULT_NCM_BASE
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as c:
         r = await c.get(f"{base_url}/{path.lstrip('/')}", params=query)
         if r.status_code == 200:
@@ -503,12 +499,6 @@ def init_db():
             CREATE TABLE IF NOT EXISTS user_settings (
                 user_id INTEGER PRIMARY KEY, settings_json TEXT NOT NULL
             );
-            CREATE TABLE IF NOT EXISTS user_sources (
-                user_id INTEGER PRIMARY KEY,
-                enabled INTEGER NOT NULL DEFAULT 0,
-                base_url TEXT NOT NULL DEFAULT '',
-                updated_at REAL NOT NULL
-            );
             CREATE TABLE IF NOT EXISTS liked (
                 user_id INTEGER NOT NULL DEFAULT 0, mid TEXT NOT NULL,
                 song_json TEXT NOT NULL, added_at REAL NOT NULL,
@@ -629,115 +619,8 @@ def require_uid(request: Request) -> int:
     return uid
 
 
-def _normalize_custom_source_url(value: object) -> str:
-    raw = str(value or "").strip().rstrip("/")
-    try:
-        parsed = urlsplit(raw)
-    except Exception:
-        raise HTTPException(400, "音源地址格式无效")
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise HTTPException(400, "音源地址必须是 http(s) URL")
-    if parsed.username or parsed.password or parsed.query or parsed.fragment:
-        raise HTTPException(400, "音源地址不能包含账号、查询参数或片段")
-    host = parsed.hostname.rstrip(".").lower()
-    if host == "localhost":
-        raise HTTPException(400, "音源地址必须指向公网服务")
-    try:
-        addresses = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80))
-    except OSError:
-        raise HTTPException(400, "音源域名无法解析")
-    for result in addresses:
-        try:
-            if not ipaddress.ip_address(result[4][0]).is_global:
-                raise HTTPException(400, "音源地址必须指向公网服务")
-        except ValueError:
-            raise HTTPException(400, "音源域名解析结果无效")
-    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", ""))
-
-
-def _validate_custom_source_runtime(base_url: str) -> str:
-    """每次向用户音源发请求前重新解析 DNS，阻断保存后 DNS rebinding。"""
-    try:
-        return _normalize_custom_source_url(base_url)
-    except HTTPException as exc:
-        raise HTTPException(502, "music source unavailable") from exc
-
-
-def get_ncm_base(request: Request | None) -> str:
-    if request is None:
-        return DEFAULT_NCM_BASE
-    uid = current_uid(request)
-    if not uid:
-        return DEFAULT_NCM_BASE
-    with _conn() as c:
-        row = c.execute(
-            "SELECT enabled,base_url FROM user_sources WHERE user_id=?", (uid,)
-        ).fetchone()
-    if row and row["enabled"] and row["base_url"]:
-        return row["base_url"].rstrip("/")
-    return DEFAULT_NCM_BASE
-
-
-def _custom_source_view(row=None) -> dict:
-    if not row:
-        return {"enabled": False, "configured": False, "base_url": ""}
-    base_url = row["base_url"] or ""
-    return {
-        "enabled": bool(row["enabled"] and base_url),
-        "configured": bool(base_url),
-        "base_url": base_url,
-    }
-
-
-@router.get("/api/settings/source")
-def get_custom_source(request: Request):
-    uid = require_uid(request)
-    with _conn() as c:
-        row = c.execute(
-            "SELECT enabled,base_url FROM user_sources WHERE user_id=?", (uid,)
-        ).fetchone()
-    return {"code": 0, "data": _custom_source_view(row)}
-
-
-@router.put("/api/settings/source")
-def put_custom_source(request: Request, body: dict = Body(...)):
-    uid = require_uid(request)
-    enabled = bool((body or {}).get("enabled", True))
-    base_url = _normalize_custom_source_url((body or {}).get("base_url"))
-    with _db_lock, _conn() as c:
-        c.execute(
-            "INSERT OR REPLACE INTO user_sources(user_id,enabled,base_url,updated_at) VALUES (?,?,?,?)",
-            (uid, 1 if enabled else 0, base_url, time.time()),
-        )
-    return {"code": 0, "data": {"enabled": enabled, "configured": True, "base_url": base_url}}
-
-
-@router.delete("/api/settings/source")
-def delete_custom_source(request: Request):
-    uid = require_uid(request)
-    with _db_lock, _conn() as c:
-        c.execute("DELETE FROM user_sources WHERE user_id=?", (uid,))
-    return {"code": 0, "data": _custom_source_view()}
-
-
-def begin_request_source(request: Request):
-    return _NCM_BASE_CONTEXT.set(get_ncm_base(request))
-
-
-def end_request_source(token) -> None:
-    _NCM_BASE_CONTEXT.reset(token)
-
-
 def current_ncm_url(path: str) -> str:
-    return f"{_NCM_BASE_CONTEXT.get()}/{str(path).lstrip('/')}"
-
-
-def validate_current_ncm_source() -> str:
-    """供 main.py 中仍使用 current_ncm_url() 的旧路由执行请求前 DNS 复验。"""
-    base_url = _NCM_BASE_CONTEXT.get().rstrip("/")
-    if base_url != DEFAULT_NCM_BASE:
-        return _validate_custom_source_runtime(base_url)
-    return base_url
+    return f"{DEFAULT_NCM_BASE}/{str(path).lstrip('/')}"
 
 
 def _new_session(uid: int) -> str:

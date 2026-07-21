@@ -475,7 +475,6 @@
       <button data-t="play">播放</button>
       <button data-t="theme">主题</button>
       <button data-t="bgimg">背景</button>
-      ${me ? '<button data-t="source">自定义音源</button>' : ''}
       ${TAURI ? '<button data-t="app">应用</button>' : ''}
     </div>
     <div class="set-panel" id="setPanel"></div>`, 'set');
@@ -621,48 +620,6 @@
         e.target.classList.toggle('on', S.queueMode === 'append');
         saveSettings();
       };
-    } else if (tab === 'source') {
-      p.innerHTML = `<div class="set-block source-settings"><div class="lbl">网易云兼容 API 地址</div>
-        <div class="bgurl-row"><input id="sourceUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://your-api.example.com"><button id="sourceSave">保存</button></div>
-        <div id="sourceState" style="color:var(--muted);font-size:13px;padding-top:10px">正在读取个人设置…</div>
-        <div class="set-row" style="margin-top:12px"><span class="set-label">使用我的自定义音源</span><div class="sw" id="sourceEnabled"></div></div>
-        <button class="preview-btn" id="sourceReset" style="margin-top:10px">恢复默认音源</button>
-        <div style="color:var(--muted);font-size:13px;padding-top:12px;line-height:1.6">仅登录用户可设置，配置跟随账号保存。默认音源地址不会展示，也不会写入客户端或开源仓库。未登录用户始终使用默认音源。</div></div>`;
-      const input = p.querySelector('#sourceUrl'), state = p.querySelector('#sourceState');
-      const enabled = p.querySelector('#sourceEnabled');
-      let current = { enabled: false, configured: false, base_url: '' };
-      const paint = () => {
-        input.value = current.base_url || '';
-        enabled.classList.toggle('on', !!current.enabled);
-        state.textContent = current.configured ? (current.enabled ? '当前正在使用你的自定义音源' : '已保存，但当前未启用') : '当前使用网站默认音源';
-      };
-      const load = async () => {
-        try { const r = await api('/api/settings/source'); if (r && r.data) current = r.data; paint(); }
-        catch (_) { state.textContent = '读取失败，请重新登录后再试'; }
-      };
-      p.querySelector('#sourceSave').onclick = async () => {
-        const url = (input.value || '').trim();
-        if (!/^https?:\/\//i.test(url)) { if (window.appNotice) window.appNotice('请输入 http(s) 开头的音源地址', 'warning'); return; }
-        try {
-          const r = await api('/api/settings/source', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: true, base_url: url }) });
-          if (!r || r.code !== 0) throw new Error((r && r.detail) || '保存失败');
-          current = r.data; paint(); if (window.appNotice) window.appNotice('自定义音源已保存');
-        } catch (e) { if (window.appNotice) window.appNotice(e.message || '音源保存失败', 'error'); }
-      };
-      enabled.onclick = async () => {
-        if (!current.configured) { if (window.appNotice) window.appNotice('请先填写并保存音源地址', 'warning'); return; }
-        try {
-          const r = await api('/api/settings/source', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !current.enabled, base_url: current.base_url }) });
-          if (!r || r.code !== 0) throw new Error('切换失败'); current = r.data; paint();
-        } catch (e) { if (window.appNotice) window.appNotice(e.message || '音源切换失败', 'error'); }
-      };
-      p.querySelector('#sourceReset').onclick = async () => {
-        const ok = window.appConfirm ? await window.appConfirm({ title: '恢复默认音源', message: '将删除你的自定义音源配置，之后继续使用网站默认音源。', okText: '恢复默认', danger: true }) : false;
-        if (!ok) return;
-        try { const r = await api('/api/settings/source', { method: 'DELETE' }); if (!r || r.code !== 0) throw new Error('恢复失败'); current = r.data; paint(); if (window.appNotice) window.appNotice('已恢复默认音源'); }
-        catch (e) { if (window.appNotice) window.appNotice(e.message || '恢复默认音源失败', 'error'); }
-      };
-      load();
     } else if (tab === 'app') {
       const tray = localStorage.getItem('closeToTray') !== '0';   // 默认最小化到托盘
       p.innerHTML = `<div class="set-row"><span class="set-label">关闭按钮 = 最小化到托盘</span>${swHTML(tray)}</div>
@@ -679,7 +636,6 @@
   // 单页设置：所有类目一次渲染成各 section，顶部标签变成锚点导航（点击滚动到对应 section）
   function settingTabs() {
     const tabs = [['desktop', '桌面歌词'], ['word', '逐字歌词'], ['quality', '音质'], ['play', '播放'], ['theme', '主题'], ['bgimg', '背景']];
-    if (me) tabs.push(['source', '自定义音源']);
     if (TAURI) tabs.push(['app', '应用']);
     return tabs;
   }
