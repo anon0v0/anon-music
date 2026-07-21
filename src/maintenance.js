@@ -52,9 +52,18 @@
     if (!quiet) setStatus('checking', '网站正在维护', '维护完成后会自动返回，等待时来玩一局小游戏吧。');
     try {
       const sep = health.includes('?') ? '&' : '?';
-      const res = await fetch(`${health}${sep}_=${Date.now()}`, {
+      // 备用站可能跨域探测正式 healthz：用 cors + 不带 cookie
+      let healthUrl = health;
+      try {
+        healthUrl = new URL(health, location.href).href;
+      } catch (_) {}
+      const crossOrigin = (() => {
+        try { return new URL(healthUrl).origin !== location.origin; } catch (_) { return false; }
+      })();
+      const res = await fetch(`${healthUrl}${sep}_=${Date.now()}`, {
         cache: 'no-store',
-        credentials: 'same-origin',
+        credentials: crossOrigin ? 'omit' : 'same-origin',
+        mode: crossOrigin ? 'cors' : 'same-origin',
         signal: AbortSignal.timeout ? AbortSignal.timeout(6500) : undefined,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

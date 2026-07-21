@@ -131,9 +131,31 @@ async def security_headers(request: Request, call_next):
     return response
 
 
-@app.get("/healthz", include_in_schema=False)
+@app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
 async def healthz():
-    return {"status": "ok"}
+    # 允许备用维护站跨域探测；仅暴露存活状态，不带凭据。
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        {"status": "ok"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@app.options("/healthz", include_in_schema=False)
+async def healthz_options():
+    from fastapi.responses import Response
+    return Response(
+        status_code=204,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Max-Age": "600",
+        },
+    )
 
 
 @app.get("/readyz", include_in_schema=False)
