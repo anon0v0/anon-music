@@ -1,96 +1,150 @@
 # Anon Music
 
-Anon Music 是一个自托管双音源音乐网页播放器，并提供基于 Tauri 2 的 Windows 和 Android 客户端外壳。
+<p align="center">
+  <img src="newlogo.png" alt="Anon Music" width="128" height="128" />
+</p>
 
-## 仓库内容
+<p align="center">
+  <strong>自托管双音源音乐播放器</strong><br/>
+  网页 + Windows 桌面 + Android，一套服务端，多端同体验
+</p>
 
-```text
-├── src/                 # Tauri 页面和启动界面
-├── src-tauri/           # Rust/Tauri 配置
-├── scripts/             # APP_URL 注入及 Android 构建脚本
-├── .github/workflows/   # EXE/MSI/APK 自动构建
-└── web/                 # FastAPI 网页后端与完整播放器
-```
+Anon Music 把 **QQ 音乐** 与 **网易云兼容 API** 聚合到同一个暗色播放器里：搜索、歌单、歌词、账号收藏、一起听，以及可选的桌面歌词与本地下载。服务端是 FastAPI；Windows / Android 客户端是 Tauri 2 外壳，加载你自己部署的网页地址，**不在客户端里塞音源密钥**。
+
+> 本仓库面向**自托管**。请自行部署体验；暂不提供公共演示站（避免把个人生产环境暴露成公开 Demo，也减少滥用与版权风险）。
+
+---
+
+## 功能一览
+
+| 能力 | 说明 |
+|------|------|
+| 双音源 | QQ 音乐 + 网易云兼容 API，搜索 / 播放 / 歌词 / 歌单 / 排行榜 |
+| 账号与库 | 登录后独立收藏、最近播放、自建歌单；未登录为公共共享数据 |
+| 一起听 | 多人同步播放房间 |
+| 歌词 | 逐字歌词、桌面歌词（桌面壳） |
+| 客户端 | 网页 / PWA；Windows EXE·MSI；Android APK（GitHub Actions 构建） |
+| 体验 | 暗色 UI、主题与背景、下载管理、维护页离线小游戏 |
+
+---
 
 ## 架构
 
-- `web/` 是实际网页服务：FastAPI、SQLite 和原生 JavaScript 播放器。
-- Tauri 客户端加载部署后的网页地址，不在客户端中保存服务器音源凭据。
-- GitHub Actions 根据仓库变量 `APP_URL` 构建 Windows 安装包和 Android APK。
-
-## 音源配置
-
-服务器通过环境变量保存一个私有默认网易云兼容 API：
-
-```dotenv
-ANON_MUSIC_DEFAULT_NCM_BASE=http://127.0.0.1:3000
+```text
+┌─────────────────┐     HTTPS      ┌──────────────────────┐
+│  浏览器 / PWA   │ ─────────────► │                      │
+│  Windows (Tauri)│                │   web/  FastAPI      │
+│  Android (Tauri)│ ─────────────► │   SQLite + 播放器    │
+└─────────────────┘   加载网页 URL  └──────────┬───────────┘
+                                              │
+                         ┌────────────────────┼────────────────────┐
+                         ▼                    ▼                    ▼
+                  网易云兼容 API          QQMusicApi           你的 SMTP 等
+               (服务端私有地址)        (服务端登录凭据)         (可选)
 ```
 
-该地址不会通过网页 API、APK 或 EXE 返回。所有用户统一使用服务器默认音源，网页端不提供自定义音源入口。
+| 目录 | 作用 |
+|------|------|
+| [`web/`](web/) | 网页后端 + 完整播放器（核心） |
+| [`src-tauri/`](src-tauri/) | Tauri 2：托盘、下载、全局快捷键、Android 媒体控制 |
+| [`src/`](src/) | 壳内启动页（含维护 / 离线小游戏） |
+| [`scripts/`](scripts/) | 构建时注入 `APP_URL`、Android 注入脚本 |
+| [`.github/workflows/`](.github/workflows/) | 打 tag 或手动触发 → 产出 EXE / MSI / APK |
 
-QQ 音乐依赖服务器端账号凭据及设备状态，不属于简单 URL 音源；部署者需要自行完成 QQMusicApi 登录配置，凭据不会提交到仓库或下发给用户。
+详细部署、环境变量与测试见 **[`web/README.md`](web/README.md)**。
 
-完整部署、接口兼容要求、测试和隐私说明见 [`web/README.md`](web/README.md)。
+---
 
-## 网页后端快速启动
+## 快速开始（网页）
+
+需要：Python 3.10+、一台网易云兼容 API、可选 QQ 登录凭据。
 
 ```bash
 cd web
 python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 cp .env.example .env
-# 编辑 .env 后加载环境变量
-set -a && . ./.env && set +a
+# 编辑 .env：数据库路径、默认音源、管理员与 SMTP 等
+
+set -a && . ./.env && set +a   # Windows 请用你习惯的方式加载环境变量
 .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8080
 ```
 
-健康检查：
-
 ```bash
 curl http://127.0.0.1:8080/healthz
+# 浏览器打开 http://127.0.0.1:8080/music
 ```
 
-## 构建客户端
+生产建议：只监听回环 + Nginx/Caddy HTTPS 反代；密钥只放在服务器环境变量，**不要提交 `.env`**。
 
-安装依赖：
+---
+
+## 音源说明（必读）
+
+1. **网易云侧**  
+   服务端通过环境变量配置私有默认 API：
+
+   ```dotenv
+   ANON_MUSIC_DEFAULT_NCM_BASE=http://127.0.0.1:3000
+   ```
+
+   该地址**不会**通过网页接口、APK 或 EXE 下发。所有用户统一使用服务器默认音源；网页端**不提供**自定义音源设置。
+
+2. **QQ 音乐侧**  
+   依赖账号与设备状态，由部署者在服务端完成扫码 / 凭据配置，写入例如 `ANON_MUSIC_QQ_CREDENTIAL` 指定文件。凭据不得提交进 Git，也不得下发给普通用户。
+
+3. **合规**  
+   仅供学习与自用交流。请遵守各平台服务条款、版权法与所在地法律；勿将本项目用于未授权的商业分发。
+
+---
+
+## 构建 Windows / Android 客户端
+
+客户端**不打包你的后端**，只加载构建时注入的网页地址。
 
 ```bash
 npm install
-```
-
-本地桌面构建：
-
-```bash
+# 可选本地注入地址（CI 会用仓库变量 APP_URL）
+node scripts/set-app-url.mjs https://你的域名/music
 npm run tauri build
 ```
 
-GitHub Actions：
+### GitHub Actions
 
-1. 在仓库 `Settings → Secrets and variables → Actions → Variables` 中设置 `APP_URL`。
-2. 手动运行 `build` workflow，或推送 `v*` 标签。
-3. Windows job 生成 EXE/MSI；Android job 生成 APK。
-4. Android 稳定覆盖安装需要配置 `ANDROID_KEYSTORE_BASE64` Secret。
+1. 仓库 **Settings → Secrets and variables → Actions → Variables**  
+   设置 `APP_URL` = `https://你的域名/music`
+2. 手动跑 `build` workflow，或推送 `v*` 标签  
+3. Artifacts / Release 中下载 EXE、MSI、APK  
+4. Android 若要**稳定覆盖安装**，配置 Secret `ANDROID_KEYSTORE_BASE64`
 
-## 隐私与安全
+图标源文件为仓库根目录 **`newlogo.png`**；`tauri icon` 与网页 favicon / PWA 图标均由其生成。
 
-仓库不应包含：
+---
 
-- 数据库、用户资料和播放记录
-- QQ Cookie、musickey、refresh token 或设备 JSON
-- SMTP 密码、管理员哈希、GitHub Token
-- 真实 `.env`、生产日志和备份
-- Android keystore
+## 隐私与仓库卫生
 
-请只提交 `.env.example`。任何曾粘贴到聊天、Issue 或日志中的访问 Token 都应撤销并重新生成。
+请勿提交：
 
-## 版本
+- 数据库、用户资料、播放记录  
+- QQ Cookie / musickey / refresh token / 设备 JSON  
+- SMTP 密码、管理员哈希、GitHub Token  
+- 真实 `.env`、生产日志、备份、Android keystore  
 
-当前网页后端适配：
+只保留 `.env.example` 作模板。聊天或 Issue 里出现过的 Token 应立即作废并轮换。
 
-- 网易云 API Enhanced `4.37.0`
-- QQMusicApi `0.6.9`
-- niquests `3.20.1`
+---
+
+## 版本参考
+
+| 组件 | 版本 |
+|------|------|
+| 客户端 | Tauri 2（产品版本见 `src-tauri/tauri.conf.json`） |
+| QQ 接口库 | `qqmusic-api-python` **0.6.9** |
+| HTTP | `niquests` **3.20.1** |
+| 网易云上游（示例） | API Enhanced 系，以你实际部署为准 |
+
+---
 
 ## License
 
-本项目代码与第三方依赖分别遵循各自许可证。使用者应自行遵守平台服务条款、版权规则和所在地法律。
+本仓库代码与第三方依赖分别遵循各自许可证。使用即表示你理解并自行承担合规与运维责任。
