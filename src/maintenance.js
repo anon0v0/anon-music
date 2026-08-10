@@ -231,6 +231,6 @@
     resize(); reset();
   }
 
-  // 初次显示立即探测，此后每 15 秒自动恢复。
-  probe({ quiet: true });
+  // 初次显示立即探测；壳启动时首次成功就跳转，避免再等下一轮 15 秒探测。
+  probe({ navigate: true, quiet: true });
 })();
