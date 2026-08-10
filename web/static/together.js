@@ -4,7 +4,7 @@
    房主掉线自动转让（后端 _prune），角色变化时前端切换同步方向。guest 也能用（随机昵称）。 */
 (function () {
   'use strict';
-  const api = (p, o) => fetch(p, o).then(r => r.json());
+  const api = (p, o) => apiFetch(p, o).then(r => r.json());
   const esc = (t) => { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; };
   const attr = (t) => esc(t).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const jpost = (p, body) => api(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

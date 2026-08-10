@@ -77,71 +77,7 @@
   listen('shell-info', tryMountWinCtl);
   tryMountWinCtl();
 
-  // 当前页面已经加载后，如果中转节点或后端在运行中断开，连续健康检查失败后展示
-  // 本地维护遮罩和离线小游戏。恢复健康后自动隐藏，不破坏当前播放页状态。
-  const maintenanceHealth = '/healthz';
-  let maintenanceFails = 0;
-  let maintenanceBusy = false;
-  let maintenanceMounted = false;
-  let maintenanceRoot = null;
-  const maintenanceVersion = '20260721e';
-
-  function maintenanceMarkup() {
-    return `<main id="maintenanceRoot" class="maintenance-layer" data-state="offline">
-      <div class="maintenance-shell">
-        <section class="maintenance-game" aria-labelledby="gameTitle">
-          <header class="maintenance-notice">
-            <div class="maintenance-brand"><img class="maintenance-brand-icon" src="/static/app-icon.png?v=${maintenanceVersion}" alt="Anon Music"><div><strong>Anon Music</strong><span>网站维护中</span></div></div>
-            <div class="maintenance-message"><div class="maintenance-status-line"><i class="maintenance-pulse"></i><span data-role="state-label">网站正在维护</span></div><h1 id="maintenanceTitle" class="maintenance-title">音乐暂时按下了<em>暂停键</em></h1><p class="maintenance-copy" data-role="reason">维护完成后会自动返回，等待时来玩一局小游戏吧。</p></div>
-          </header>
-          <div class="maintenance-game-head"><div><div class="maintenance-game-kicker">维护小游戏</div><h2 id="gameTitle">节拍跑者</h2></div><div class="maintenance-game-help">点击画面、空格或 ↑ 跳跃</div></div>
-          <div class="maintenance-canvas-wrap"><canvas class="maintenance-canvas" data-role="game"></canvas><div class="maintenance-score"><span>本局</span><strong data-role="score">0</strong><small>最高 <b data-role="best">0</b></small></div><div class="maintenance-game-tip" data-role="game-tip">点击画面 / 空格 / ↑ 跳跃</div></div>
-          <div class="maintenance-game-foot"><span>躲开故障脉冲，坚持到网站恢复</span><span>按 <i class="maintenance-key">空格</i> 跳跃</span></div>
-        </section>
-      </div>
-    </main>`;
-  }
-
-  async function mountMaintenance() {
-    if (maintenanceMounted) { maintenanceRoot.hidden = false; return; }
-    maintenanceMounted = true;
-    const css = document.createElement('link');
-    css.rel = 'stylesheet'; css.href = `/static/maintenance.css?v=${maintenanceVersion}`;
-    document.head.appendChild(css);
-    const host = document.createElement('div'); host.innerHTML = maintenanceMarkup();
-    maintenanceRoot = host.firstElementChild; document.body.appendChild(maintenanceRoot);
-    window.ANON_MAINTENANCE = { embedded: true, root: maintenanceRoot, target: location.href, health: maintenanceHealth };
-    const script = document.createElement('script'); script.src = `/static/maintenance.js?v=${maintenanceVersion}`; document.body.appendChild(script);
-  }
-
-  async function healthTick(force = false) {
-    if (maintenanceBusy || document.visibilityState === 'hidden') return;
-    // 已在独立维护页时不要再叠一层遮罩，避免与自动跳转打架
-    if (document.body.classList.contains('maintenance-standalone')) return;
-    maintenanceBusy = true;
-    try {
-      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 5000);
-      const r = await fetch(`${maintenanceHealth}?_=${Date.now()}`, {
-        cache: 'no-store',
-        credentials: 'same-origin',
-        signal: ctl.signal,
-      }).finally(() => clearTimeout(t));
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      // 只有明确 ok/ready 才算恢复，避免被网关 HTML/缓存糊弄
-      let body = null;
-      try { body = await r.json(); } catch (_) {}
-      if (body && body.status && !['ok', 'ready'].includes(String(body.status).toLowerCase())) {
-        throw new Error('service not ready');
-      }
-      maintenanceFails = 0;
-      if (maintenanceRoot && !maintenanceRoot.hidden) maintenanceRoot.hidden = true;
-    } catch (e) {
-      maintenanceFails++;
-      // 提高阈值：避免偶发网络抖动就把播放器盖成维护页，造成“跳回去又回来”
-      if (force || maintenanceFails >= 4) mountMaintenance();
-    } finally { maintenanceBusy = false; }
-  }
-  window.addEventListener('offline', () => { maintenanceFails = 4; /* 真离线才遮罩 */ mountMaintenance(); });
-  window.addEventListener('online', () => { maintenanceFails = 0; healthTick(true); });
-  setInterval(healthTick, 20000);
+  // 壳内维护遮罩（"节拍跑者"离线小游戏）已移除：它靠 window 'offline' 事件无条件挂载，
+  // 而 WebView 启动瞬间常误报一次 offline（安卓无 ACCESS_NETWORK_STATE 时 navigator.onLine 恒 false），
+  // 导致明明联网也弹出小游戏、且要等 20s 轮询才消失。后端真挂时由反代 502→/maintenance 独立页承接。
 })();

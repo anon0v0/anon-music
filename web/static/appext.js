@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const $ = (s, r = document) => r.querySelector(s);
-  const api = (p, o) => fetch(p, o).then(r => r.json());
+  const api = (p, o) => apiFetch(p, o).then(r => r.json());
   // 同时转义引号：昵称/背景 URL 会回填进 value="…" 属性，textContent 不转引号会导致属性注入
   const esc = (t) => (t == null ? '' : String(t)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
@@ -402,6 +402,8 @@
     const path = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
     const body = authMode === 'login' ? { email, password: pwd } : { email, password: pwd, code };
     const r = await api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    // 壳内（跨源）拿不到 httponly cookie，把服务端回的 token 存起来，之后由 apiFetch 走 header
+    if (r.code === 0 && r.data && r.data.token) window.apiToken.set(r.data.token);
     if (r.code === 0) { authMsg('成功，正在进入…', true); setTimeout(() => location.reload(), 500); }
     else authMsg(r.detail || r.msg || '操作失败');
   };
@@ -417,7 +419,7 @@
         : `<div class="av av-logo" title="编辑资料"><img src="/static/music-logo.png?v=20260721e" alt=""></div>`;
       box.innerHTML = `<div class="user">${avInner}
         <div class="em" title="${esc(me.email)}（点击编辑资料）">${esc(disp)}</div><button class="lo">登出</button></div>`;
-      box.querySelector('.lo').onclick = async () => { await api('/api/auth/logout', { method: 'POST' }); location.reload(); };
+      box.querySelector('.lo').onclick = async () => { await api('/api/auth/logout', { method: 'POST' }); window.apiToken.set(''); location.reload(); };
       // 点头像/昵称 → 编辑资料（emoji 头像 + 昵称）
       box.querySelector('.av').onclick = openProfile;
       box.querySelector('.em').onclick = openProfile;

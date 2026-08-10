@@ -48,7 +48,7 @@
       <div class="myplaylists" id="favPlaylists"></div>
       <div class="spacer"></div>
       <div class="side-foot">
-        <div class="back-link" onclick="window.open('/go/download','_blank')" title="去下载歌曲"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <div class="back-link" onclick="window.open(apiUrl('/go/download'),'_blank')" title="去下载歌曲"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
         <button class="side-collapse" id="sideCollapse" title="收起侧边栏">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
@@ -204,21 +204,25 @@
     </div>
   </div>
 
-  <script src="/static/player.js?v=20260721a"></script>
+  <!-- API 出口统一层：必须先于所有业务脚本。网页端 API_BASE=''（同源，行为不变）；
+       原生壳的安装包里会注入 __ANON_API_BASE__ 指向远程站点 -->
+  <script src="/static/apibase.js?v=20260811a"></script>
+  <script src="/static/player.js?v=20260811a"></script>
   <script>
     window.player = NeteaseMiniPlayer.initPlayer(document.getElementById('globalPlayer'));
   </script>
-  <script src="/static/nowplaying.js?v=20260716i"></script>
-  <script src="/static/bridge.js?v=20260721a"></script>
+  <script src="/static/nowplaying.js?v=20260811a"></script>
+  <script src="/static/bridge.js?v=20260811a"></script>
   <script src="/static/theme.js?v=20260716b"></script>
-  <script src="/static/downloads.js?v=20260716b"></script>
+  <script src="/static/downloads.js?v=20260811a"></script>
   <script src="/static/local.js?v=20260716b"></script>
-  <script src="/static/together.js?v=20260716d"></script>
-  <script src="/static/app.js?v=20260721a"></script>
-  <script src="/static/appext.js?v=20260721a"></script>
-  <!-- 注册 PWA Service Worker（作用域 /，由根路径 /service-worker.js 提供） -->
+  <script src="/static/together.js?v=20260811a"></script>
+  <script src="/static/app.js?v=20260811a"></script>
+  <script src="/static/appext.js?v=20260811a"></script>
+  <!-- 注册 PWA Service Worker（作用域 /，由根路径 /service-worker.js 提供）。
+       打进安装包的壳里前端本来就是本地文件，不需要 SW，跳过。 -->
   <script>
-    if ('serviceWorker' in navigator) {
+    if (!window.IS_PACKED && 'serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
           .catch((e) => console.warn('SW 注册失败:', e));

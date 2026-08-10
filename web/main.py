@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 import uvicorn
 import asyncio
 import hashlib
@@ -98,6 +99,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ===== 源站 gzip =====
+# 公网链路是 中转(openresty) → 本机 8080，本机 nginx 的 gzip 配置对外不生效，
+# 所以压缩必须在源站做（首屏 JS/CSS 未压缩时约 528KB，压后约 153KB）。
+# 两类响应必须绕开：
+#  - /api/proxy_stream、/api/download：音频流式转发，带 Range/206，压缩会破坏分片与拖动进度
+#  - 图片/音频/字体：本身已压缩，再 gzip 只烧 CPU
+_GZIP_SKIP_PREFIXES = ("/api/proxy_stream", "/api/download")
+_GZIP_SKIP_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
+                       ".mp3", ".m4a", ".flac", ".woff", ".woff2", ".zip")
+
+
+class SelectiveGZipMiddleware(GZipMiddleware):
+    """只压文本类响应的 GZipMiddleware：流式媒体与二进制资源原样放行。"""
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            path = scope.get("path", "")
+            if path.startswith(_GZIP_SKIP_PREFIXES) or path.endswith(_GZIP_SKIP_SUFFIXES):
+                await self.app(scope, receive, send)
+                return
+        await super().__call__(scope, receive, send)
+
+
+app.add_middleware(SelectiveGZipMiddleware, minimum_size=1024, compresslevel=6)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

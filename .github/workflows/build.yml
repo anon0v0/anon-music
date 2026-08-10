@@ -52,6 +52,9 @@ jobs:
           workspaces: './src-tauri -> target'
       - name: Install JS deps
         run: npm ci --ignore-scripts
+      - name: Build packaged frontend (web/static -> src)
+        shell: bash
+        run: node scripts/build-frontend.mjs
       - name: Inject APP_URL
         if: env.APP_URL != ''
         shell: bash
@@ -104,6 +107,8 @@ jobs:
           workspaces: './src-tauri -> target'
       - name: Install JS deps
         run: npm ci
+      - name: Build packaged frontend (web/static -> src)
+        run: node scripts/build-frontend.mjs
       - name: Inject APP_URL
         if: env.APP_URL != ''
         run: |

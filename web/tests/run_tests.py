@@ -83,7 +83,14 @@ def asset_versioning():
     sw = (ROOT / "static" / "service-worker.js").read_text(encoding="utf-8")
     for asset in ("app.js", "appext.js", "player.js"):
         assert f"/static/{asset}?v=" in html
-    assert "reqUrl.pathname === '/music'" in sw
+    # apibase.js 必须先于所有业务脚本加载，否则 apiFetch/apiUrl 未定义 → 整页 ReferenceError
+    assert "/static/apibase.js" in html
+    assert html.index("/static/apibase.js") < html.index("/static/app.js")
+    # 导航请求只缓存播放器入口，不缓存任意页面
+    assert "url.pathname === '/music'" in sw
+    # stale-while-revalidate：命中缓存立即返回，同时后台拉新版写回
+    assert "const cached = cacheable ? await cache.match(OFFLINE_URL) : null" in sw
+    assert "event.waitUntil(fetching" in sw
     assert "res.ok" in sw
     assert "暂时无法连接" in sw
     assert "setInterval(()=>location.reload(),20000)" in sw

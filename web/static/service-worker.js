@@ -1,12 +1,13 @@
 /* Anon Music Service Worker
  * 缓存策略（务必配合 app.html 里的 ?v=YYYYMMDDx 热更新机制）：
- *  - 导航请求(/music, app.html) → network-first，离线兜底缓存，保证 ?v= bump 后总能拿到新壳
+ *  - 导航请求(/music, app.html) → stale-while-revalidate：有缓存就秒开，后台拉新版写回缓存，
+ *    下次启动即为新版（原本是 network-first，冷启动必须先等一次 TTFB，原生壳里表现为"开机转圈几秒"）
  *  - /static/*（带 ?v= 版本号）→ cache-first，按完整 URL(含版本)做键，新版本=新缓存条目
  *  - /api/*、/healthz、媒体流 → 不拦截，永远走网络（绝不缓存）
  *  - 跨源(CDN 音频/封面) → 不拦截，放行
  *  bump CACHE 版本即可整体失效旧缓存（activate 时清理）。
  */
-const CACHE = 'anon-cache-v16';
+const CACHE = 'anon-cache-v17';
 const OFFLINE_URL = '/music';
 
 self.addEventListener('install', (event) => {
@@ -41,21 +42,32 @@ self.addEventListener('fetch', (event) => {
     url.pathname === '/maintenance'
   ) return;
 
-  // 导航请求：network-first；失败时优先已缓存的播放器，绝不回退到会自动跳转的维护页
+  // 导航请求：stale-while-revalidate
+  //  有缓存 → 立即返回缓存壳（冷启动不再等网络），同时后台拉新版写回，下次启动生效
+  //  无缓存 → 走网络，成功则缓存；失败回退到内置提示页
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
+      const url = new URL(req.url);
+      const cacheable = url.pathname === '/music' || url.pathname === '/';
+      const cache = await caches.open(CACHE);
+      const cached = cacheable ? await cache.match(OFFLINE_URL) : null;
+
+      // 后台（或前台，取决于有没有缓存）取新版
+      const fetching = fetch(req, { cache: 'no-store' })
+        .then(async (res) => {
+          if (res.ok && cacheable) await cache.put(OFFLINE_URL, res.clone());
+          return res;
+        });
+
+      if (cached) {
+        // 缓存命中：立刻返回，更新在后台跑完；失败也不影响本次启动
+        event.waitUntil(fetching.catch(() => {}));
+        return cached;
+      }
+
       try {
-        const res = await fetch(req, { cache: 'no-store' });
-        const reqUrl = new URL(req.url);
-        if (res.ok && (reqUrl.pathname === '/music' || reqUrl.pathname === '/')) {
-          const cache = await caches.open(CACHE);
-          cache.put(OFFLINE_URL, res.clone());
-        }
-        return res;
+        return await fetching;
       } catch (err) {
-        const cache = await caches.open(CACHE);
-        const cached = await cache.match(OFFLINE_URL);
-        if (cached) return cached;
         return new Response(
           '<!doctype html><meta charset="utf-8"><title>Anon Music 离线</title>' +
           '<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#07111f;color:#e8f1ff;font-family:system-ui,sans-serif">' +

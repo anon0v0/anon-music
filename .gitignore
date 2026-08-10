@@ -44,3 +44,8 @@ uploads/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# v0.8 起 src/static 与 src/index.html 由 scripts/build-frontend.mjs 从 web/static 生成，
+# 属于构建产物，不入库（避免仓库里存两份同样的前端）。
+src/static/
+src/index.html

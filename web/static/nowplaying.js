@@ -493,7 +493,7 @@
         } catch (e) { this._applyBg(null); }
       };
       img.onerror = () => this._applyBg(null);
-      img.src = '/api/img?url=' + encodeURIComponent(picUrl);
+      img.src = apiUrl('/api/img?url=' + encodeURIComponent(picUrl));
     }
     _applyBg(c) {
       if (!c) {
