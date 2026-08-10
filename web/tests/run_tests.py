@@ -67,7 +67,7 @@ def main_security():
     config = (ROOT / "player_config.py").read_text(encoding="utf-8")
     assert 'allow_origins=["*"]' not in source
     assert 'crc2548' not in source + config
-    for token in ["docs_url=None", "redoc_url=None", "openapi_url=None", '@app.get("/healthz",', '@app.get("/readyz",']:
+    for token in ["docs_url=None", "redoc_url=None", "openapi_url=None", '"/healthz"', '@app.get("/readyz",']:
         assert token in source, token
     ast.parse(source)
 
@@ -85,8 +85,8 @@ def asset_versioning():
         assert f"/static/{asset}?v=" in html
     assert "reqUrl.pathname === '/music'" in sw
     assert "res.ok" in sw
-    assert "MAINTENANCE_URL" in sw
-    assert "maintenance.css" in sw and "maintenance.js" in sw
+    assert "暂时无法连接" in sw
+    assert "setInterval(()=>location.reload(),20000)" in sw
 
 
 def playlist_management():

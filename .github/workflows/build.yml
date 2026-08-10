@@ -11,10 +11,8 @@ permissions:
   contents: write
 
 env:
-  # 在仓库 Settings ▸ Secrets and variables ▸ Actions ▸ Variables 里建一个
-  # 名为 APP_URL 的变量，值=你的对外地址（如 https://music.yourdomain.com/music）。
-  # 不设也能构建，但会用占位域名（装出来打不开），所以请务必设置。
-  APP_URL: ${{ vars.APP_URL }}
+  # 官方发布包固定走家宽 DDNS 直连入口，避免继承仓库里已经过期的 APP_URL 变量。
+  APP_URL: https://dl.2407365.xyz:4443/music
 
 jobs:
   # ---------- Web 后端：语法、隐私配置与回归测试 ----------
