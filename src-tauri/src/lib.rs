@@ -28,25 +28,6 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-/// 本地维护页确认远端健康后，通过受控命令导航主窗口。
-/// 仅允许构建脚本写入的受信任 origin，避免本地页面取得任意导航能力。
-#[tauri::command]
-fn open_music(app: tauri::AppHandle, url: String) -> Result<(), String> {
-    use tauri::Manager;
-    let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
-    if !matches!(parsed.scheme(), "http" | "https") {
-        return Err("unsupported target scheme".into());
-    }
-    let trusted = option_env!("ANON_MUSIC_APP_ORIGIN").unwrap_or("");
-    if !trusted.is_empty() && parsed.origin().ascii_serialization() != trusted {
-        return Err("untrusted target origin".into());
-    }
-    let window = app
-        .get_webview_window("main")
-        .ok_or("main window unavailable")?;
-    window.navigate(parsed).map_err(|e| e.to_string())
-}
-
 // ============ P6 桌面端helpers：下载目录持久化 + 流式下载 ============
 #[cfg(desktop)]
 fn dl_dir_path(app: &tauri::AppHandle) -> std::path::PathBuf {
@@ -723,7 +704,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, open_music])
+        .invoke_handler(tauri::generate_handler![greet])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app, _event| {

@@ -14,25 +14,12 @@ const parsed = new URL(url);
 const origin = parsed.origin;
 const secureScheme = parsed.protocol === 'https:' ? 'https' : 'http';
 
-// 1) 主窗口地址
+// 1) 主窗口直接加载播放器地址，不再经过本地“网站维护中”页面。
 const confPath = new URL('../src-tauri/tauri.conf.json', import.meta.url);
 const conf = JSON.parse(readFileSync(confPath, 'utf8'));
-// 主窗口先加载随安装包提供的本地维护页。Rust 启动探针确认服务健康后再导航到远程 URL，
-// 中转/源站不可达时就不会落入 WebView 自带的生硬网络错误页。
-conf.app.windows[0].url = 'index.html';
+conf.app.windows[0].url = url;
 writeFileSync(confPath, JSON.stringify(conf, null, 2) + '\n');
-console.log('window bootstrap -> index.html');
-
-// 1.1) 把目标和健康检查地址注入本地维护页。
-const shellPath = new URL('../src/index.html', import.meta.url);
-let shell = readFileSync(shellPath, 'utf8');
-const health = new URL('/healthz', origin).href;
-shell = shell
-  .replace(/data-target="[^"]*"/, `data-target="${url.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`)
-  .replace(/data-health="[^"]*"/, `data-health="${health}"`);
-writeFileSync(shellPath, shell);
-console.log('maintenance target ->', url);
-console.log('maintenance health ->', health);
+console.log('window url ->', url);
 
 // 2) 远程 IPC 白名单（仅同源 origin）
 const capPath = new URL('../src-tauri/capabilities/remote.json', import.meta.url);

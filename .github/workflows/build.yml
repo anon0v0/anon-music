@@ -30,8 +30,8 @@ jobs:
           cd web
           python -m compileall -q main.py player_ext.py player_features.py player_together.py player_config.py tests
           for f in static/*.js; do node --check "$f"; done
-      - name: Client bootstrap regression test
-        run: node scripts/test-maintenance-startup.mjs
+      - name: Client direct-startup regression test
+        run: node scripts/test-direct-startup.mjs
       - name: Web regression tests
         run: |
           cd web
