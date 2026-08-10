@@ -10,7 +10,9 @@ if (!url || !/^https?:\/\//.test(url)) {
   console.error('用法: node scripts/set-app-url.mjs <https://你的域名/music>');
   process.exit(1);
 }
-const origin = new URL(url).origin;
+const parsed = new URL(url);
+const origin = parsed.origin;
+const secureScheme = parsed.protocol === 'https:' ? 'https' : 'http';
 
 // 1) 主窗口地址
 const confPath = new URL('../src-tauri/tauri.conf.json', import.meta.url);
@@ -35,6 +37,8 @@ console.log('maintenance health ->', health);
 // 2) 远程 IPC 白名单（仅同源 origin）
 const capPath = new URL('../src-tauri/capabilities/remote.json', import.meta.url);
 const cap = JSON.parse(readFileSync(capPath, 'utf8'));
-cap.remote.urls = [origin];
+// Tauri remote URL patterns do not include the port component.
+// Keep scheme + hostname here; the main-window URL still retains :4443.
+cap.remote.urls = [`${secureScheme}://${parsed.hostname}`];
 writeFileSync(capPath, JSON.stringify(cap, null, 2) + '\n');
-console.log('remote ipc allowlist ->', origin);
+console.log('remote ipc allowlist ->', cap.remote.urls[0]);
