@@ -601,8 +601,24 @@ def verify_pw(pw: str, salt: str, h: str) -> bool:
     return hmac.compare_digest(calc, h)
 
 
+def session_token(request: Request) -> str:
+    """取会话 token：先 header 后 cookie。
+
+    原生壳（Tauri APK/EXE）把前端打进安装包，页面 origin 是 tauri.localhost，
+    对本站是跨站请求——httponly + SameSite=Lax 的 cookie 带不过来，安卓 WebView
+    默认还会拦第三方 cookie。所以壳内改用 header 传 token（存在壳的 localStorage）。
+    浏览器端不发这个 header，照旧走 cookie，行为完全不变。
+    """
+    auth = request.headers.get("authorization") or ""
+    if auth[:7].lower() == "bearer ":
+        tok = auth[7:].strip()
+        if tok:
+            return tok
+    return request.headers.get("x-anon-session") or request.cookies.get(COOKIE) or ""
+
+
 def current_uid(request: Request) -> int:
-    tok = request.cookies.get(COOKIE)
+    tok = session_token(request)
     if not tok:
         return 0
     with _conn() as c:
@@ -695,7 +711,8 @@ def auth_register(response: Response, body: dict = Body(...)):
         c.execute("DELETE FROM email_codes WHERE email=?", (email,))
     tok = _new_session(uid)
     response.set_cookie(COOKIE, tok, max_age=SESSION_DAYS * 86400, httponly=True, secure=True, samesite="lax")
-    return {"code": 0, "data": {"id": uid, "email": email}}
+    # token 同时回给 body：原生壳拿不到 httponly cookie，改存 localStorage 并用 header 发回
+    return {"code": 0, "data": {"id": uid, "email": email, "token": tok}}
 
 
 @router.post("/api/auth/login")
@@ -708,12 +725,12 @@ def auth_login(response: Response, body: dict = Body(...)):
         raise HTTPException(401, "邮箱或密码错误")
     tok = _new_session(u["id"])
     response.set_cookie(COOKIE, tok, max_age=SESSION_DAYS * 86400, httponly=True, secure=True, samesite="lax")
-    return {"code": 0, "data": {"id": u["id"], "email": u["email"]}}
+    return {"code": 0, "data": {"id": u["id"], "email": u["email"], "token": tok}}
 
 
 @router.post("/api/auth/logout")
 def auth_logout(request: Request, response: Response):
-    tok = request.cookies.get(COOKIE)
+    tok = session_token(request)
     if tok:
         with _db_lock, _conn() as c:
             c.execute("DELETE FROM sessions WHERE token=?", (tok,))

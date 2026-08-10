@@ -907,7 +907,7 @@ class NeteaseMiniPlayer {
         const queryString = new URLSearchParams(params).toString();
         const url = `/api/netease${endpoint}${queryString ? '?' + queryString : ''}`;
         try {
-            const response = await fetch(url, { credentials: 'same-origin' });
+            const response = await apiFetch(url);
             const data = await response.json();
             if (!response.ok || data.code !== 200) {
                 throw new Error(`API错误: ${data.code || response.status}`);
@@ -1218,15 +1218,15 @@ class NeteaseMiniPlayer {
         }
         if (this.currentSong && this.currentSong.url) {
             console.log('使用传入的QQ音乐URL:', this.currentSong.url);
-            this.audio.src = this.currentSong.url;
+            this.audio.src = apiUrl(this.currentSong.url);
             return;
         }
         try {
-            const response = await fetch(`/api/song_url?mid=${songId}&quality=${this.quality || 'standard'}`);
+            const response = await apiFetch(`/api/song_url?mid=${songId}&quality=${this.quality || 'standard'}`);
             const json = await response.json();
             if (json.code === 0 && json.url) {
                 if (this.currentSong) this.currentSong.url = json.url;
-                this.audio.src = json.url;
+                this.audio.src = apiUrl(json.url);
                 return;
             }
         } catch (e) {
@@ -1306,7 +1306,7 @@ class NeteaseMiniPlayer {
      */
     async loadLyrics(songId) {
         try {
-            const response = await fetch(`/api/lyric?mid=${songId}`);
+            const response = await apiFetch(`/api/lyric?mid=${songId}`);
             const json = await response.json();
             if (json.code === 0 && (json.lyric || json.qrc || json.yrc)) {
                 this.parseLyrics({

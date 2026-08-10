@@ -72,7 +72,7 @@
   async function runBrowser(t) {
     t.status = 'running'; save(); rerender();
     try {
-      const resp = await fetch(t.url);
+      const resp = await apiFetch(t.url);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       t.total = +(resp.headers.get('content-length') || 0);
       let blob;
@@ -175,7 +175,7 @@
     let url = t.url;
     if (t.mid) {
       try {
-        const r = await fetch('/api/song_url?mid=' + encodeURIComponent(t.mid) + '&quality=' + encodeURIComponent(t.quality || 'standard')).then(x => x.json());
+        const r = await apiFetch('/api/song_url?mid=' + encodeURIComponent(t.mid) + '&quality=' + encodeURIComponent(t.quality || 'standard')).then(x => x.json());
         if (r && r.code === 0 && r.url) url = r.url;
       } catch (e) {}
     }

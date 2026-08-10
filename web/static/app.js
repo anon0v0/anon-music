@@ -46,7 +46,7 @@
   const attr = (t) => esc(t).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const picOf = (s) => attr(httpsify(s.pic || s.picUrl) || IMG_PLACEHOLDER);
   async function api(path, opts) {
-    const r = await fetch(path, opts);
+    const r = await apiFetch(path, opts);
     return r.json();
   }
   // 统一通知/确认框：替代浏览器原生 alert/confirm/prompt。
@@ -224,7 +224,7 @@
       // r.url 现在是官方 CDN 直链（QQ/网易都直连，不经服务器）。浏览器内直连 CDN 取流→Blob 保存：
       // 下载流量不过本服务器、同时保留正确文件名（QQ/网易 CDN 均 CORS 全开，fetch 可跨域读取）。
       try {
-        const resp = await fetch(r.url);
+        const resp = await apiFetch(r.url);
         if (!resp.ok) throw new Error('http ' + resp.status);
         const blob = await resp.blob();
         const obj = URL.createObjectURL(blob);
@@ -764,8 +764,9 @@
       if (cur && acc >= 5) {
         const payload = JSON.stringify({ song: { id: cur.id, name: cur.name || '', artist: cur.artists || '', pic: cur.picUrl || '' }, secs: Math.round(acc) });
         try {
-          if (navigator.sendBeacon) navigator.sendBeacon('/api/stats/play', new Blob([payload], { type: 'application/json' }));
-          else fetch('/api/stats/play', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+          // 壳内（跨源）走 apiFetch 带 token；sendBeacon 设不了 header，只在网页端用
+          if (!window.IS_PACKED && navigator.sendBeacon) navigator.sendBeacon('/api/stats/play', new Blob([payload], { type: 'application/json' }));
+          else apiFetch('/api/stats/play', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: payload });
         } catch (e) {}
       }
       acc = 0;
@@ -1605,7 +1606,7 @@
           : c.map(v => Math.round(Math.min(255, v * 1.1 + 35)));
       } catch (e) {}
     };
-    img.src = '/api/img?url=' + encodeURIComponent(picUrl);
+    img.src = apiUrl('/api/img?url=' + encodeURIComponent(picUrl));
   }
   function sizeViz(cv) { if (!cv) return; const w = cv.clientWidth || cv.offsetWidth, hh = cv.clientHeight || cv.offsetHeight; if (w && (cv.width !== w || cv.height !== hh)) { cv.width = w; cv.height = hh || 40; } }
   // 频谱样式（设置 → 播放器样式）：off/classic/wave/lines/columns/flame/radial/particles

@@ -1,8 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window",
-  "windows": ["main"],
+  "description": "主窗口能力。v0.8 起前端随包分发，页面是本地 index.html，不再匹配 remote.json 的远程白名单，所以自绘标题栏用的窗口控制权限必须都在这里（core:default 只含只读窗口命令）。",
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:event:default",
@@ -10,6 +12,7 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "core:window:allow-start-dragging",
-    "opener:default"
+    "opener:default",
+    "core:window:allow-internal-toggle-maximize"
   ]
 }

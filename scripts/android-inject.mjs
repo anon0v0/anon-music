@@ -53,6 +53,9 @@ if (!mani.includes('MusicService')) {
     'android.permission.WAKE_LOCK',
     'android.permission.POST_NOTIFICATIONS',
     'android.permission.SYSTEM_ALERT_WINDOW', // App 外悬浮歌词
+    // 没有它 WebView 的 navigator.onLine 恒为 false（一直被当成离线），
+    // 页面里任何 online/offline 判断都会误判。
+    'android.permission.ACCESS_NETWORK_STATE',
   ]
     .map((p) => `    <uses-permission android:name="${p}" />`)
     .join('\n')

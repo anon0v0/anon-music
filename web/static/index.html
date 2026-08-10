@@ -587,6 +587,8 @@
             }
         }
     </script>
+    <!-- API 出口统一层：player.js / nowplaying.js 依赖 apiFetch/apiUrl，必须先加载 -->
+    <script src="/static/apibase.js?v=20260811a"></script>
     <script>
         document.write('<script src="/static/player.js?v=' + Date.now() + '"><\/script>');
     </script>
