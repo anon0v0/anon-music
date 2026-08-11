@@ -79,6 +79,9 @@ object LyricOverlay {
     @Volatile private var locked = false
     @Volatile private var onlyBackground = false
     @Volatile private var appForeground = true
+    // 从媒体卡片点「词」时 App 在后台，Android 10+ 禁止后台启动 Activity，权限页拉不起来。
+    // 这时置位，等用户下次打开 App（onActivityResume）再补引导。
+    @Volatile private var pendingPermRequest = false
 
     // ---- 播放数据（JNI 线程写 / 主线程读）----
     private class Line(val t: Double, val text: String,
@@ -106,10 +109,25 @@ object LyricOverlay {
         wantShow = show
         main.post {
             if (show) {
-                // 直接尝试添加：成功就开始走字；失败(没权限/MIUI 悬浮窗未授权)再引导授权。
-                // 不只看 canDrawOverlays——MIUI/HyperOS 上它常返回 true 但实际没授权。
+                // 先查权限再动手。原先是「先 addView，失败了才引导授权」，但 MIUI/HyperOS 上
+                // 没授权时 addView 既不抛异常也不显示 —— root != null 成立，引导授权那条分支
+                // 永远走不到，表现就是「点了「词」毫无反应，也不弹授权」。
+                if (!canDraw(appCtx!!)) { requestPermission(appCtx!!); return@post }
                 addView()
-                if (root != null) startTick() else requestPermission(appCtx!!)
+                if (root != null) {
+                    startTick()
+                    // 二次兜底：部分 ROM 上 canDrawOverlays 返回 true 但实际被拦，视图加得进去却
+                    // 永远量不出尺寸。给它 800ms 落地，仍是 0 尺寸就当没权限，引导用户去开。
+                    val r = root
+                    main.postDelayed({
+                        if (wantShow && r != null && r === root && r.width == 0 && r.height == 0) {
+                            removeView(); stopTick()
+                            requestPermission(appCtx!!)
+                        }
+                    }, 800)
+                } else {
+                    requestPermission(appCtx!!)
+                }
             } else {
                 stopTick()
                 removeView()
@@ -123,6 +141,12 @@ object LyricOverlay {
         appForeground = true
         main.post {
             applyVisibility()
+            // 后台时没能弹出的授权引导，回到前台补上（此时启动 Activity 不受限制）
+            val ctx = appCtx
+            if (pendingPermRequest && ctx != null) {
+                pendingPermRequest = false
+                if (!canDraw(ctx)) { requestPermission(ctx); return@post }
+            }
             if (wantShow && root == null) { addView(); if (root != null) startTick() }
         }
     }
@@ -312,18 +336,76 @@ object LyricOverlay {
         kCur?.setProgress(px)
     }
 
+    // 悬浮窗授权引导。
+    // 标准的 ACTION_MANAGE_OVERLAY_PERMISSION 在原生 Android 上没问题，但国产 ROM 各有各的
+    // 权限中心：小米/红米(MIUI/HyperOS)、OPPO(ColorOS)、vivo(OriginOS/Funtouch) 的悬浮窗开关
+    // 都不在系统那个页面里，跳过去用户只会看到一个「已允许」却依然不生效。这里按厂商依次尝试
+    // 各自的权限页，全都不可用再退回系统页，最后兜底到应用详情页。
+    private fun overlayPermissionIntents(ctx: Context): List<Intent> {
+        val pkg = ctx.packageName
+        val brand = (Build.MANUFACTURER + " " + Build.BRAND).lowercase()
+        val list = mutableListOf<Intent>()
+
+        if (brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco")) {
+            // MIUI / HyperOS 权限编辑器
+            list += Intent("miui.intent.action.APP_PERM_EDITOR")
+                .setClassName("com.miui.securitycenter",
+                    "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                .putExtra("extra_pkgname", pkg)
+            list += Intent("miui.intent.action.APP_PERM_EDITOR")
+                .setClassName("com.miui.securitycenter",
+                    "com.miui.permcenter.permissions.AppPermissionsEditorActivity")
+                .putExtra("extra_pkgname", pkg)
+        }
+        if (brand.contains("oppo") || brand.contains("realme") || brand.contains("oneplus")) {
+            // ColorOS 各版本安全中心包名换过好几次，全试一遍
+            list += Intent().setClassName("com.coloros.safecenter",
+                "com.coloros.safecenter.permission.floatwindow.FloatWindowListActivity")
+            list += Intent().setClassName("com.coloros.safecenter",
+                "com.coloros.safecenter.sysfloatwindow.FloatWindowListActivity")
+            list += Intent().setClassName("com.color.safecenter",
+                "com.color.safecenter.permission.floatwindow.FloatWindowListActivity")
+            list += Intent().setClassName("com.oppo.safe",
+                "com.oppo.safe.permission.floatwindow.FloatWindowListActivity")
+        }
+        if (brand.contains("vivo") || brand.contains("iqoo")) {
+            list += Intent().setClassName("com.vivo.permissionmanager",
+                "com.vivo.permissionmanager.activity.SoftPermissionDetailActivity")
+                .putExtra("packagename", pkg)
+            list += Intent().setClassName("com.iqoo.secure",
+                "com.iqoo.secure.safeguard.SoftPermissionDetailActivity")
+                .putExtra("packagename", pkg)
+        }
+        if (brand.contains("huawei") || brand.contains("honor")) {
+            list += Intent().setClassName("com.huawei.systemmanager",
+                "com.huawei.permissionmanager.ui.MainActivity")
+        }
+
+        // 系统标准页（原生 Android / 上面全不可用时）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            list += Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$pkg"))
+        }
+        // 最后兜底：应用详情页，用户自己进「权限」
+        list += Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$pkg"))
+        return list
+    }
+
     private fun requestPermission(ctx: Context) {
         try {
             Toast.makeText(ctx, "请开启「显示在其他应用上层 / 悬浮窗」权限后，再点一次「词」", Toast.LENGTH_LONG).show()
         } catch (_: Exception) {}
-        try {
-            ctx.startActivity(
-                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "request overlay permission failed: ${e.message}")
+        // 不用 resolveActivity 预判：Android 11+ 的包可见性限制会让它对这些厂商组件返回 null，
+        // 反而把国产 ROM 的页面全跳过。直接试，抛异常再退到下一个。
+        for (intent in overlayPermissionIntents(ctx)) {
+            try {
+                ctx.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return
+            } catch (e: Exception) {
+                Log.e(TAG, "overlay perm intent failed: ${intent.component} ${e.message}")
+            }
         }
+        pendingPermRequest = true
+        Log.e(TAG, "no usable overlay permission page (可能是后台无法启动 Activity)，待回到前台再试")
     }
 
     private fun dp(v: Int): Int =
