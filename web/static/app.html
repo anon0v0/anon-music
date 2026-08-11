@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <!-- 主题预置：CSS 加载前先按 localStorage 设 data-theme，防浅色用户闪黑（完整逻辑在 theme.js） -->
   <script>try{if(localStorage.getItem('app_theme')==='light')document.documentElement.dataset.theme='light';}catch(e){}</script>
-  <link rel="stylesheet" href="/static/app.css?v=20260716n">
+  <link rel="stylesheet" href="/static/app.css?v=20260811a">
   <link rel="stylesheet" href="/static/nowplaying.css?v=20260716i">
 </head>
 <body>
@@ -216,9 +216,10 @@
   <script src="/static/theme.js?v=20260716b"></script>
   <script src="/static/downloads.js?v=20260811a"></script>
   <script src="/static/local.js?v=20260716b"></script>
+  <script src="/static/sleeptimer.js?v=20260811a"></script>
   <script src="/static/together.js?v=20260811a"></script>
   <script src="/static/app.js?v=20260811a"></script>
-  <script src="/static/appext.js?v=20260811a"></script>
+  <script src="/static/appext.js?v=20260811c"></script>
   <!-- 注册 PWA Service Worker（作用域 /，由根路径 /service-worker.js 提供）。
        打进安装包的壳里前端本来就是本地文件，不需要 SW，跳过。 -->
   <script>

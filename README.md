@@ -148,3 +148,11 @@ npm run tauri build
 ## License
 
 本仓库代码与第三方依赖分别遵循各自许可证。使用即表示你理解并自行承担合规与运维责任。
+
+## 许可证
+
+本项目采用 **GPL-3.0**（见 [LICENSE](LICENSE)）。
+
+其中 `src-tauri/mobile/MusicService.kt` 的媒体卡片自定义动作实现
+（`PlaybackState.CustomAction` + `onCustomAction` 回调）参考自
+[NeriPlayer](https://github.com/cwuom/NeriPlayer)（GPL-3.0），据此本项目整体采用同一许可证。

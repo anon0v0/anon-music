@@ -19,6 +19,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
@@ -26,6 +27,10 @@ import android.util.Log
 import java.net.URL
 import kotlin.concurrent.thread
 
+// 本文件的「媒体卡片自定义动作」实现（PlaybackState.CustomAction + onCustomAction 回调）
+// 参考自 NeriPlayer (https://github.com/cwuom/NeriPlayer, GPL-3.0) 的 AudioPlayerService。
+// 本项目据此整体采用 GPL-3.0，见仓库根目录 LICENSE。
+//
 // 前台服务 + 系统 MediaSession：承载锁屏/通知/媒体键控制。
 // 音频本体在 WebView 的 <audio> 里播放，本服务只负责「显示元数据 + 把控制意图
 // 通过 JNI(nativePlayerCommand/Seek)回传给 Rust → 前端去操作 <audio>」。
@@ -118,8 +123,8 @@ class MusicService : Service() {
     private var liked = false
     private var lyricsActive = false
 
-    fun setLikedInternal(v: Boolean) { liked = v; updateNotification() }
-    fun setLyricsInternal(v: Boolean) { lyricsActive = v; updateNotification() }
+    fun setLikedInternal(v: Boolean) { liked = v; pushState(); updateNotification() }
+    fun setLyricsInternal(v: Boolean) { lyricsActive = v; pushState(); updateNotification() }
 
     // ---- 生命周期 ----
     override fun onCreate() {
@@ -170,7 +175,7 @@ class MusicService : Service() {
         }
     }
 
-    // ---- MediaSession（锁屏 + 媒体键 + 蓝牙） ----
+    // ---- MediaSession（锁屏 + 媒体键 + 蓝牙 + 系统媒体卡片） ----
     private fun setupSession() {
         mediaSession = MediaSession(this, "AnonMusic").apply {
             setCallback(object : MediaSession.Callback() {
@@ -180,6 +185,10 @@ class MusicService : Service() {
                 override fun onSkipToPrevious() { nativePlayerCommand("prev") }
                 override fun onStop() { nativePlayerCommand("stop") }
                 override fun onSeekTo(pos: Long) { nativePlayerSeek(pos) }
+                // Android 13+ 的系统媒体卡片只认 PlaybackState 上的自定义动作，
+                // Notification.Action 会被忽略 → 「我喜欢」「歌词」必须走这里回调。
+                // 复用与通知按钮同一套处理，避免两条路径行为分叉。
+                override fun onCustomAction(action: String, extras: Bundle?) { handleAction(action) }
             })
             setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
             isActive = true
@@ -374,7 +383,12 @@ class MusicService : Service() {
 
     // ---- 通知按钮 → 回传前端 ----
     private fun handleIntent(intent: Intent) {
-        when (intent.action) {
+        intent.action?.let { handleAction(it) }
+    }
+
+    // 通知按钮（Android 12-）与媒体卡片自定义动作（Android 13+）共用的动作处理。
+    private fun handleAction(action: String) {
+        when (action) {
             ACTION_PLAY -> nativePlayerCommand("play")
             ACTION_PAUSE -> nativePlayerCommand("pause")
             ACTION_NEXT -> nativePlayerCommand("next")
@@ -386,6 +400,7 @@ class MusicService : Service() {
                 val newLocked = !(try { LyricOverlay.isLocked() } catch (_: Throwable) { false })
                 try { LyricOverlay.setLocked(applicationContext, newLocked) } catch (_: Throwable) {}
                 nativePlayerCommand(if (newLocked) "lyriclock" else "lyricunlock")
+                pushState()          // 媒体卡片上的「解锁」图标要跟着变
                 updateNotification()
             }
             ACTION_STOP -> {
@@ -438,16 +453,41 @@ class MusicService : Service() {
     private fun pushState() {
         val state = if (nowPlaying) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
         try {
-            mediaSession?.setPlaybackState(
-                PlaybackState.Builder()
-                    .setActions(
-                        PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or
-                        PlaybackState.ACTION_SKIP_TO_PREVIOUS or PlaybackState.ACTION_SKIP_TO_NEXT or
-                        PlaybackState.ACTION_STOP or PlaybackState.ACTION_SEEK_TO
-                    )
-                    .setState(state, lastPositionMs, if (nowPlaying) 1.0f else 0.0f, SystemClock.elapsedRealtime())
-                    .build()
+            val b = PlaybackState.Builder()
+                .setActions(
+                    PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or
+                    PlaybackState.ACTION_PLAY_PAUSE or
+                    PlaybackState.ACTION_SKIP_TO_PREVIOUS or PlaybackState.ACTION_SKIP_TO_NEXT or
+                    PlaybackState.ACTION_STOP or PlaybackState.ACTION_SEEK_TO
+                )
+                .setState(state, lastPositionMs, if (nowPlaying) 1.0f else 0.0f, SystemClock.elapsedRealtime())
+
+            // 系统媒体卡片（含各家 ROM 的灵动岛/胶囊）从 Android 13 起只渲染这里的自定义动作，
+            // buildNotification() 里的 Notification.Action 只对 Android 12 及以下有效，两边都要给。
+            // 图标必须是 drawable 资源 id —— CustomAction 不接受运行时生成的 Bitmap。
+            b.addCustomAction(
+                PlaybackState.CustomAction.Builder(
+                    ACTION_LIKE,
+                    if (liked) "取消喜欢" else "喜欢",
+                    if (liked) R.drawable.ic_anon_fav_on else R.drawable.ic_anon_fav_off
+                ).build()
             )
+            // 「词」三态：歌词关→开启 / 歌词开未锁→关闭 / 歌词开已锁→解锁
+            // （锁定后悬浮歌词完全穿透点不到，解锁入口必须留在媒体卡片上）
+            val locked = try { LyricOverlay.isLocked() } catch (_: Throwable) { false }
+            b.addCustomAction(
+                if (lyricsActive && locked)
+                    PlaybackState.CustomAction.Builder(
+                        ACTION_LYRIC_LOCK, "解锁歌词", R.drawable.ic_anon_lyric_unlock
+                    ).build()
+                else
+                    PlaybackState.CustomAction.Builder(
+                        ACTION_LYRICS,
+                        if (lyricsActive) "关闭歌词" else "桌面歌词",
+                        if (lyricsActive) R.drawable.ic_anon_lyrics_off else R.drawable.ic_anon_lyrics_on
+                    ).build()
+            )
+            mediaSession?.setPlaybackState(b.build())
         } catch (_: Exception) {}
     }
 

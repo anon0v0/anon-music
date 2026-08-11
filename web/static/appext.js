@@ -471,13 +471,7 @@
   const setModal = modal(`
     <h2><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82M4.6 9a1.65 1.65 0 0 0 .33-1.82"/></svg> 设置<button class="close-x" style="margin-left:auto">×</button></h2>
     <div class="set-tabs">
-      <button data-t="desktop" class="active">桌面歌词</button>
-      <button data-t="word">逐字歌词</button>
-      <button data-t="quality">音质</button>
-      <button data-t="play">播放</button>
-      <button data-t="theme">主题</button>
-      <button data-t="bgimg">背景</button>
-      ${TAURI ? '<button data-t="app">应用</button>' : ''}
+      ${settingTabs().map(([t, name], i) => `<button data-t="${t}"${i === 0 ? ' class="active"' : ''}>${name}</button>`).join('\n      ')}
     </div>
     <div class="set-panel" id="setPanel"></div>`, 'set');
   setModal.querySelector('.close-x').onclick = () => setModal.classList.remove('open');
@@ -613,6 +607,38 @@
         applyNow();
       };
       p.querySelector('#bgClear').onclick = () => { b.image = ''; p.querySelector('#bgUrl').value = ''; applyNow(); };
+    } else if (tab === 'sleep') {
+      const ST = window.SleepTimer;
+      const renderSleep = () => {
+        if (!ST) { p.innerHTML = '<div style="color:var(--muted);font-size:13px">睡眠定时器未加载</div>'; return; }
+        const s = ST.state();
+        const modeRows = Object.keys(ST.MODES).map(k =>
+          `<button class="sleep-mode${s.active && s.mode === k ? ' active' : ''}" data-m="${k}">${ST.MODES[k]}</button>`).join('');
+        const status = s.active
+          ? `<div class="set-row"><span class="set-label">${s.pendingFinish ? '本曲播完后暂停' : (s.remainingMs ? '剩余 ' + ST.fmt(s.remainingMs) : ST.MODES[s.mode])}</span><button class="refresh-btn" id="slpCancel">取消</button></div>`
+          : '<div style="color:var(--muted);font-size:13px;padding-bottom:8px">到点后自动暂停播放，适合睡前听歌。</div>';
+        p.innerHTML = status +
+          `<div class="set-block"><div class="lbl">倒计时（分钟）</div>
+             <div class="presets">${ST.PRESETS.map(v => `<button data-v="${v}">${v}</button>`).join('')}</div>
+             <div class="range-row" style="margin-top:8px"><input class="px-box" id="slpCustom" placeholder="自定义" style="width:88px"> 分钟
+               <button class="refresh-btn" id="slpCustomGo" style="margin-left:8px">开始</button></div>
+           </div>
+           <div class="set-block"><div class="lbl">到点后的行为</div><div class="presets sleep-modes">${modeRows}</div></div>`;
+        p.querySelectorAll('.presets [data-v]').forEach(b => b.onclick = () => { ST.start(pickMode(), +b.dataset.v); renderSleep(); });
+        const go = p.querySelector('#slpCustomGo');
+        if (go) go.onclick = () => { const v = parseInt(p.querySelector('#slpCustom').value, 10); if (v > 0) { ST.start(pickMode(), v); renderSleep(); } };
+        const cx = p.querySelector('#slpCancel');
+        if (cx) cx.onclick = () => { ST.cancel(); renderSleep(); };
+        p.querySelectorAll('.sleep-mode').forEach(b => b.onclick = () => {
+          const m = b.dataset.m;
+          p.dataset.mode = m;
+          // 不需要时长的两种模式点了就立刻生效
+          if (m === 'finish-current' || m === 'finish-playlist') ST.start(m, 0);
+          renderSleep();
+        });
+      };
+      const pickMode = () => (p.dataset.mode === 'countdown-finish' ? 'countdown-finish' : 'countdown');
+      renderSleep();
     } else if (tab === 'play') {
       const append = S.queueMode === 'append';
       p.innerHTML = `<div class="set-row"><span class="set-label">播放新内容时追加到当前列表（不清空）</span>${swHTML(append)}</div>
@@ -637,7 +663,7 @@
 
   // 单页设置：所有类目一次渲染成各 section，顶部标签变成锚点导航（点击滚动到对应 section）
   function settingTabs() {
-    const tabs = [['desktop', '桌面歌词'], ['word', '逐字歌词'], ['quality', '音质'], ['play', '播放'], ['theme', '主题'], ['bgimg', '背景']];
+    const tabs = [['desktop', '桌面歌词'], ['word', '逐字歌词'], ['quality', '音质'], ['play', '播放'], ['sleep', '睡眠定时'], ['theme', '主题'], ['bgimg', '背景']];
     if (TAURI) tabs.push(['app', '应用']);
     return tabs;
   }
