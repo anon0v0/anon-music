@@ -377,6 +377,32 @@
     playSongs(songs, 0);
   }
 
+  // 手机「为你推荐」四卡：两张一页，首尾各克隆一页，滚到边界后无动画回跳。
+  // 只在窄屏启用；桌面仍显示原来的四卡固定网格。
+  function initHomeFeatureLoop(track) {
+    if (!track || !window.matchMedia || !window.matchMedia('(max-width: 820px)').matches) return;
+    const originals = Array.from(track.children); if (originals.length !== 4) return;
+    const before = originals.slice(2).map(el => el.cloneNode(true));
+    const after = originals.slice(0, 2).map(el => el.cloneNode(true));
+    before.reverse().forEach(el => track.prepend(el)); after.forEach(el => track.append(el));
+    const pageWidth = () => {
+      const cards = track.children;
+      if (cards.length > 2) return cards[2].offsetLeft - cards[0].offsetLeft;
+      return track.clientWidth;
+    };
+    const jump = left => { const prev = track.style.scrollBehavior; track.style.scrollBehavior = 'auto'; track.scrollLeft = left; track.style.scrollBehavior = prev; };
+    requestAnimationFrame(() => jump(pageWidth()));
+    let timer = null;
+    track.addEventListener('scroll', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const page = pageWidth();
+        if (track.scrollLeft < page * .35) jump(track.scrollLeft + page * 2);
+        else if (track.scrollLeft > page * 2.65) jump(track.scrollLeft - page * 2);
+      }, 90);
+    }, { passive: true });
+  }
+
   // ---------- 视图 ----------
   async function renderDiscover() {
     const g = navGen;
@@ -399,10 +425,12 @@
     };
     const recommendSection = (title, source, items) => `<section class="home-rec-section"><div class="row-head"><h2>${title}</h2><span class="rh-actions"><button class="refresh-btn" data-rec="${source}">${ICONS.refresh}<span>换一批</span></button><a class="see-all" href="#/playlists?source=${source}">查看全部 ›</a></span></div><div class="cards home-rec-grid" id="rec-${source}">${items.map(x => card(x, 'playlist')).join('')}</div></section>`;
     const chartSection = (title, source, items) => `<section class="home-chart-section"><div class="row-head"><h2>${title}</h2><a class="see-all" href="#/charts?source=${source}">查看全部 ›</a></div><div class="cards home-chart-grid">${items.slice(0, 8).map(x => card(x, 'chart')).join('')}</div></section>`;
-    view.innerHTML = `<div class="row-head home-for-you"><h2>为你推荐</h2></div><div class="cards home-feature-grid">${specCard('daily','qq')}${specCard('daily','netease')}${specCard('fm','qq')}${specCard('fm','netease')}</div>
+    view.innerHTML = `<div class="row-head home-for-you"><h2>为你推荐</h2><span class="feature-swipe-hint">左右滑动</span></div><div class="home-feature-carousel" aria-label="每日推荐和私人 FM"><div class="cards home-feature-grid home-feature-track">${specCard('daily','qq')}${specCard('daily','netease')}${specCard('fm','qq')}${specCard('fm','netease')}</div></div>
       <div class="source-panels home-recommend-panels"><div class="source-panel">${recommendSection('QQ · 推荐歌单','qq',qq)}</div><div class="source-panel">${recommendSection('网易云 · 推荐歌单','netease',ncm)}</div></div>
       <div class="source-panels home-chart-panels"><div class="source-panel">${chartSection('QQ · 排行榜','qq',qqTop.data || [])}</div><div class="source-panel">${chartSection('网易云 · 排行榜','netease',ncmTop.data || [])}</div></div>`;
     bindCards(view);
+    const featureTrack = view.querySelector('.home-feature-track');
+    initHomeFeatureLoop(featureTrack);
     const activateSpecial = async (c, e) => { const kind = c.dataset.spec, src = c.dataset.src; if (kind === 'fm') return startFM(src); if (e && e.target.closest('.play-fab')) { const r = await api('/api/recommend/daily?source=' + src); const songs = (r && r.data) || []; if (songs.length) playSongs(songs, 0); return; } location.hash = '#/daily/' + src; };
     view.querySelectorAll('.spec-card').forEach(c => { c.onclick = e => activateSpecial(c,e); c.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activateSpecial(c,e); } }; });
     ['qq','netease'].forEach(async src => { try { const r = await api('/api/recommend/daily?source=' + src); const list = (r && r.data) || []; const setBg = (sel,pic) => { if(pic) view.querySelectorAll(sel).forEach(el => { el.style.backgroundImage=`url('${pic}')`; el.classList.add('has-img'); }); }; setBg(`[data-sc="daily-${src}"]`,httpsify((list[0]||{}).pic||'')); setBg(`[data-sc="fm-${src}"]`,httpsify((list[Math.min(list.length-1,7)]||list[0]||{}).pic||'')); } catch(e){} });
@@ -1090,11 +1118,30 @@
     ['downloads', '下载管理', ICONS.download],
     ['stats', '听歌报告', '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 20h16v1.5H4zM6 10h3v8H6zm5-5h3v13h-3zm5 8h3v5h-3z"/></svg>'],
   ];
+  const MOBILE_PRIMARY = ['discover', 'liked', 'recent'];
+  const MOBILE_ROUTES = ['discover', 'charts', 'playlists', 'together', 'local', 'downloads', 'stats'];
+  function navItems(keys, textOnly) {
+    return keys.map(k => {
+      const item = NAV.find(x => x[0] === k); if (!item) return '';
+      const [key, label, icon] = item;
+      return `<a class="item" data-nav="${key}" href="#/${key}">${textOnly ? '' : icon}<span>${label}</span></a>`;
+    }).join('');
+  }
   function renderNav() {
     $('#nav').innerHTML = NAV.map(([k, label, icon]) =>
       `<a class="item" data-nav="${k}" href="#/${k}">${icon}<span>${label}</span></a>`).join('');
+    const routeNav = $('#mobileRouteNav'); if (routeNav) routeNav.innerHTML = navItems(MOBILE_ROUTES, true);
+    const bottomNav = $('#mobileBottomNav'); if (bottomNav) bottomNav.innerHTML = navItems(MOBILE_PRIMARY, false);
   }
-  function setActiveNav(k) { $$('#nav .item').forEach(i => i.classList.toggle('active', i.dataset.nav === k)); }
+  function setActiveNav(k) {
+    const parentNav = { daily: 'discover', search: 'discover', artist: 'discover', chart: 'charts', playlist: 'playlists', album: 'discover', my: 'liked' };
+    const activeKey = parentNav[k] || k;
+    $$('[data-nav]').forEach(i => i.classList.toggle('active', i.dataset.nav === activeKey));
+    document.body.dataset.route = k;
+    const routeNav = $('#mobileRouteNav');
+    const activePill = routeNav && Array.from(routeNav.querySelectorAll('[data-nav]')).find(i => i.dataset.nav === activeKey);
+    if (activePill) activePill.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }
   const _plSrcBadge = (s) => s === 'qq' ? '<img class="pl-src" src="/static/qqmusic.png" alt="QQ" title="QQ 音乐">'
     : (s === 'netease' ? '<img class="pl-src" src="/static/wyyyy.jpg" alt="网易" title="网易云音乐">' : '');
   const _plNoteIcon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>';
@@ -1610,7 +1657,7 @@
   }
   function sizeViz(cv) { if (!cv) return; const w = cv.clientWidth || cv.offsetWidth, hh = cv.clientHeight || cv.offsetHeight; if (w && (cv.width !== w || cv.height !== hh)) { cv.width = w; cv.height = hh || 40; } }
   // 频谱样式（设置 → 播放器样式）：off/classic/wave/lines/columns/flame/radial/particles
-  function vizStyleName() { const ps = window.AppSettings && window.AppSettings.playerStyle; return (ps && ps.viz) || 'wave'; }
+  function vizStyleName() { return 'wave'; }
   // 确定性伪噪声（无 analyser，纯程序化律动；同参数同输出，暂停即静止）
   const vizNz = (i, p) => Math.sin(i * 12.9898 + p * 2.3) * Math.sin(i * 78.233 + p * 1.7);
   function rgbHue(r, g, b) {

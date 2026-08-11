@@ -11,8 +11,8 @@
     scheme: 'green', align: 'center', opacity: 1, shadow: 'soft',
     onlyBackground: false, locked: false,   // onlyBackground/locked 仅安卓悬浮歌词使用
     fontSizeA: 17 };   // 安卓悬浮歌词独立字号(sp)：web px 直接映射 sp 在手机上过大，两端分开设
-  // 播放器样式（全屏播放页皮肤）：skin=经典黑胶vinyl/简约方形square/透明彩胶vinyl-color/简约歌词lyrics
-  const PS_DEFAULTS = { skin: 'square', vinylColor: '#e14fae', bg: 'auto', lyricAlign: 'left', viz: 'wave' };
+  // 播放器样式：只保留简约方形 square / 简约歌词 lyrics；其余展示轴固定。
+  const PS_DEFAULTS = { skin: 'square', vinylColor: '#e14fae', bg: 'auto', lyricAlign: 'center', viz: 'wave' };
   window.AppSettings = {
     desktopLyrics: Object.assign({}, DESK_DEFAULTS),
     wordByWord: { enabled: true },
@@ -733,40 +733,23 @@
     function render() {
       const S = window.AppSettings;
       const ps = S.playerStyle = Object.assign({}, PS_DEFAULTS, S.playerStyle || {});
-      const b = S.background; if (b.fluid === undefined) b.fluid = (b.mode !== 'static');
+      const b = S.background;
+      if (!['square', 'lyrics'].includes(ps.skin)) ps.skin = 'square';
+      ps.bg = 'auto'; ps.lyricAlign = 'center'; ps.viz = 'wave';
+      b.fluid = true; b.mode = 'fluid';
       const SKINS = [
-        ['vinyl', '经典黑胶', '<span class="sk-vinyl"></span>'],
         ['square', '简约方形', '<span class="sk-square"></span>'],
         ['lyrics', '简约歌词', '<span class="sk-lyr"><i></i><i></i><i></i></span>'],
       ];
-      const VIZ = [['off', '无频谱'], ['classic', '经典'], ['wave', '梦幻波浪'], ['lines', '动感线条'],
-        ['columns', '魔幻光柱'], ['flame', '热情火焰'], ['radial', '旋转音波'], ['particles', '旋转粒子']];
-      const BGS = [['#101014', '纯黑'], ['#0f1428', '深蓝'], ['#231536', '暗紫'], ['#0d2417', '墨绿'], ['#2a151c', '酒红'], ['#262012', '暗金']];
-      // 简约歌词皮肤恒居中，不显示歌词版式选项
-      const showAlign = ps.skin !== 'lyrics';
       panel.innerHTML = `
         <div class="nsp-head">播放器样式<button class="nsp-x" title="关闭">×</button></div>
         <div class="nsp-body">
           <div class="nsp-skins">${SKINS.map(([k, n, pv]) => `<div class="nsp-card ${ps.skin === k ? 'active' : ''}" data-k="${k}"><div class="nsp-prev">${pv}</div><div class="nsp-name">${n}</div></div>`).join('')}</div>
-          <div class="lbl">背景颜色（默认自动跟随专辑取色）</div>
-          <div class="nsp-sw"><span class="bg-sw sw-auto ${ps.bg === 'auto' ? 'active' : ''}" data-c="auto" title="自动（专辑取色）"></span>${BGS.map(([c, n]) => `<span class="bg-sw ${ps.bg === c ? 'active' : ''}" data-c="${c}" title="${n}" style="background:${c}"></span>`).join('')}</div>
-          ${showAlign ? `<div class="lbl">歌词版式</div>
-          <div class="nsp-row" id="nspAlign"><button data-v="left" class="${ps.lyricAlign === 'left' ? 'active' : ''}">居左</button><button data-v="center" class="${ps.lyricAlign === 'center' ? 'active' : ''}">居中</button></div>` : ''}
-          <div class="lbl">频谱样式</div>
-          <div class="nsp-row" id="nspViz">${VIZ.map(([k, n]) => `<button data-v="${k}" class="${ps.viz === k ? 'active' : ''}">${n}</button>`).join('')}</div>
-          <div class="lbl">流体动画（背景光斑流动）</div>
-          <div class="nsp-row" id="nspFluid"><button data-v="1" class="${b.fluid ? 'active' : ''}">开</button><button data-v="0" class="${b.fluid ? '' : 'active'}">关</button></div>
+          <div class="nsp-fixed-note"><b>梦幻波浪</b> · 专辑自动取色 · 歌词居中 · 流体动画已开启</div>
         </div>`;
-      const apply = () => { saveSettings(); if (np.applyStyle) np.applyStyle(); };
+      const apply = () => { applyBackground(b); saveSettings(); if (np.applyStyle) np.applyStyle(); };
       panel.querySelector('.nsp-x').onclick = () => { panel.classList.remove('show'); if (btn) btn.classList.remove('active'); };
       panel.querySelectorAll('.nsp-card').forEach(c => c.onclick = () => { ps.skin = c.dataset.k; apply(); render(); });
-      panel.querySelectorAll('.bg-sw').forEach(s => s.onclick = () => { ps.bg = s.dataset.c; apply(); render(); });
-      panel.querySelectorAll('#nspAlign button').forEach(bn => bn.onclick = () => { ps.lyricAlign = bn.dataset.v; apply(); render(); });
-      panel.querySelectorAll('#nspViz button').forEach(bn => bn.onclick = () => { ps.viz = bn.dataset.v; apply(); render(); });
-      panel.querySelectorAll('#nspFluid button').forEach(bn => bn.onclick = () => {
-        b.fluid = bn.dataset.v === '1'; b.mode = b.fluid ? 'fluid' : 'static';
-        applyBackground(b); saveSettings(); render();
-      });
     }
     panel.addEventListener('click', (e) => e.stopPropagation());
     if (btn) btn.addEventListener('click', (e) => {
@@ -908,11 +891,20 @@
     window.AppSettings.desktopLyrics = Object.assign({}, DESK_DEFAULTS, _savedDesk);
     if (_legacyColor) window.AppSettings.desktopLyrics.scheme = 'custom';
     window.AppSettings.playerStyle = Object.assign({}, PS_DEFAULTS, window.AppSettings.playerStyle || {});
-    if (window.AppSettings.playerStyle.skin === 'vinyl-color') window.AppSettings.playerStyle.skin = 'vinyl';   // 透明彩胶已下线：写回真值，否则面板无高亮 + 脏值被回存
+    let _settingsNeedSave = false;
+    const _fixedSkin = ['square', 'lyrics'].includes(window.AppSettings.playerStyle.skin) ? window.AppSettings.playerStyle.skin : 'square';
+    if (window.AppSettings.playerStyle.skin !== _fixedSkin) _settingsNeedSave = true;
+    if (window.AppSettings.playerStyle.bg !== 'auto' || window.AppSettings.playerStyle.lyricAlign !== 'center' || window.AppSettings.playerStyle.viz !== 'wave') _settingsNeedSave = true;
+    const _savedBg = window.AppSettings.background || {};
+    if (_savedBg.fluid !== true || _savedBg.mode !== 'fluid') _settingsNeedSave = true;
+    window.AppSettings.playerStyle.skin = _fixedSkin;
+    window.AppSettings.playerStyle.bg = 'auto'; window.AppSettings.playerStyle.lyricAlign = 'center'; window.AppSettings.playerStyle.viz = 'wave';
+    window.AppSettings.background = Object.assign({}, _savedBg, { fluid: true, mode: 'fluid' });
     // 主题：服务器设置为准（跨设备同步），theme.js 已先按 localStorage 预置防闪；
     // ?theme= 调试参数（Theme.locked）优先，不被覆盖
     if (window.Theme && !window.Theme.locked && window.AppSettings.theme) window.Theme.set(window.AppSettings.theme);
     applyAll();
+    if (_settingsNeedSave) saveSettings();
     // 安卓不走页内歌词条（原生悬浮窗由 setupAndroidMedia 的 and-lyric-show 恢复），否则双重歌词
     if (window.AppSettings.desktopLyrics && window.AppSettings.desktopLyrics.enabled && !ANDROID) showDeskBar();
     // 原生悬浮歌词窗口的工具条回控（上一句/下一句/关闭）

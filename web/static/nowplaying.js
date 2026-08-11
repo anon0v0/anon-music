@@ -32,7 +32,7 @@
     const n = parseInt(m[1], 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
-  const PS_DEFAULTS = { skin: 'square', vinylColor: '#e14fae', bg: 'auto', lyricAlign: 'left', viz: 'wave' };
+  const PS_DEFAULTS = { skin: 'square', vinylColor: '#e14fae', bg: 'auto', lyricAlign: 'center', viz: 'wave' };
 
   class NowPlayingOverlay {
     constructor() {
@@ -345,12 +345,12 @@
     /* ===== 播放器样式（皮肤/彩胶颜色/背景色/歌词版式/频谱），设置面板改动后调用 ===== */
     applyStyle() {
       const ps = Object.assign({}, PS_DEFAULTS, (window.AppSettings && window.AppSettings.playerStyle) || {});
-      if (ps.skin === 'vinyl-color') ps.skin = 'vinyl';   // 透明彩胶已下线 → 旧存档回退经典黑胶
-      // 调试：?skin=vinyl&viz=flame&lyralign=center 覆盖（无头截图用，不持久化）
+      if (!['square', 'lyrics'].includes(ps.skin)) ps.skin = 'square';
+      ps.bg = 'auto'; ps.lyricAlign = 'center'; ps.viz = 'wave';
+      // 调试只允许在两个保留皮肤之间切换，不再暴露已下线的样式轴。
       try {
         const q = new URLSearchParams(location.search);
-        ['skin', 'viz'].forEach(k => { if (q.get(k)) ps[k] = q.get(k); });
-        if (q.get('lyralign')) ps.lyricAlign = q.get('lyralign');
+        if (['square', 'lyrics'].includes(q.get('skin'))) ps.skin = q.get('skin');
       } catch (_) {}
       this._ps = ps;
       this.el.dataset.skin = ps.skin;
@@ -517,10 +517,7 @@
       this.fluid.style.setProperty('--c3', rgb(mix(r, 12, .5), mix(g, 12, .5), mix(b, 18, .5)));
     }
     _applyFluidPref() {
-      const bg = window.AppSettings && window.AppSettings.background;
-      // 25pan：单一「流体动画」开关。默认开启。
-      const on = bg ? (bg.fluid !== false && bg.mode !== 'static') : true;
-      this.el.classList.toggle('fluid-on', !!on);
+      this.el.classList.add('fluid-on');
     }
 
     _lineInner(l) {
