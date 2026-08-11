@@ -1117,3 +1117,8 @@ html[data-theme="light"] .icon-btn:hover { background: rgba(255,255,255,.85); }
   font-size: 16px; line-height: 1; flex: 0 0 auto; padding: 0 0 0 2px; }
 .guest-hint .gh-x:hover { opacity: 1; }
 @media (max-width: 820px) { .guest-hint { left: 10px; right: 10px; top: calc(env(safe-area-inset-top) + 58px); max-width: none; transform: translateY(-8px); } .guest-hint.show { transform: translateY(0); } }
+
+/* 睡眠定时器：模式按钮排成一列（文字较长，横排会挤） */
+.presets.sleep-modes { flex-direction: column; align-items: stretch; }
+.presets.sleep-modes button { text-align: left; }
+.presets.sleep-modes button.active { border-color: var(--brand); color: var(--brand); }

@@ -32,7 +32,21 @@ for (const f of ['MainActivity.kt', 'MusicService.kt', 'LyricOverlay.kt', 'Downl
   console.log('[android-inject] copied', f, '->', dst.pathname);
 }
 
-// 2.5) 启动图标：把 src-tauri/icons/android 的整套 mipmap 覆盖进 gen res，
+// 2.5) 媒体卡片自定义动作的图标。
+// PlaybackState.CustomAction 的图标只接受 drawable 资源 id，不能用运行时生成的 Bitmap
+// （通知按钮那套 Canvas 画图只对 Notification.Action 有效）。所以这些矢量图必须进 res/drawable。
+const drawSrc = new URL('src-tauri/mobile/res/drawable/', root);
+const drawDst = new URL('src-tauri/gen/android/app/src/main/res/drawable/', root);
+if (existsSync(drawSrc)) {
+  mkdirSync(drawDst.pathname, { recursive: true });
+  cpSync(drawSrc, drawDst, { recursive: true, force: true });
+  console.log('[android-inject] media custom-action drawables copied');
+} else {
+  console.error('[android-inject] 致命：缺少 src-tauri/mobile/res/drawable，媒体卡片按钮会编译失败');
+  process.exit(1);
+}
+
+// 2.6) 启动图标：把 src-tauri/icons/android 的整套 mipmap 覆盖进 gen res，
 // 确保安卓桌面图标=网站 logo（默认生成可能用的是 Tauri 占位图标）。
 const iconsSrc = new URL('src-tauri/icons/android/', root);
 const resDst = new URL('src-tauri/gen/android/app/src/main/res/', root);
