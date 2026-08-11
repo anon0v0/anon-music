@@ -461,3 +461,27 @@
   .np-overlay[data-mpage="lyrics"] .np-right { flex: 1 1 auto; height: auto; min-height: 0; }
   .np-overlay[data-mpage="lyrics"] .np-body { justify-content: flex-start; }
 }
+
+/* ===== Neri-inspired compact playback controls ===== */
+.nsp-skins { display: grid; grid-template-columns: repeat(2, 1fr); }
+.nsp-fixed-note { margin-top: 14px; padding: 11px 13px; border-radius: 12px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.58); font-size: 12px; line-height: 1.55; }
+.nsp-fixed-note b { color: var(--accent, #22c55e); }
+.np-controls { max-width: 920px; margin: 0 auto; }
+.np-ctrl-main { gap: clamp(10px,2vw,22px); }
+.np-ctrl-main > button,.np-ctrl-main .np-vol { flex: 0 0 auto; }
+.np-ctrl-side { border-radius: 18px; background: rgba(255,255,255,.045); padding: 4px 7px; }
+@media (max-width: 820px) {
+  .np-footer { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  .np-controls { display: grid; grid-template-columns: 1fr; gap: 10px; width: 100%; }
+  .np-ctrl-main { grid-row: 1; width: 100%; justify-content: space-between; gap: 4px; padding: 0 3vw; }
+  .np-ctrl-main > button,.np-ctrl-main .np-vol { width: 44px; height: 44px; flex: 0 0 44px; }
+  .np-ctrl-main .np-play { width: 68px; height: 52px; flex-basis: 68px; }
+  .np-ctrl-side { width: 100%; justify-content: stretch; gap: 4px; padding: 5px; background: rgba(255,255,255,.055); }
+  .np-ctrl-side > button,.np-ctrl-side > div { flex: 1 1 0; min-width: 0; }
+  .np-ctrl-side > button { width: auto; border-radius: 13px; }
+  .np-ctrl-left { grid-row: 2; display: flex; }
+  .np-ctrl-right { grid-row: 3; display: flex; }
+  .np-ctrl-right .np-style-btn,.np-ctrl-right .np-lyric,.np-ctrl-right .np-qbtn { display: flex; }
+  .np-q-btn { width: 100%; height: 38px; padding: 0 8px; border-radius: 13px; }
+  .np-style-panel { max-height: 48vh; }
+}
