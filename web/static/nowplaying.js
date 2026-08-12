@@ -19,6 +19,10 @@
     queue: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13M3 12h13M3 18h9M17 14v6l4-2z"/></svg>',
     comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-4.5A2 2 0 0 1 3 15V7a2 2 0 0 1 2-2z"/><path d="M7 8h10M7 12h7M7 16h4"/></svg>',
     chevDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+    timer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/></svg>',
+    more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11M3 12h11M3 18h7"/><path d="M17 11v8M13 15h8"/></svg>',
+    palette: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3.2-3.2 3.2h-2.4a2.4 2.4 0 0 0-1.8 4c.4.4.6.9.6 1.4 0 .8-.6 1.4-1.4 1.4z"/><circle cx="7.6" cy="11.6" r="1"/><circle cx="10.6" cy="7.6" r="1"/><circle cx="15.2" cy="8.2" r="1"/></svg>',
   };
   const MODE = { list: { icon: ICON.list, label: '列表循环' }, single: { icon: ICON.single, label: '单曲循环' }, shuffle: { icon: ICON.shuffle, label: '随机播放' } };
   const QUALITIES = [['standard', '标准'], ['hq', 'HQ 320'], ['flac', '无损'], ['master', '母带']];
@@ -33,6 +37,7 @@
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
   const PS_DEFAULTS = { skin: 'square', vinylColor: '#e14fae', bg: 'auto', lyricAlign: 'center', viz: 'wave' };
+  const WAVE_PAD = 8;   // 波形进度条左右内边距（= 游标半径 + 描边），点击换算也要减掉
 
   class NowPlayingOverlay {
     constructor() {
@@ -50,6 +55,14 @@
         <div class="np-topbar">
           <button class="np-close" title="收起播放页">${ICON.chevDown}</button>
           <div class="np-dots"><span data-p="cover" class="active"></span><span data-p="lyrics"></span></div>
+          <div class="np-more">
+            <button class="np-more-btn" title="更多">${ICON.more}</button>
+            <div class="np-more-menu">
+              <div data-a="comment">${ICON.comment}<span>评论</span></div>
+              <div data-a="style">${ICON.palette}<span>播放器样式</span></div>
+              <div data-a="desklyric"><b>词</b><span>悬浮歌词</span></div>
+            </div>
+          </div>
         </div>
         <div class="np-queue">
           <div class="np-queue-head"><span>播放列表 <i class="np-q-count"></i></span><span class="np-qh-r"><button class="np-q-clear">清空</button><button class="np-q-close" title="关闭">×</button></span></div>
@@ -57,13 +70,10 @@
         </div>
         <div class="np-body">
           <div class="np-left">
-            <div class="np-cover-wrap"><div class="np-disc"><img class="np-cover" alt=""></div><div class="np-tonearm"><i></i></div></div>
+            <div class="np-cover-wrap"><div class="np-disc"><img class="np-cover" alt=""></div><div class="np-tonearm"><i></i></div><span class="np-srcbadge"></span></div>
             <div class="np-meta">
               <div class="np-title">未在播放</div>
               <div class="np-artist"></div>
-            </div>
-            <div class="np-actions">
-              <button class="np-addpl" title="加入歌单">＋ 歌单</button>
             </div>
             <div class="np-mini-lyric"><div class="ml-a"></div><div class="ml-b"></div></div>
           </div>
@@ -72,43 +82,45 @@
         </div>
         <div class="np-footer">
           <canvas class="np-viz"></canvas>
+          <!-- 进度：波形滑条（仿 NeriPlayer WaveformSlider）+ 下方 当前时间 · 音质 · 总时长 -->
           <div class="np-progress">
-            <span class="t np-cur">0:00</span>
-            <div class="np-bar"><div class="np-bar-fill"></div><div class="np-bar-tip"></div></div>
-            <span class="t np-dur">0:00</span>
-          </div>
-          <!-- 单行三区（仿 QQ 音乐）：左=收起/喜欢/评论 · 中=顺序/上一首/播放/下一首/音量 · 右=音质/词/队列 -->
-          <div class="np-controls">
-            <div class="np-ctrl-side np-ctrl-left">
-              <button class="np-collapse" title="收起播放页">${ICON.chevDown}</button>
-              <button class="np-like" title="喜欢">${ICON.heart}</button>
-              <button class="np-cbtn" title="评论">${ICON.comment}</button>
-            </div>
-            <div class="np-ctrl-main">
-              <button class="np-mode" title="播放模式"></button>
-              <button class="np-prev" title="上一首">${ICON.prev}</button>
-              <button class="np-play" title="播放/暂停">${ICON.play}</button>
-              <button class="np-next" title="下一首">${ICON.next}</button>
-              <div class="np-vol">
-                <button class="np-vol-btn" title="音量">${ICON.vol}</button>
-                <div class="np-vol-pop">
-                  <div class="np-vol-track"><div class="np-vol-fill"></div><div class="np-vol-thumb"></div></div>
-                  <div class="np-vol-num">100%</div>
-                  <button class="np-vol-mute" title="静音 / 恢复">${ICON.vol}</button>
-                </div>
-              </div>
-            </div>
-            <div class="np-ctrl-side np-ctrl-right">
-              <button class="np-style-btn" title="播放器样式"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3.2-3.2 3.2h-2.4a2.4 2.4 0 0 0-1.8 4c.4.4.6.9.6 1.4 0 .8-.6 1.4-1.4 1.4z"/><circle cx="7.6" cy="11.6" r="1"/><circle cx="10.6" cy="7.6" r="1"/><circle cx="15.2" cy="8.2" r="1"/></svg></button>
+            <div class="np-bar"><canvas class="np-wave"></canvas><div class="np-bar-fill"></div><div class="np-bar-tip"></div></div>
+            <div class="np-info">
+              <span class="t np-cur">0:00</span>
               <div class="np-q">
                 <button class="np-q-btn"><span class="np-q-label">标准</span></button>
                 <div class="np-q-menu">${QUALITIES.map(q => `<div data-q="${q[0]}">${q[1]}</div>`).join('')}</div>
               </div>
-              <button class="np-lyric" title="桌面歌词显示/隐藏">词</button>
-              <button class="np-qbtn" title="播放列表">${ICON.queue}</button>
+              <span class="t np-dur">0:00</span>
             </div>
           </div>
-        </div>`;
+          <!-- 主控行：模式 · 上一首 · 播放 · 下一首 · 喜欢 -->
+          <div class="np-main-ctrl">
+            <button class="np-mode" title="播放模式"></button>
+            <button class="np-prev" title="上一首">${ICON.prev}</button>
+            <button class="np-play" title="播放/暂停">${ICON.play}</button>
+            <button class="np-next" title="下一首">${ICON.next}</button>
+            <button class="np-like" title="喜欢">${ICON.heart}</button>
+          </div>
+          <!-- 工具坞：队列 · 定时 · 音量 · 悬浮歌词 · 加入歌单 -->
+          <div class="np-dock">
+            <button class="np-qbtn" title="播放列表">${ICON.queue}</button>
+            <button class="np-timer" title="睡眠定时">${ICON.timer}</button>
+            <div class="np-vol">
+              <button class="np-vol-btn" title="音量">${ICON.vol}</button>
+              <div class="np-vol-pop">
+                <div class="np-vol-track"><div class="np-vol-fill"></div><div class="np-vol-thumb"></div></div>
+                <div class="np-vol-num">100%</div>
+                <button class="np-vol-mute" title="静音 / 恢复">${ICON.vol}</button>
+              </div>
+            </div>
+            <button class="np-lyric" title="悬浮歌词显示/隐藏">词</button>
+            <button class="np-addpl" title="加入歌单">${ICON.plus}</button>
+          </div>
+          <!-- 兼容旧引用：评论/样式入口移入顶部「更多」菜单，这里留隐藏挂载点 -->
+          <div class="np-legacy"><button class="np-cbtn"></button><button class="np-style-btn">${ICON.palette}</button><button class="np-collapse"></button></div>
+        </div>
+        <div class="np-preview"><img alt="封面大图"></div>`;
       document.body.appendChild(el);
       this.el = el;
       this.$ = (s) => el.querySelector(s);
@@ -123,6 +135,7 @@
       this.volTrack = this.$('.np-vol-track'); this.volFill = this.$('.np-vol-fill');
       this.volThumb = this.$('.np-vol-thumb'); this.volNum = this.$('.np-vol-num'); this.volMute = this.$('.np-vol-mute');
       this.rightBox = this.$('.np-right');
+      this.wave = this.$('.np-wave'); this.srcBadge = this.$('.np-srcbadge');
       this.queuePanel = this.$('.np-queue'); this.queueList = this.$('.np-queue-list'); this.queueCount = this.$('.np-q-count');
       this.miniA = this.$('.np-mini-lyric .ml-a'); this.miniB = this.$('.np-mini-lyric .ml-b');
 
@@ -131,6 +144,7 @@
       this._isMobile = () => !!(mq && mq.matches);
       // 点封面 → 歌词页；点歌词页空白（非歌词行）→ 封面页；顶部圆点也可切换
       this.$('.np-cover-wrap').addEventListener('click', () => {
+        if (this._lpFired) { this._lpFired = false; return; }   // 刚长按开过大图，这一下不是切页
         if (this._isMobile() && !this._lyricsOnly && (!this._ps || this._ps.skin !== 'lyrics')) this._setMPage('lyrics');
       });
       this.rightBox.addEventListener('click', (e) => {
@@ -317,16 +331,16 @@
         }
       }
       // 进度条：点击 + 拖动
-      const barRatio = (e) => { const r = this.bar.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); };
+      const barRatio = (e) => { const r = this.bar.getBoundingClientRect(); const inner = Math.max(1, r.width - WAVE_PAD * 2); return Math.min(1, Math.max(0, (e.clientX - r.left - WAVE_PAD) / inner)); };
       const barDur = () => { const st = this.player ? this.player.getState() : {}; return st.duration || (this.player && this.player.audio && this.player.audio.duration) || 0; };
-      this.bar.addEventListener('mousedown', (e) => { if (!this.player) return; this._barDrag = true; const rt = barRatio(e); this.fill.style.width = rt * 100 + '%'; this.curT.textContent = fmt(rt * barDur()); e.preventDefault(); });
-      window.addEventListener('mousemove', (e) => { if (!this._barDrag) return; const rt = barRatio(e); this.fill.style.width = rt * 100 + '%'; this.curT.textContent = fmt(rt * barDur()); });
-      window.addEventListener('mouseup', (e) => { if (!this._barDrag) return; this._barDrag = false; if (this.player) this.player.seekTo(barRatio(e) * barDur()); });
+      this.bar.addEventListener('mousedown', (e) => { if (!this.player) return; this._barDrag = true; const rt = barRatio(e); this._dragRatio = rt; this.fill.style.width = rt * 100 + '%'; this.curT.textContent = fmt(rt * barDur()); e.preventDefault(); });
+      window.addEventListener('mousemove', (e) => { if (!this._barDrag) return; const rt = barRatio(e); this._dragRatio = rt; this.fill.style.width = rt * 100 + '%'; this.curT.textContent = fmt(rt * barDur()); });
+      window.addEventListener('mouseup', (e) => { if (!this._barDrag) return; this._barDrag = false; this._dragRatio = null; if (this.player) this.player.seekTo(barRatio(e) * barDur()); });
       // 触摸拖动（安卓 WebView 触摸时 mousemove 不可靠）：touchstart 后 move/end 仍派发到 bar 元素本身
       const barTouchRatio = (e) => { const t = e.touches[0] || e.changedTouches[0]; return t ? barRatio(t) : 0; };
-      this.bar.addEventListener('touchstart', (e) => { if (!this.player) return; this._barDrag = true; const rt = barTouchRatio(e); this.fill.style.width = rt * 100 + '%'; this.curT.textContent = fmt(rt * barDur()); e.preventDefault(); }, { passive: false });
-      this.bar.addEventListener('touchmove', (e) => { if (!this._barDrag) return; const rt = barTouchRatio(e); this.fill.style.width = rt * 100 + '%'; this.curT.textContent = fmt(rt * barDur()); e.preventDefault(); }, { passive: false });
-      this.bar.addEventListener('touchend', (e) => { if (!this._barDrag) return; this._barDrag = false; if (this.player) this.player.seekTo(barTouchRatio(e) * barDur()); });
+      this.bar.addEventListener('touchstart', (e) => { if (!this.player) return; this._barDrag = true; const rt = barTouchRatio(e); this._dragRatio = rt; this.fill.style.width = rt * 100 + '%'; this.curT.textContent = fmt(rt * barDur()); e.preventDefault(); }, { passive: false });
+      this.bar.addEventListener('touchmove', (e) => { if (!this._barDrag) return; const rt = barTouchRatio(e); this._dragRatio = rt; this.fill.style.width = rt * 100 + '%'; this.curT.textContent = fmt(rt * barDur()); e.preventDefault(); }, { passive: false });
+      this.bar.addEventListener('touchend', (e) => { if (!this._barDrag) return; this._barDrag = false; const rt = barTouchRatio(e); this._dragRatio = null; if (this.player) this.player.seekTo(rt * barDur()); });
       // 悬停预览：左侧时间随光标 + 光标位置歌词气泡（无圆点游标），移开恢复
       const npTip = this.$('.np-bar-tip');
       this.bar.addEventListener('mousemove', (e) => {
@@ -339,7 +353,137 @@
       this.bar.addEventListener('mouseleave', () => { this._barHover = false; if (npTip) npTip.classList.remove('show'); });
       // 仅歌词模式：点空白处（非歌词行）关闭
       this.el.addEventListener('click', (e) => { if (this._lyricsOnly && !e.target.closest('.ln')) this.close(); });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.el.classList.contains('open')) this.close(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || !this.el.classList.contains('open')) return;
+        if (this.preview && this.preview.classList.contains('show')) { this.closePreview(); return; }
+        this.close();
+      });
+
+      /* ===== 封面长按 → 沉浸大图预览（仿 NeriPlayer CoverPreview）===== */
+      this.preview = this.$('.np-preview');
+      this.previewImg = this.preview.querySelector('img');
+      const coverWrap = this.$('.np-cover-wrap');
+      let lpTimer = null, lpMoved = false, lpX = 0, lpY = 0;
+      const openPreview = () => {
+        const src = this.cover && this.cover.getAttribute('src');
+        if (!src) return;
+        this._lpFired = true;
+        this._pvAt = Date.now();
+        this.previewImg.src = src;
+        this.preview.classList.add('show');
+      };
+      coverWrap.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        lpMoved = false; lpX = e.touches[0].clientX; lpY = e.touches[0].clientY;
+        clearTimeout(lpTimer);
+        lpTimer = setTimeout(() => { if (!lpMoved) openPreview(); }, 480);
+      }, { passive: true });
+      coverWrap.addEventListener('touchmove', (e) => {
+        if (!e.touches || !e.touches.length) return;
+        if (Math.abs(e.touches[0].clientX - lpX) > 8 || Math.abs(e.touches[0].clientY - lpY) > 8) {
+          lpMoved = true; clearTimeout(lpTimer);
+        }
+      }, { passive: true });
+      coverWrap.addEventListener('touchend', () => clearTimeout(lpTimer), { passive: true });
+      coverWrap.addEventListener('touchcancel', () => clearTimeout(lpTimer), { passive: true });
+      coverWrap.addEventListener('contextmenu', (e) => { e.preventDefault(); openPreview(); });   // 桌面右键
+      this.preview.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // 长按抬手时浏览器会在刚出现的预览层上补一次 click，那一下不能算“点击关闭”
+        if (this._pvAt && Date.now() - this._pvAt < 550) return;
+        this.closePreview();
+      });
+
+      /* ===== 顶栏「更多」菜单：评论 / 播放器样式 / 悬浮歌词 ===== */
+      const moreWrap = this.$('.np-more'), moreMenu = this.$('.np-more-menu');
+      this.$('.np-more-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = moreWrap.classList.toggle('open');
+        if (open) { this.closeQueue(); npq.classList.remove('open'); this.volWrap.classList.remove('open'); }
+      });
+      moreMenu.addEventListener('click', (e) => {
+        const it = e.target.closest('[data-a]'); if (!it) return;
+        e.stopPropagation();
+        moreWrap.classList.remove('open');
+        const a = it.dataset.a;
+        if (a === 'comment') { this.closeQueue(); this.closeStylePanel(); if (window.Comments) window.Comments.toggle(); }
+        else if (a === 'style') { const sb = this.$('.np-style-btn'); if (sb) sb.click(); }
+        else if (a === 'desklyric') { this._npl && this._npl.click(); }
+      });
+      this.el.addEventListener('click', () => moreWrap.classList.remove('open'));
+
+      /* ===== 睡眠定时：打开设置面板的「睡眠定时」分区 ===== */
+      this.$('.np-timer').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.openSettingsAt) window.openSettingsAt('sleep');
+        else if (window.appNotice) window.appNotice('睡眠定时在设置里', 'info');
+      });
+      this._syncTimerState();
+      try { if (window.SleepTimer && window.SleepTimer.onChange) window.SleepTimer.onChange(() => this._syncTimerState()); } catch (_) {}
+
+      this._bindGestures();
+    }
+
+    /* 睡眠定时生效时点亮坞里的定时器图标 */
+    _syncTimerState() {
+      const btn = this.$('.np-timer'); if (!btn) return;
+      let on = false;
+      try { on = !!(window.SleepTimer && window.SleepTimer.state && window.SleepTimer.state().active); } catch (_) {}
+      btn.classList.toggle('active', on);
+    }
+
+    /* ===== 手势（仿 NeriPlayer）：整页下拉收起 · 左右滑切封面/歌词页 =====
+       只在封面区/空白处起手，歌词区与队列面板自己要滚动，不抢它们的触摸。 */
+    _bindGestures() {
+      const el = this.el;
+      let x0 = 0, y0 = 0, dx = 0, dy = 0, tracking = false, axis = '';
+      const startable = (t) =>
+        !t.closest('.np-bar') && !t.closest('.np-queue') && !t.closest('.np-right') &&
+        !t.closest('.np-vol-pop') && !t.closest('.np-more-menu') && !t.closest('.np-q-menu') &&
+        !t.closest('.np-style-panel') && !t.closest('.np-main-ctrl') && !t.closest('.np-dock') &&
+        !t.closest('.np-preview');
+      el.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1 || !startable(e.target)) { tracking = false; return; }
+        tracking = true; axis = ''; dx = dy = 0;
+        x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+        el.style.transition = 'none';
+      }, { passive: true });
+      el.addEventListener('touchmove', (e) => {
+        if (!tracking || !e.touches || !e.touches.length) return;
+        dx = e.touches[0].clientX - x0; dy = e.touches[0].clientY - y0;
+        if (!axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        // 纵向：跟手下移（仅向下，带阻尼），松手过阈值收起
+        if (axis === 'y' && dy > 0) el.style.transform = `translateY(${Math.pow(dy, .86)}px)`;
+      }, { passive: true });
+      const settle = () => {
+        if (!tracking) return;
+        tracking = false;
+        el.style.transition = '';
+        el.style.transform = '';
+        if (axis === 'y' && dy > 90) { this.close(); return; }
+        if (axis === 'x' && Math.abs(dx) > 56 && this._isMobile() && !this._lyricsOnly && (!this._ps || this._ps.skin !== 'lyrics')) {
+          // 左滑 → 歌词页；右滑 → 封面页（与 NeriPlayer 一致）
+          this._setMPage(dx < 0 ? 'lyrics' : 'cover');
+        }
+        axis = ''; dx = dy = 0;
+      };
+      el.addEventListener('touchend', settle, { passive: true });
+      el.addEventListener('touchcancel', settle, { passive: true });
+      // 歌词页：横向滑回封面页（歌词区纵向自己滚动，这里只认横向）
+      let lx0 = 0, ly0 = 0, lAxis = '';
+      this.rightBox.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        lx0 = e.touches[0].clientX; ly0 = e.touches[0].clientY; lAxis = '';
+      }, { passive: true });
+      this.rightBox.addEventListener('touchend', (e) => {
+        const t = (e.changedTouches && e.changedTouches[0]); if (!t) return;
+        const ddx = t.clientX - lx0, ddy = t.clientY - ly0;
+        if (Math.abs(ddx) > 56 && Math.abs(ddx) > Math.abs(ddy) * 1.6 && ddx > 0 &&
+            this._isMobile() && !this._lyricsOnly && (!this._ps || this._ps.skin !== 'lyrics') &&
+            this.el.dataset.mpage === 'lyrics') {
+          this._setMPage('cover');
+        }
+      }, { passive: true });
     }
 
     /* ===== 播放器样式（皮肤/彩胶颜色/背景色/歌词版式/频谱），设置面板改动后调用 ===== */
@@ -444,6 +588,14 @@
       const lh = this.$('.np-lyrhead');
       if (lh) { lh.querySelector('.t').textContent = s.name || '未知歌曲'; lh.querySelector('.a').innerHTML = this._artistHTML(s); }
       if (this.source) this.source.textContent = (s.id || '').startsWith('qq:') ? 'QQ 音乐' : ((s.id || '').startsWith('netease:') ? '网易云音乐' : '');
+      // 封面右下音源角标（仿 NeriPlayer PlaybackSourceBadge）
+      if (this.srcBadge) {
+        const id = String(s.id || '');
+        const src = id.startsWith('qq:') ? 'qq' : (id.startsWith('netease:') ? 'netease' : '');
+        this.srcBadge.innerHTML = src === 'qq' ? '<img src="/static/qqmusic.png" alt="QQ 音乐">'
+          : (src === 'netease' ? '<img src="/static/wyyyy.jpg" alt="网易云音乐">' : '');
+        this.srcBadge.classList.toggle('show', !!src);
+      }
       const pic = (window.httpsify ? window.httpsify(s.picUrl || s.pic) : (s.picUrl || s.pic)) || '';
       this.cover.src = pic || (window.IMG_PLACEHOLDER || '');
       this._lastPic = pic;
@@ -650,8 +802,72 @@
       loop();
     }
     _stopRAF() { if (this._raf) cancelAnimationFrame(this._raf); this._raf = null; }
+
+    /* ===== 波形进度条（仿 NeriPlayer WaveformSlider）=====
+       已播放段用流动正弦波、未播放段是同一条曲线的暗色版，游标落在波上；
+       暂停/拖动时振幅平滑收敛到 0（变直线），与原实现同一套观感。 */
+    _accent() {
+      if (!this._accentC) {
+        try { this._accentC = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '').trim() || '#22c55e'; }
+        catch (_) { this._accentC = '#22c55e'; }
+      }
+      return this._accentC;
+    }
+    _drawWave(ratio) {
+      const cv = this.wave; if (!cv) return;
+      const r = cv.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+      const ctx = cv.getContext('2d'); if (!ctx) return;
+      const w = r.width, h = r.height, cy = h / 2;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      const now = (window.performance && performance.now()) || Date.now();
+      const dt = Math.min(80, now - (this._waveLast || now));
+      this._waveLast = now;
+      const playing = this.el.classList.contains('playing') && !this._barDrag;
+      // 振幅 500ms 平滑到目标（播放 3.5px / 暂停 0）
+      const target = playing ? 3.5 : 0;
+      if (this._amp == null) this._amp = target;
+      const stepA = dt / 500 * 3.5;
+      this._amp = this._amp < target ? Math.min(target, this._amp + stepA) : Math.max(target, this._amp - stepA);
+      // 相位：2s 一个完整周期
+      if (playing) this._phase = ((this._phase || 0) + dt / 2000 * Math.PI * 2) % (Math.PI * 2);
+      const phase = this._phase || 0, amp = this._amp;
+
+      // 左右留出游标半径，避免端点/游标被画布边缘裁掉
+      const pad = WAVE_PAD, x0 = pad, ww = Math.max(1, w - pad * 2);
+      const seg = Math.max(48, Math.min(180, Math.ceil(ww / 6)));
+      const sw = ww / seg;
+      const px = x0 + Math.max(0, Math.min(1, ratio || 0)) * ww;
+      const F = 0.2;   // 波长≈31px，与原实现在手机上的观感一致
+      const path = new Path2D();
+      path.moveTo(x0, cy + Math.sin(phase) * amp);
+      for (let i = 1; i <= seg; i++) { const x = x0 + i * sw; path.lineTo(x, cy + Math.sin(x * F + phase) * amp); }
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 2.5; ctx.stroke(path);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, px, h); ctx.clip();
+      ctx.strokeStyle = this._accent(); ctx.lineWidth = 4; ctx.stroke(path);
+      ctx.restore();
+      const ty = cy + Math.sin(px * F + phase) * amp;
+      ctx.beginPath(); ctx.fillStyle = this._accent();
+      ctx.arc(px, ty, this._barDrag ? 8 : 6, 0, Math.PI * 2); ctx.fill();
+    }
+    _waveRatio() {
+      const p = this.player; if (!p) return 0;
+      const dur = p.duration || (p.audio && p.audio.duration) || 0;
+      if (!dur) return 0;
+      const t = (p.audio && p.audio.currentTime) || p.currentTime || 0;
+      return t / dur;
+    }
     _rafTick() {
-      const p = this.player; if (!p) return;
+      const p = this.player;
+      // 波形：拖动时跟手指，其余跟随播放进度
+      this._drawWave(this._barDrag && this._dragRatio != null ? this._dragRatio : this._waveRatio());
+      if (!p) return;
       if (p._qSwitch) return;   // 切音质重载期间不刷新进度/逐字，避免回零闪动
       const dur = p.duration || (p.audio && p.audio.duration) || 0;
       const t = (p.audio && p.audio.currentTime) || p.currentTime || 0;
@@ -704,7 +920,8 @@
       this._renderMini(this.player ? this.player.currentLyricIndex : -1);
       this.el.classList.add('open'); document.body.style.overflow = 'hidden'; this._startRAF();
     }
-    close() { this.el.classList.remove('open'); document.body.style.overflow = ''; this._stopRAF(); this.closeStylePanel(); this.closeQueue(); }
+    closePreview() { if (this.preview) this.preview.classList.remove('show'); }
+    close() { this.el.classList.remove('open'); document.body.style.overflow = ''; this._stopRAF(); this.closeStylePanel(); this.closeQueue(); this.closePreview(); }
     toggle() { this.el.classList.contains('open') ? this.close() : this.open(false); }
     toggleLyrics() { (this.el.classList.contains('open') && this._lyricsOnly) ? this.close() : this.open(true); }
   }

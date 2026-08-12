@@ -1061,7 +1061,9 @@
     const routeQuery = new URLSearchParams(queryAt >= 0 ? raw.slice(queryAt + 1) : '');
     const parts = h.split('/').map(decodeURIComponent);
     setActiveNav(parts[0] || 'discover');
-    const mainEl = document.querySelector('.main');
+    // 滚动容器是 .view 本身（.main 只是 flex 列容器，scrollTop 恒为 0），
+    // 存/恢复滚动位置都必须对 view 操作，否则切回缓存页永远回到顶部。
+    const mainEl = view;
     // 离开当前页：把 DOM 与滚动位置存进缓存（LRU 上限 20，防长会话 detached DOM 无界增长）
     if (curRouteHash !== null && curRouteHash !== hash && routeCacheable(curRouteHash) && view.childNodes.length) {
       viewCache.delete(curRouteHash);
@@ -1100,14 +1102,186 @@
     }
   }
   // 顶栏手动刷新：清当前路由缓存并重载（所有界面通用）
+  // 下拉刷新走同一条路径，保证两处行为完全一致。
+  function refreshCurrentRoute() {
+    const rb = $('#refreshBtn');
+    if (rb) { rb.classList.add('spinning'); setTimeout(() => rb.classList.remove('spinning'), 900); }
+    let p;
+    try { p = router(true); } catch (e) { p = null; }
+    return Promise.resolve(p).catch(() => {});
+  }
   {
     const rb = $('#refreshBtn');
-    if (rb) rb.onclick = () => {
-      rb.classList.add('spinning');
-      setTimeout(() => rb.classList.remove('spinning'), 900);
-      router(true);
-    };
+    if (rb) rb.onclick = () => refreshCurrentRoute();
   }
+
+  // ---------- 手机端手势：下拉刷新当前分类 + 左右滑动切换分类 ----------
+  (function mobileGestures() {
+    const host = document.querySelector('.main');
+    if (!host || !view) return;
+    const isMobile = () => !window.matchMedia || window.matchMedia('(max-width: 820px)').matches;
+
+    // 下拉刷新指示器：挂在 .main 上，不随 view 一起位移
+    const ind = document.createElement('div');
+    ind.className = 'ptr';
+    ind.innerHTML = '<div class="ptr-c">' +
+      '<svg class="ptr-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></svg>' +
+      '<span class="ptr-ring"></span></div>';
+    host.appendChild(ind);
+
+    // 完全不介入的区域（自己有整套触摸交互）
+    const NO_GESTURE = '.np-overlay,.modal,.sheet,.sidebar,input,textarea,select,' +
+      '[contenteditable],.tg-chat,.range-row,.pb';
+    // 只屏蔽「横向切分类」的区域：它们自己要横向滚动，但纵向下拉刷新仍应可用
+    const NO_SWIPE_X = '.mobile-route-nav,.cat-chips,.home-feature-track,.stats-bars,' +
+      '.playlist-batchbar,.set-tabs';
+
+    const TRIGGER = 66, MAXP = 118, SWIPE = 62;
+    let x0 = 0, y0 = 0, dx = 0, dy = 0, axis = '', tracking = false, pull = 0, busy = false, inHScroll = false;
+
+    const setPull = (d) => {
+      pull = d;
+      view.style.transform = d ? `translate3d(0,${d}px,0)` : '';
+      ind.style.setProperty('--p', String(Math.min(1, d / TRIGGER)));
+      // 起点藏在 view 顶部上方 46px，随下拉进入视野
+      ind.style.transform = `translateX(-50%) translateY(${Math.min(d, MAXP) - 46}px)`;
+      ind.classList.toggle('show', d > 2);
+      ind.classList.toggle('ready', d >= TRIGGER);
+    };
+    const setSlide = (d) => { view.style.transform = d ? `translate3d(${d}px,0,0)` : ''; };
+    const clearT = (anim) => {
+      view.style.transition = anim ? 'transform .26s cubic-bezier(.22,.61,.36,1)' : '';
+      view.style.transform = '';
+      if (anim) setTimeout(() => { view.style.transition = ''; }, 280);
+    };
+
+    // 只有停在一级分类上才允许左右切换；详情页（歌单/榜单/歌手…）不参与
+    const routeIndex = () => MOBILE_ROUTES.indexOf(document.body.dataset.route || '');
+    function switchRoute(dir) {
+      const i = routeIndex();
+      if (i < 0) return false;
+      const ni = i + dir;
+      if (ni < 0 || ni >= MOBILE_ROUTES.length) return false;
+      view.classList.remove('slide-in-l', 'slide-in-r');
+      // 强制回流让同名动画能重放
+      void view.offsetWidth;
+      view.classList.add(dir > 0 ? 'slide-in-r' : 'slide-in-l');
+      setTimeout(() => view.classList.remove('slide-in-l', 'slide-in-r'), 300);
+      location.hash = '#/' + MOBILE_ROUTES[ni];
+      return true;
+    }
+
+    function endPull() {
+      if (pull >= TRIGGER && !busy) {
+        busy = true;
+        ind.classList.add('busy');
+        view.style.transition = 'transform .2s ease';
+        setPull(52);
+        const t0 = Date.now();
+        refreshCurrentRoute().then(() => {
+          const wait = Math.max(0, 420 - (Date.now() - t0));   // 太快收起会看不清，兜一个最短时长
+          setTimeout(() => {
+            view.style.transition = 'transform .28s cubic-bezier(.22,.61,.36,1)';
+            setPull(0);
+            ind.classList.remove('busy', 'show', 'ready');
+            setTimeout(() => { view.style.transition = ''; busy = false; }, 300);
+          }, wait);
+        });
+      } else if (pull > 0) {
+        view.style.transition = 'transform .26s cubic-bezier(.22,.61,.36,1)';
+        setPull(0);
+        ind.classList.remove('show', 'ready');
+        setTimeout(() => { view.style.transition = ''; }, 280);
+      }
+    }
+
+    view.addEventListener('touchstart', (e) => {
+      if (busy || !isMobile() || !e.touches || e.touches.length !== 1) { tracking = false; return; }
+      if (e.target.closest && e.target.closest(NO_GESTURE)) { tracking = false; return; }
+      inHScroll = !!(e.target.closest && e.target.closest(NO_SWIPE_X));
+      // 指示器锚在 view 顶部（view 上方还有 topbar + 分类栏，位置会随断点变）
+      ind.style.top = (view.offsetTop || 0) + 'px';
+      tracking = true; axis = ''; dx = dy = 0;
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+      view.style.transition = '';
+    }, { passive: true });
+
+    view.addEventListener('touchmove', (e) => {
+      if (!tracking || !e.touches || !e.touches.length) return;
+      dx = e.touches[0].clientX - x0; dy = e.touches[0].clientY - y0;
+      if (!axis && (Math.abs(dx) > 9 || Math.abs(dy) > 9)) {
+        // 横向：起手在横滑容器里就让给它自己滚；纵向：只在已滚到顶部时接管，否则交还正常滚动
+        if (Math.abs(dx) > Math.abs(dy) * 1.25) axis = inHScroll ? 'none' : 'x';
+        else axis = (view.scrollTop <= 0 && dy > 0) ? 'y' : 'none';
+      }
+      if (axis === 'y') setPull(Math.min(MAXP, Math.max(0, dy) * 0.62));
+      else if (axis === 'x') {
+        const i = routeIndex();
+        const edge = i < 0 || (dx < 0 && i >= MOBILE_ROUTES.length - 1) || (dx > 0 && i <= 0);
+        setSlide(Math.max(-46, Math.min(46, dx * (edge ? 0.12 : 0.3))));
+      }
+    }, { passive: true });
+
+    const onEnd = () => {
+      if (!tracking) return;
+      tracking = false;
+      if (axis === 'y') { endPull(); }
+      else if (axis === 'x') {
+        if (routeIndex() < 0) {
+          // 详情页（歌单/榜单/歌手/搜索…）：右滑返回上一层，与顶栏返回键同一逻辑
+          if (dx > SWIPE) {
+            view.style.transition = ''; view.style.transform = '';
+            if (history.length > 1) history.back(); else location.hash = '#/discover';
+          } else clearT(true);
+        } else {
+          const moved = Math.abs(dx) > SWIPE && switchRoute(dx < 0 ? 1 : -1);
+          if (moved) { view.style.transition = ''; view.style.transform = ''; }
+          else clearT(true);
+        }
+      }
+      axis = ''; dx = dy = 0;
+    };
+    view.addEventListener('touchend', onEnd, { passive: true });
+    view.addEventListener('touchcancel', onEnd, { passive: true });
+  })();
+
+  // ---------- 底部播放条：横向滑动切上/下一首（仿 NeriPlayer Mini Player） ----------
+  (function playbarSwipe() {
+    const zone = document.querySelector('.pb-left');
+    if (!zone) return;
+    let sx = 0, sy = 0, dx = 0, dy = 0, on = false, ax = '', noClickAt = 0;
+    zone.addEventListener('touchstart', (e) => {
+      if (!e.touches || e.touches.length !== 1 || (e.target.closest && e.target.closest('button'))) { on = false; return; }
+      on = true; ax = ''; dx = dy = 0;
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+      zone.style.transition = '';
+    }, { passive: true });
+    zone.addEventListener('touchmove', (e) => {
+      if (!on || !e.touches || !e.touches.length) return;
+      dx = e.touches[0].clientX - sx; dy = e.touches[0].clientY - sy;
+      if (!ax && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) ax = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'x' : 'none';
+      if (ax === 'x') zone.style.transform = `translateX(${Math.max(-72, Math.min(72, dx * 0.5))}px)`;
+    }, { passive: true });
+    const end = () => {
+      if (!on) return;
+      on = false;
+      const fire = ax === 'x' && Math.abs(dx) > 54;
+      zone.style.transition = 'transform .24s cubic-bezier(.22,.61,.36,1)';
+      zone.style.transform = '';
+      setTimeout(() => { zone.style.transition = ''; }, 260);
+      if (fire) {
+        noClickAt = Date.now();   // 滑动结束后的这次 click 是误触，要吞掉
+        const p = window.player;
+        if (p) { if (dx < 0) p.nextSong(); else p.previousSong(); }
+      }
+      ax = ''; dx = dy = 0;
+    };
+    zone.addEventListener('touchend', end, { passive: true });
+    zone.addEventListener('touchcancel', end, { passive: true });
+    zone.addEventListener('click', (e) => {
+      if (noClickAt && Date.now() - noClickAt < 400) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+  })();
 
   // ---------- 侧边栏 ----------
   const NAV = [
@@ -1804,7 +1978,8 @@
       if (vizOff !== vizWasOff) { vizWasOff = vizOff; if (PB.viz) PB.viz.style.visibility = vizOff ? 'hidden' : ''; }
       if (PB.viz && !vizOff) drawViz(PB.viz, vizPhase, vizEnergy);
       const npViz = document.querySelector('.np-viz');
-      if (npViz && window.NowPlaying && window.NowPlaying.el && window.NowPlaying.el.classList.contains('open')) drawViz(npViz, vizPhase, vizEnergy);
+      // 播放页频谱已被波形进度条取代（CSS 隐藏）：offsetParent 为空说明不可见，跳过绘制省电
+      if (npViz && npViz.offsetParent && window.NowPlaying && window.NowPlaying.el && window.NowPlaying.el.classList.contains('open')) drawViz(npViz, vizPhase, vizEnergy);
       vizRAF = requestAnimationFrame(loop);
     };
     vizRAF = requestAnimationFrame(loop);

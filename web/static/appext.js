@@ -173,6 +173,8 @@
       const qp = q('#queuePanel.open'); if (qp) { qp.classList.remove('open'); return 'handled'; }
       const tg = q('.tg-panel.open'); if (tg) { tg.classList.remove('open'); return 'handled'; }
       const nsp = q('.np-style-panel.show'); if (nsp) { if (window.NowPlaying && window.NowPlaying.closeStylePanel) window.NowPlaying.closeStylePanel(); else nsp.classList.remove('show'); return 'handled'; }
+      // 封面大图预览盖在播放页之上，要先于播放页被返回键关掉
+      const npv = q('.np-preview.show'); if (npv) { if (window.NowPlaying && window.NowPlaying.closePreview) window.NowPlaying.closePreview(); else npv.classList.remove('show'); return 'handled'; }
       // 5) 全屏播放器
       if (window.NowPlaying && window.NowPlaying.el && window.NowPlaying.el.classList.contains('open')) { window.NowPlaying.close(); return 'handled'; }
       // 6) 子页面（歌单/排行榜详情、搜索结果、具体歌单）→ 返回上一级
@@ -700,6 +702,19 @@
   }
 
   $('#settingsBtn') && ($('#settingsBtn').onclick = () => { setModal.classList.add('open'); _setProgram = false; renderTab(); $('#setPanel', setModal).scrollTop = 0; setSpy(); });
+  // 供别处直接跳到某个设置分区（播放页工具坞的「睡眠定时」按钮走这里）
+  window.openSettingsAt = function (tab) {
+    const btn = $('#settingsBtn');
+    if (!btn) return false;
+    btn.click();
+    if (!tab) return true;
+    const sec = setModal.querySelector('#sec-' + tab);
+    if (!sec) return true;
+    _setProgram = true;
+    sec.scrollIntoView({ block: 'start', behavior: 'auto' });
+    setModal.querySelectorAll('.set-tabs button').forEach(x => x.classList.toggle('active', x.dataset.t === tab));
+    return true;
+  };
   // 调试：?settings=1 自动打开设置（无头截图用）
   if (/[?&]settings=1\b/.test(location.search)) setTimeout(() => { const b = $('#settingsBtn'); if (b) b.click(); }, 1500);
 
@@ -867,7 +882,10 @@
     const el = document.createElement('div');
     el.className = 'guest-hint'; el.id = 'guestHint';
     el.innerHTML = `<span class="gh-ico">ⓘ</span><span class="gh-tx">未登录状态下，收藏 / 歌单 / 播放记录为<b>公共共享</b>数据，<a class="gh-login">登录</a>后独立保存</span><button class="gh-x" title="知道了">×</button>`;
-    document.body.appendChild(el);
+    // 插在内容区之前（分类栏之下）：占据布局空间而不是浮在上面盖住分类栏
+    const viewEl = document.querySelector('.view');
+    if (viewEl && viewEl.parentNode) viewEl.parentNode.insertBefore(el, viewEl);
+    else document.body.appendChild(el);
     const onHome = () => { const h = location.hash || '#/discover'; return h === '' || h === '#/' || h === '#/discover'; };
     const sync = () => el.classList.toggle('show', !me && onHome());
     el.querySelector('.gh-x').onclick = () => { try { sessionStorage.setItem('guestHintDismissed', '1'); } catch (_) {} el.remove(); };
