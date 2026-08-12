@@ -279,7 +279,7 @@
 .np-dock button:hover { color: #fff; background: rgba(255,255,255,.1); }
 .np-dock button:active { transform: scale(.94); }
 .np-dock svg { width: 21px; height: 21px; }
-.np-dock .np-qbtn.active, .np-dock .np-timer.active, .np-dock .np-lyric.active { color: var(--accent, #22c55e); }
+.np-dock .np-qbtn.active, .np-dock .np-lyric.active, .np-dock .np-cbtn.active { color: var(--accent, #22c55e); }
 .np-dock .np-lyric { font-size: 15px; font-weight: 700; }
 .np-dock .np-vol { position: relative; }
 .np-dock .np-vol-btn { width: 100%; height: 40px; border-radius: 16px; }
@@ -400,6 +400,8 @@
 /* 歌词版式（居左/居中）——只作用于封面+歌词并排的皮肤（vinyl/square）；简约歌词与沉浸歌词恒居中 */
 .np-overlay:not(.lyrics-only):not([data-skin="lyrics"])[data-lyralign="left"] .np-lyrics .ln { text-align: left; }
 .np-overlay:not(.lyrics-only):not([data-skin="lyrics"])[data-lyralign="center"] .np-lyrics .ln { text-align: center; }
+/* 居左时缩放/淡入的原点跟着走，否则悬停行会往左右两边同时张开 */
+.np-overlay:not(.lyrics-only):not([data-skin="lyrics"])[data-lyralign="left"] .np-lyrics .ln { transform-origin: left center; }
 
 /* 频谱关闭时收起画布 */
 .np-overlay[data-viz="off"] .np-viz { display: none; }

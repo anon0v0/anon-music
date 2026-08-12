@@ -19,7 +19,6 @@
     queue: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13M3 12h13M3 18h9M17 14v6l4-2z"/></svg>',
     comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-4.5A2 2 0 0 1 3 15V7a2 2 0 0 1 2-2z"/><path d="M7 8h10M7 12h7M7 16h4"/></svg>',
     chevDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
-    timer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/></svg>',
     more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11M3 12h11M3 18h7"/><path d="M17 11v8M13 15h8"/></svg>',
     palette: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3.2-3.2 3.2h-2.4a2.4 2.4 0 0 0-1.8 4c.4.4.6.9.6 1.4 0 .8-.6 1.4-1.4 1.4z"/><circle cx="7.6" cy="11.6" r="1"/><circle cx="10.6" cy="7.6" r="1"/><circle cx="15.2" cy="8.2" r="1"/></svg>',
@@ -58,9 +57,7 @@
           <div class="np-more">
             <button class="np-more-btn" title="更多">${ICON.more}</button>
             <div class="np-more-menu">
-              <div data-a="comment">${ICON.comment}<span>评论</span></div>
               <div data-a="style">${ICON.palette}<span>播放器样式</span></div>
-              <div data-a="desklyric"><b>词</b><span>悬浮歌词</span></div>
             </div>
           </div>
         </div>
@@ -102,10 +99,10 @@
             <button class="np-next" title="下一首">${ICON.next}</button>
             <button class="np-like" title="喜欢">${ICON.heart}</button>
           </div>
-          <!-- 工具坞：队列 · 定时 · 音量 · 悬浮歌词 · 加入歌单 -->
+          <!-- 工具坞：加入歌单 · 评论 · 音量 · 悬浮歌词 · 播放列表 -->
           <div class="np-dock">
-            <button class="np-qbtn" title="播放列表">${ICON.queue}</button>
-            <button class="np-timer" title="睡眠定时">${ICON.timer}</button>
+            <button class="np-addpl" title="加入歌单">${ICON.plus}</button>
+            <button class="np-cbtn" title="评论">${ICON.comment}</button>
             <div class="np-vol">
               <button class="np-vol-btn" title="音量">${ICON.vol}</button>
               <div class="np-vol-pop">
@@ -115,10 +112,10 @@
               </div>
             </div>
             <button class="np-lyric" title="悬浮歌词显示/隐藏">词</button>
-            <button class="np-addpl" title="加入歌单">${ICON.plus}</button>
+            <button class="np-qbtn" title="播放列表">${ICON.queue}</button>
           </div>
-          <!-- 兼容旧引用：评论/样式入口移入顶部「更多」菜单，这里留隐藏挂载点 -->
-          <div class="np-legacy"><button class="np-cbtn"></button><button class="np-style-btn">${ICON.palette}</button><button class="np-collapse"></button></div>
+          <!-- 兼容挂载点：播放器样式入口在顶部「更多」菜单里 -->
+          <div class="np-legacy"><button class="np-style-btn">${ICON.palette}</button><button class="np-collapse"></button></div>
         </div>
         <div class="np-preview"><img alt="封面大图"></div>`;
       document.body.appendChild(el);
@@ -405,31 +402,11 @@
         const it = e.target.closest('[data-a]'); if (!it) return;
         e.stopPropagation();
         moreWrap.classList.remove('open');
-        const a = it.dataset.a;
-        if (a === 'comment') { this.closeQueue(); this.closeStylePanel(); if (window.Comments) window.Comments.toggle(); }
-        else if (a === 'style') { const sb = this.$('.np-style-btn'); if (sb) sb.click(); }
-        else if (a === 'desklyric') { this._npl && this._npl.click(); }
+        if (it.dataset.a === 'style') { const sb = this.$('.np-style-btn'); if (sb) sb.click(); }
       });
       this.el.addEventListener('click', () => moreWrap.classList.remove('open'));
 
-      /* ===== 睡眠定时：打开设置面板的「睡眠定时」分区 ===== */
-      this.$('.np-timer').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (window.openSettingsAt) window.openSettingsAt('sleep');
-        else if (window.appNotice) window.appNotice('睡眠定时在设置里', 'info');
-      });
-      this._syncTimerState();
-      try { if (window.SleepTimer && window.SleepTimer.onChange) window.SleepTimer.onChange(() => this._syncTimerState()); } catch (_) {}
-
       this._bindGestures();
-    }
-
-    /* 睡眠定时生效时点亮坞里的定时器图标 */
-    _syncTimerState() {
-      const btn = this.$('.np-timer'); if (!btn) return;
-      let on = false;
-      try { on = !!(window.SleepTimer && window.SleepTimer.state && window.SleepTimer.state().active); } catch (_) {}
-      btn.classList.toggle('active', on);
     }
 
     /* ===== 手势（仿 NeriPlayer）：整页下拉收起 · 左右滑切封面/歌词页 =====
@@ -490,7 +467,7 @@
     applyStyle() {
       const ps = Object.assign({}, PS_DEFAULTS, (window.AppSettings && window.AppSettings.playerStyle) || {});
       if (!['square', 'lyrics'].includes(ps.skin)) ps.skin = 'square';
-      ps.bg = 'auto'; ps.lyricAlign = 'center'; ps.viz = 'wave';
+      ps.bg = 'auto'; ps.lyricAlign = 'left'; ps.viz = 'wave';
       // 调试只允许在两个保留皮肤之间切换，不再暴露已下线的样式轴。
       try {
         const q = new URLSearchParams(location.search);

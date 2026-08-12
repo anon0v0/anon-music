@@ -19,7 +19,7 @@
   <!-- 主题预置：CSS 加载前先按 localStorage 设 data-theme，防浅色用户闪黑（完整逻辑在 theme.js） -->
   <script>try{if(localStorage.getItem('app_theme')==='light')document.documentElement.dataset.theme='light';}catch(e){}</script>
   <link rel="stylesheet" href="/static/app.css?v=20260811np1">
-  <link rel="stylesheet" href="/static/nowplaying.css?v=20260811np1">
+  <link rel="stylesheet" href="/static/nowplaying.css?v=20260812a">
 </head>
 <body>
   <!-- 播放引擎（隐藏，仅提供音频/歌词内核） -->
@@ -214,7 +214,7 @@
   <script>
     window.player = NeteaseMiniPlayer.initPlayer(document.getElementById('globalPlayer'));
   </script>
-  <script src="/static/nowplaying.js?v=20260811np1"></script>
+  <script src="/static/nowplaying.js?v=20260812a"></script>
   <script src="/static/bridge.js?v=20260811a"></script>
   <script src="/static/theme.js?v=20260716b"></script>
   <script src="/static/downloads.js?v=20260811a"></script>
