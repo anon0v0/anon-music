@@ -18,8 +18,8 @@
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <!-- 主题预置：CSS 加载前先按 localStorage 设 data-theme，防浅色用户闪黑（完整逻辑在 theme.js） -->
   <script>try{if(localStorage.getItem('app_theme')==='light')document.documentElement.dataset.theme='light';}catch(e){}</script>
-  <link rel="stylesheet" href="/static/app.css?v=20260811e">
-  <link rel="stylesheet" href="/static/nowplaying.css?v=20260811d">
+  <link rel="stylesheet" href="/static/app.css?v=20260811np1">
+  <link rel="stylesheet" href="/static/nowplaying.css?v=20260811np1">
 </head>
 <body>
   <!-- 播放引擎（隐藏，仅提供音频/歌词内核） -->
@@ -214,15 +214,15 @@
   <script>
     window.player = NeteaseMiniPlayer.initPlayer(document.getElementById('globalPlayer'));
   </script>
-  <script src="/static/nowplaying.js?v=20260811f"></script>
+  <script src="/static/nowplaying.js?v=20260811np1"></script>
   <script src="/static/bridge.js?v=20260811a"></script>
   <script src="/static/theme.js?v=20260716b"></script>
   <script src="/static/downloads.js?v=20260811a"></script>
   <script src="/static/local.js?v=20260716b"></script>
   <script src="/static/sleeptimer.js?v=20260811a"></script>
   <script src="/static/together.js?v=20260811a"></script>
-  <script src="/static/app.js?v=20260811g"></script>
-  <script src="/static/appext.js?v=20260811f"></script>
+  <script src="/static/app.js?v=20260811np1"></script>
+  <script src="/static/appext.js?v=20260811np1"></script>
   <!-- 注册 PWA Service Worker（作用域 /，由根路径 /service-worker.js 提供）。
        打进安装包的壳里前端本来就是本地文件，不需要 SW，跳过。 -->
   <script>

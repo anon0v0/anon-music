@@ -23,8 +23,10 @@ Anon Music 把 **QQ 音乐** 与 **网易云兼容 API** 聚合到同一个暗�
 | 账号与库 | 登录后独立收藏、最近播放、自建歌单；未登录为公共共享数据 |
 | 一起听 | 多人同步播放房间 |
 | 歌词 | 逐字歌词、桌面歌词（桌面壳） |
+| 播放页 | 大圆角封面 + 音源角标、跟随音频的波形进度条、封面/歌词两页；下拉收起、左右滑切页、长按封面看大图 |
+| 手势 | 列表下拉刷新当前分类、左右滑动切换分类、详情页右滑返回、底部播放条左右滑切歌 |
 | 客户端 | 网页 / PWA；Windows EXE·MSI；Android APK（GitHub Actions 构建） |
-| 体验 | 暗色 UI、主题与背景、下载管理、维护页离线小游戏 |
+| 体验 | 暗色 UI、主题与背景、下载管理、睡眠定时、维护页离线小游戏 |
 
 ---
 
@@ -153,6 +155,11 @@ npm run tauri build
 
 本项目采用 **GPL-3.0**（见 [LICENSE](LICENSE)）。
 
-其中 `src-tauri/mobile/MusicService.kt` 的媒体卡片自定义动作实现
-（`PlaybackState.CustomAction` + `onCustomAction` 回调）参考自
-[NeriPlayer](https://github.com/cwuom/NeriPlayer)（GPL-3.0），据此本项目整体采用同一许可证。
+以下部分参考 / 移植自 [NeriPlayer](https://github.com/cwuom/NeriPlayer)（GPL-3.0），据此本项目整体采用同一许可证：
+
+- `src-tauri/mobile/MusicService.kt` 的媒体卡片自定义动作实现
+  （`PlaybackState.CustomAction` + `onCustomAction` 回调）
+- `web/static/nowplaying.*` 的全屏播放页：版式（大圆角封面 + 封面角标 + 波形进度条 + 五键主控 + 工具坞）、
+  波形进度条的绘制参数与行为，以及下拉收起 / 左右滑切页手势 —— 对应其
+  `ui/screen/NowPlayingScreen.kt` 与 `ui/component/playback/WaveformSlider.kt`
+- `web/static/sleeptimer.js` 的睡眠定时模式设计（对应其 `SleepTimerManager`）
