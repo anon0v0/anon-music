@@ -98,8 +98,14 @@
     return null;
   }
   function toEngine(s) {
-    const o = { id: s.id, name: s.name, artists: artistStr(s), album: s.album || '', picUrl: s.pic || s.picUrl || '', url: null, duration: s.duration || 0 };
-    const arr = artistArr(s); if (arr) o.artistList = arr;   // 引擎只用 artists 字符串，artistList 透传给全屏页做可点歌手
+    const o = {
+      id: s.id, name: s.name, artists: artistStr(s), album: s.album || '',
+      picUrl: s.pic || s.picUrl || '', pic: s.pic || s.picUrl || '',
+      url: null, duration: s.duration || 0,
+      vip: !!(s.vip || (s.pay && (s.pay.pay_month || s.pay.pay_play || s.pay.pay_down)) || s.fee === 1 || s.fee === 4),
+      sources: s.sources || [(s.id || '').startsWith('qq:') ? 'qq' : 'netease'],
+    };
+    const arr = artistArr(s); if (arr) o.artistList = arr;
     // 本地音乐：保留 blob URL（否则引擎无 mid 可请求）；loadSongUrl 的 local: 分支还会从 LocalMusic 兜底
     if (String(s.id || '').indexOf('local:') === 0) { o.url = s.url || s._localUrl || null; o._localUrl = s._localUrl || s.url || null; }
     return o;
@@ -466,19 +472,22 @@
     const qqDailySongs = (qqDaily && qqDaily.data) || [];
     const ncmDailySongs = (ncmDaily && ncmDaily.data) || [];
 
-    const s1 = qqDailySongs[0] || (qq[0] || {});
-    const s2 = qqDailySongs[0] || (qq[1] || {});
-    const s3 = ncmDailySongs[0] || (ncm[0] || {});
-    const s4 = ncm[1] || ncmCharts[0] || {};
+    // 保证猜你喜欢(s1)和每日30首(s2)不相同
+    const s2 = qqDailySongs[0] || (qq[0] || {});
+    const s1 = (qqDailySongs.length > 1 ? qqDailySongs[1] : null) || qq[1] || (qq[0] || {});
+    // 后面两张卡片随机显示网易云的两个不同歌单（每次刷新页面都随机变）
+    const shuffledNcm = [...ncmAll].sort(() => Math.random() - 0.5);
+    const pl1 = shuffledNcm[0] || ncm[0] || {};
+    const pl2 = (shuffledNcm.length > 1 ? shuffledNcm[1] : null) || ncm[1] || {};
 
     const heroCover = (s1.pic && httpsify(s1.pic)) || (s1.cover && httpsify(s1.cover)) || '/static/anon1.jpg';
     const heroName = (s1.name ? (s1.name + (artistStr(s1) ? ' - ' + artistStr(s1) : '')) : '远山少年 - 窝窝');
     const song2Cover = (s2.pic && httpsify(s2.pic)) || (s2.cover && httpsify(s2.cover)) || '/static/anon1.jpg';
     const song2Name = (s2.name ? (s2.name + (artistStr(s2) ? ' - ' + artistStr(s2) : '')) : '恋爱告急 (氛围版) - 尹露浠');
-    const song3Cover = (s3.pic && httpsify(s3.pic)) || (s3.cover && httpsify(s3.cover)) || '/static/anon2.jpg';
-    const song3Name = (s3.name ? (s3.name + (artistStr(s3) ? ' - ' + artistStr(s3) : '')) : '有何不可 - 许嵩');
-    const song4Cover = (s4.cover && httpsify(s4.cover)) || (s4.pic && httpsify(s4.pic)) || '/static/anon2.jpg';
-    const song4Name = (s4.name ? s4.name : '折风渡夜 (DJ名龙版) - 许佳豪');
+    const pl1Cover = (pl1.cover && httpsify(pl1.cover)) || '/static/anon2.jpg';
+    const pl1Name = pl1.name || '网易精选歌单';
+    const pl2Cover = (pl2.cover && httpsify(pl2.cover)) || '/static/anon2.jpg';
+    const pl2Name = pl2.name || '热门歌单精选';
 
     // 顶部问候与统计信息框
     const heroBoxHTML = `
@@ -531,7 +540,7 @@
           </div>
 
           <!-- 卡片 2：每日 30 首 (QQ 音乐) -->
-          <div class="card home-feature-card feat-norm-card" role="button" tabindex="0" aria-label="QQ 每日 30 首" onclick="location.hash='#/daily/qq'">
+          <div class="card home-feature-card feat-norm-card" role="button" tabindex="0" aria-label="QQ 每日 30 首" id="featDailyPlay">
             <div class="feat-cover">
               <img loading="lazy" decoding="async" src="${attr(song2Cover)}" alt="QQ 每日 30 首">
               <span class="sp-pill-tag blue-tag">Daily 30</span>
@@ -544,30 +553,30 @@
             </div>
           </div>
 
-          <!-- 卡片 3：刷歌模式 (网易云音乐) -->
-          <div class="card home-feature-card feat-norm-card" role="button" tabindex="0" aria-label="刷歌模式" onclick="location.hash='#/daily/netease'">
+          <!-- 卡片 3：网易云随机精选歌单 1 -->
+          <div class="card home-feature-card feat-norm-card" role="button" tabindex="0" aria-label="${attr(pl1Name)}" id="featPl1Play">
             <div class="feat-cover">
-              <img loading="lazy" decoding="async" src="${attr(song3Cover)}" alt="网易 每日推荐">
-              <span class="sp-pill-tag red-tag">Picks</span>
+              <img loading="lazy" decoding="async" src="${attr(pl1Cover)}" alt="${attr(pl1Name)}">
+              <span class="sp-pill-tag red-tag">网易精选</span>
               <span class="sp-dot ncm-dot"></span>
               <div class="play-fab">${ICONS.play}</div>
             </div>
             <div class="fbc-info">
-              <div class="fbc-name" title="${esc(song3Name)}">${esc(song3Name)}</div>
-              <div class="fbc-desc">刷歌模式</div>
+              <div class="fbc-name" title="${esc(pl1Name)}">${esc(pl1Name)}</div>
+              <div class="fbc-desc">网易云歌单</div>
             </div>
           </div>
-          <!-- 卡片 4：百万收藏 -->
-          <div class="card home-feature-card feat-norm-card" role="button" tabindex="0" aria-label="百万收藏" onclick="location.hash='#/charts?source=netease'">
+          <!-- 卡片 4：网易云随机精选歌单 2 -->
+          <div class="card home-feature-card feat-norm-card" role="button" tabindex="0" aria-label="${attr(pl2Name)}" id="featPl2Play">
             <div class="feat-cover">
-              <img loading="lazy" decoding="async" src="${attr(song4Cover)}" alt="">
-              <span class="sp-pill-tag orange-tag">Favorites</span>
+              <img loading="lazy" decoding="async" src="${attr(pl2Cover)}" alt="${attr(pl2Name)}">
+              <span class="sp-pill-tag orange-tag">随机发现</span>
               <span class="sp-dot hot-dot"></span>
               <div class="play-fab">${ICONS.play}</div>
             </div>
             <div class="fbc-info">
-              <div class="fbc-name" title="${esc(song4Name)}">${esc(song4Name)}</div>
-              <div class="fbc-desc">百万收藏</div>
+              <div class="fbc-name" title="${esc(pl2Name)}">${esc(pl2Name)}</div>
+              <div class="fbc-desc">网易云歌单</div>
             </div>
           </div>
         </div>
@@ -605,12 +614,43 @@
     view.innerHTML = heroBoxHTML + forYouHTML + shelfHTML;
     bindCards(view);
 
-    // 特色大卡点击直播
+    // 特色卡片点击直接播放
     const featBannerPlay = $('#featBannerPlay');
     if (featBannerPlay) {
-      featBannerPlay.onclick = (e) => {
-        if (dailySongs.length) playSongs(dailySongs, 0);
-        else location.hash = '#/daily/qq';
+      featBannerPlay.onclick = () => {
+        const list = qqDailySongs.length ? qqDailySongs : (qq.length ? qq : [s1]);
+        if (list.length) playSongs(list, list.indexOf(s1) >= 0 ? list.indexOf(s1) : 0);
+      };
+    }
+    const featDailyPlay = $('#featDailyPlay');
+    if (featDailyPlay) {
+      featDailyPlay.onclick = () => {
+        const list = qqDailySongs.length ? qqDailySongs : (qq.length ? qq : [s2]);
+        if (list.length) playSongs(list, 0);
+      };
+    }
+    const featPl1Play = $('#featPl1Play');
+    if (featPl1Play) {
+      featPl1Play.onclick = async () => {
+        if (pl1.id) {
+          try {
+            const d = await api(`/api/playlist/detail?source=netease&id=${encodeURIComponent(pl1.id)}`);
+            const songs = (d.data && d.data.songs) || [];
+            if (songs.length) playSongs(songs, 0);
+          } catch (e) { location.hash = `#/playlist/netease/${encodeURIComponent(pl1.id)}`; }
+        }
+      };
+    }
+    const featPl2Play = $('#featPl2Play');
+    if (featPl2Play) {
+      featPl2Play.onclick = async () => {
+        if (pl2.id) {
+          try {
+            const d = await api(`/api/playlist/detail?source=netease&id=${encodeURIComponent(pl2.id)}`);
+            const songs = (d.data && d.data.songs) || [];
+            if (songs.length) playSongs(songs, 0);
+          } catch (e) { location.hash = `#/playlist/netease/${encodeURIComponent(pl2.id)}`; }
+        }
       };
     }
 
@@ -1610,7 +1650,7 @@
 
   // ---------- 侧边栏 ----------
   const NAV = [
-    ['discover', '发现', ICONS.discover], ['charts', '排行榜', ICONS.chart],
+    ['discover', '首页', ICONS.discover], ['charts', '排行榜', ICONS.chart],
     ['playlists', '歌单广场', ICONS.list], ['liked', '我喜欢的', ICONS.heart], ['recent', '最近播放', ICONS.clock],
     ['local', '本地音乐', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="15" cy="13.5" r="1.6"/><path d="M16.6 13.5V9.2l-3.2.7v3.9"/></svg>'],
     ['downloads', '下载管理', ICONS.download],
@@ -2003,6 +2043,7 @@
 
     p.on('songchange', (s) => {
       state.currentId = s.id;
+      delete PB.cover.dataset.proxied;
       PB.cover.src = httpsify(s.picUrl || s.pic) || IMG_PLACEHOLDER;
       PB.name.textContent = s.name || '未知歌曲';
       PB.artist.textContent = s.artists || s.artist || '';
@@ -2017,6 +2058,14 @@
       pbLyrIdx = -2;   // 强制刷新底部逐字歌词
       // 评论面板打开时，切歌自动刷新评论
       if (CM.panel.classList.contains('open')) { cmState.mid = s.id; cmState.sort = 'hot'; $$('#commentPanel .cm-tabs button').forEach(t => t.classList.toggle('active', t.dataset.s === 'hot')); loadComments(true); }
+      // 异步获取真实评论数并更新播放栏与全屏页角标
+      if (s.id) {
+        api('/api/comments?mid=' + encodeURIComponent(s.id) + '&page=1&limit=1').then(r => {
+          const total = (r && r.data && r.data.total) || 0;
+          const txt = total > 999 ? '999+' : (total > 0 ? String(total) : '');
+          if (window.NowPlaying && window.NowPlaying.setCommentCount) window.NowPlaying.setCommentCount(txt);
+        }).catch(() => {});
+      }
     });
     p.on('playstate', () => { try { p.audio.playbackRate = curSpeed; } catch (e) {} });
     p.on('timeupdate', (d) => {
@@ -2461,7 +2510,28 @@
     const exb = $('#sideExpandBtm'); if (exb) exb.onclick = () => setCollapsed(false);
   }
 
-  // ---------- 启动 ----------
+  function syncToolsPosition() {
+    const isMobile = window.matchMedia ? window.matchMedia('(max-width: 820px)').matches : (window.innerWidth <= 820);
+    const tools = document.querySelector('.side-tools');
+    const account = document.querySelector('.account');
+    const topGroup = document.querySelector('.topbar-right-group');
+    const sideHead = document.querySelector('.sidebar .side-head');
+    if (isMobile) {
+      if (sideHead && tools && tools.parentElement !== sideHead.parentElement) {
+        if (account) sideHead.after(account);
+        if (tools) (account || sideHead).after(tools);
+      }
+    } else {
+      if (topGroup && tools && tools.parentElement !== topGroup) {
+        if (account) topGroup.prepend(account);
+        const npBtn = document.querySelector('#studioNowPlaying');
+        if (npBtn) topGroup.insertBefore(tools, npBtn);
+        else topGroup.appendChild(tools);
+      }
+    }
+  }
+  window.addEventListener('resize', syncToolsPosition);
+  syncToolsPosition();
   async function boot() {
     renderNav();
     initPlaybar();

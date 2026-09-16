@@ -558,6 +558,8 @@ async def search_split(keyword: str, page: int = Query(1, ge=1, le=1000), limit:
             else:
                 singer_mid = getattr(artists[0], "mid", "") if artists else ""
                 pic = f"https://y.gtimg.cn/music/photo_new/T001R300x300M000{singer_mid}.jpg" if singer_mid else ""
+            pay_obj = getattr(s, "pay", None) or {}
+            is_qq_vip = bool(getattr(pay_obj, "pay_month", 0) or getattr(pay_obj, "pay_play", 0) or getattr(pay_obj, "pay_down", 0) or getattr(s, "fee", 0) in (1, 4))
             qq_songs.append({
                 "id": f"qq:{mid}",
                 "name": _strip_em(getattr(s, "name", "")),
@@ -568,6 +570,7 @@ async def search_split(keyword: str, page: int = Query(1, ge=1, le=1000), limit:
                 "album": album_name,
                 "duration": getattr(s, "interval", 0) or 0,
                 "sources": ["qq"],
+                "vip": is_qq_vip,
             })
     except Exception:
         pass
@@ -585,6 +588,7 @@ async def search_split(keyword: str, page: int = Query(1, ge=1, le=1000), limit:
                         pic = (s.get("al", {}) or {}).get("picUrl", "") or ""
                         if "5639395138885805" in pic:
                             pic = ""
+                        is_ncm_vip = bool(s.get("fee", 0) in (1, 4) or s.get("vip"))
                         netease_songs.append({
                             "id": f"netease:{s.get('id', '')}",
                             "name": s.get("name", ""),
@@ -595,6 +599,7 @@ async def search_split(keyword: str, page: int = Query(1, ge=1, le=1000), limit:
                             "album": (s.get("al", {}) or {}).get("name", ""),
                             "duration": int((s.get("dt", 0) or 0) / 1000),
                             "sources": ["netease"],
+                            "vip": is_ncm_vip,
                         })
     except Exception:
         pass

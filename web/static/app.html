@@ -19,8 +19,8 @@
   <!-- 主题预置：CSS 加载前先按 localStorage 设 data-theme，防浅色用户闪黑（完整逻辑在 theme.js） -->
   <script>try{if(localStorage.getItem('app_theme')==='light')document.documentElement.dataset.theme='light';}catch(e){}</script>
   <link rel="stylesheet" href="/static/app.css?v=20260811np1">
-  <link rel="stylesheet" href="/static/nowplaying.css?v=20260916-tf6">
-  <link rel="stylesheet" href="/static/studio.css?v=20260916-tf1">
+  <link rel="stylesheet" href="/static/nowplaying.css?v=20260916-tf7">
+  <link rel="stylesheet" href="/static/studio.css?v=20260916-tf7">
 </head>
 <body>
   <!-- 播放引擎（隐藏，仅提供音频/歌词内核） -->
@@ -37,16 +37,6 @@
             <span class="brand-tagline">私人音乐空间</span>
           </div>
         </div>
-      </div>
-      <div class="account" id="account"></div>
-      <div class="side-tools">
-        <button class="icon-btn" id="themeBtn" title="切换深色/浅色" aria-label="切换深色与浅色主题"></button>
-        <button class="icon-btn" id="settingsBtn" title="设置" aria-label="设置">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
-        <button class="icon-btn" id="refreshBtn" title="刷新当前页面" aria-label="刷新页面">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-        </button>
       </div>
       <nav class="nav" id="nav"></nav>
       <div class="side-title"><span>我的歌单</span><button id="createPlaylist" title="新建歌单" aria-label="新建或导入歌单">＋</button></div>
@@ -77,7 +67,18 @@
           <input id="searchInput" name="q" type="search" inputmode="search" placeholder="搜索歌曲、歌手、专辑…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-form-type="other" aria-label="搜索音乐">
         </form>
         <div class="topbar-spacer" aria-hidden="true"></div>
-        <button class="studio-np-btn" id="studioNowPlaying" type="button" title="打开正在播放" aria-label="打开正在播放" onclick="if(window.NowPlaying) window.NowPlaying.open()">
+        <div class="topbar-right-group">
+          <div class="account" id="account"></div>
+          <div class="side-tools topbar-tools">
+            <button class="icon-btn" id="themeBtn" title="切换深色/浅色" aria-label="切换深色与浅色主题"></button>
+            <button class="icon-btn" id="settingsBtn" title="设置" aria-label="设置">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+            <button class="icon-btn" id="refreshBtn" title="刷新当前页面" aria-label="刷新页面">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+          </div>
+          <button class="studio-np-btn" id="studioNowPlaying" type="button" title="打开正在播放" aria-label="打开正在播放" onclick="if(window.NowPlaying) window.NowPlaying.open()">
           <svg class="studio-np-icon studio-np-eq" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
             <rect class="eq-b eq-b1" x="2" y="8" width="2.6" height="8" rx="1.3"/>
             <rect class="eq-b eq-b2" x="6.5" y="4" width="2.6" height="16" rx="1.3"/>
@@ -86,7 +87,8 @@
             <rect class="eq-b eq-b5" x="20" y="9" width="2.6" height="6" rx="1.3"/>
           </svg>
           <span class="studio-np-title">正在播放</span>
-        </button>
+          </button>
+        </div>
       </header>
       <nav class="mobile-route-nav" id="mobileRouteNav" aria-label="内容分类"></nav>
       <div id="view" class="view"><div class="loading">加载中…</div></div>
@@ -230,13 +232,13 @@
   <script>
     window.player = NeteaseMiniPlayer.initPlayer(document.getElementById('globalPlayer'));
   </script>
-  <script src="/static/nowplaying.js?v=20260916-tf6"></script>
+  <script src="/static/nowplaying.js?v=20260916-tf7"></script>
   <script src="/static/bridge.js?v=20260811a"></script>
-  <script src="/static/theme.js?v=20260916-tf5"></script>
+  <script src="/static/theme.js?v=20260916-tf7"></script>
   <script src="/static/downloads.js?v=20260811a"></script>
   <script src="/static/local.js?v=20260716b"></script>
-  <script src="/static/app.js?v=20260916-tf5"></script>
-  <script src="/static/appext.js?v=20260916-tf5"></script>
+  <script src="/static/app.js?v=20260916-tf7"></script>
+  <script src="/static/appext.js?v=20260916-tf7"></script>
   <!-- 注册 PWA Service Worker（作用域 /，由根路径 /service-worker.js 提供）。
        打进安装包的壳里前端本来就是本地文件，不需要 SW，跳过。 -->
   <script>

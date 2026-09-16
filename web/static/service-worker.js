@@ -7,7 +7,7 @@
  *  - 跨源(CDN 音频/封面) → 不拦截，放行
  *  bump CACHE 版本即可整体失效旧缓存（activate 时清理）。
  */
-const CACHE = 'anon-cache-v20260916-tf6';
+const CACHE = 'anon-cache-v20260916-tf7';
 const OFFLINE_URL = '/music';
 
 self.addEventListener('install', (event) => {

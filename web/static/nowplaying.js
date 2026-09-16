@@ -1,11 +1,11 @@
 /*
  * 全屏正在播放 / 沉浸歌词组件（完全对标参考设计规范）
- * Image 1: 封面分栏模式（左侧方形专辑封面，右侧标题+VIP+歌手+歌词流）
- * Image 2: 简约歌词模式（全屏居中纯歌词，居中大标题，当前唱句黄金高亮发光）
+ * Mode 1: 封面分栏模式（左侧方形专辑封面，右侧标题+可点歌手+歌词流）
+ * Mode 2: 简约歌词模式（全屏居中纯歌词，居中大标题，当前唱句发光高亮）
  * 底栏控制台:
- *   - 左侧: 正在播放歌曲 - 歌手 [VIP]，下方喜欢 / 评论(带数字角标) / 加入歌单 / 更多
- *   - 中间: 顶部霓虹微光 + 循环 / 上一首 / 实心圆形主播放 / 下一首 / 音量 + 3px直线进度条
- *   - 右侧: 皮肤切换(T恤图标) / 臻品音质黄金胶囊 / 音效 / 词 / 播放列表 / 伴奏徽标
+ *   - 左侧: 退出全屏角标按钮 ⌟ + 正在播放歌曲 - 歌手 [真实VIP判断]，下方喜欢 / 真实评论数 / 加入歌单 / 更多
+ *   - 中间: 动态音频律动波形 (Canvas流畅起伏，暂停收敛直线) + 循环 / 上一首 / 实心圆形主播放(随封面变色) / 下一首 / 音量 + 3px直线进度条
+ *   - 右侧: 皮肤切换(T恤图标) / 水平按钮样式音质胶囊(臻品音质金色/HQ粉红/无损银灰/标准暗灰) / 词 / 播放列表
  */
 (function () {
   const ICON = {
@@ -23,11 +23,10 @@
     queue: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13M3 12h13M3 18h9M17 14v6l4-2z"/></svg>',
     comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-4.5A2 2 0 0 1 3 15V7a2 2 0 0 1 2-2z"/><path d="M7 8h10M7 12h7M7 16h4"/></svg>',
     chevDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+    exitFullscreen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14L3 21"/></svg>',
     more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11M3 12h11M3 18h7"/><path d="M17 11v8M13 15h8"/></svg>',
-    palette: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3.2-3.2 3.2h-2.4a2.4 2.4 0 0 0-1.8 4c.4.4.6.9.6 1.4 0 .8-.6 1.4-1.4 1.4z"/><circle cx="7.6" cy="11.6" r="1"/><circle cx="10.6" cy="7.6" r="1"/><circle cx="15.2" cy="8.2" r="1"/></svg>',
     tshirt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>',
-    eq: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 8v8M20 11v2"/></svg>',
   };
   const MODE = { list: { icon: ICON.list, label: '列表循环' }, single: { icon: ICON.single, label: '单曲循环' }, shuffle: { icon: ICON.shuffle, label: '随机播放' } };
   const QUALITIES = [['standard', '标准'], ['hq', 'HQ 320'], ['flac', '无损'], ['master', '母带']];
@@ -47,6 +46,9 @@
     constructor() {
       this.player = null;
       this.seeking = false;
+      this._themeColor = '#3b82f6';
+      this._wavePhase = 0;
+      this._waveAmp = 0;
       this._build();
     }
 
@@ -61,34 +63,16 @@
       el.inert = true;
       el.innerHTML = `
         <div class="np-bg"></div>
-        <div class="np-fluid" aria-hidden="true"></div>
+        <div class="np-fluid" aria-hidden="true">
+          <div class="np-fluid-orb orb1"></div>
+          <div class="np-fluid-orb orb2"></div>
+        </div>
         <div class="np-topbar">
           <button class="np-close" title="收起播放页" aria-label="收起播放页">
             ${ICON.chevDown}
           </button>
           <div class="np-heading" style="display:none">正在播放</div>
           <div class="np-dots" role="group" aria-label="播放页视图"><span data-p="cover" class="active" role="button" tabindex="0" aria-pressed="true">封面</span><span data-p="lyrics" role="button" tabindex="0" aria-pressed="false">歌词</span></div>
-          <div class="np-top-actions">
-            <button class="np-top-btn np-top-min" title="最小化" aria-label="最小化">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-            <button class="np-top-btn np-top-expand" title="全屏切换" aria-label="全屏切换">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M15 3h6v6M9 21H3v-6"/></svg>
-            </button>
-            <button class="np-top-btn np-top-close" title="关闭" aria-label="关闭">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-            <div class="np-more">
-              <button class="np-more-btn" title="更多">
-                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="12" r="2"/></svg>
-              </button>
-              <div class="np-more-menu">
-                <div data-a="style" role="button" tabindex="0">${ICON.palette}<span>播放器样式</span></div>
-                <div data-a="download" role="button" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg><span>下载当前歌曲</span></div>
-                <label class="np-speed-label">播放速度<select class="np-speed-select" aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1.0×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2.0×</option></select></label>
-              </div>
-            </div>
-          </div>
         </div>
         <div class="np-queue">
           <div class="np-queue-head"><span>播放列表 <i class="np-q-count"></i></span><span class="np-qh-r"><button class="np-q-clear">清空</button><button class="np-q-close" title="关闭">×</button></span></div>
@@ -97,10 +81,11 @@
         <div class="np-style-panel"></div>
         <div class="np-stage">
           <div class="np-body">
-            <!-- 左栏：大尺寸高清方形专辑封面 (Image 1 规范) -->
+            <!-- 左栏：大尺寸高清方形专辑封面 (Image 1 规范) / 黑胶 -->
             <div class="np-left">
               <div class="np-cover-wrap">
-                <img class="np-cover" alt="专辑封面" src="/static/app-icon.png">
+                <div class="np-disc"><img class="np-cover" alt="专辑封面" referrerpolicy="no-referrer" src="/static/app-icon.png"></div>
+                <div class="np-tonearm"><i></i></div>
                 <span class="np-srcbadge"></span>
               </div>
               <div class="np-meta" style="display:none">
@@ -115,7 +100,7 @@
               <div class="np-stage-header">
                 <div class="np-title-row">
                   <h1 class="np-stage-title np-title">从一首喜欢的歌开始</h1>
-                  <span class="np-vip-badge">VIP</span>
+                  <span class="np-vip-badge" style="display:none">VIP</span>
                 </div>
                 <div class="np-stage-artist np-artist">选择音乐，开始聆听</div>
               </div>
@@ -127,30 +112,44 @@
           </div>
         </div>
         <div class="np-footer">
-          <!-- 左侧：正在播放曲目信息与操作区 (喜欢、评论、加入歌单、更多) -->
+          <!-- 左侧：退出全屏角标 + 正在播放曲目信息与操作区 (喜欢、评论、加入歌单、更多) -->
           <div class="np-foot-left">
-            <div class="np-foot-meta">
-              <span class="np-foot-name">从一首喜欢的歌开始</span>
-              <span class="np-foot-sep">-</span>
-              <span class="np-foot-artist">选择音乐</span>
-              <span class="np-foot-vip">VIP</span>
+            <div class="np-foot-meta-row">
+              <button class="np-foot-exit-btn" id="npFootExit" title="退出全屏" aria-label="退出全屏">
+                ${ICON.exitFullscreen}
+              </button>
+              <div class="np-foot-meta">
+                <span class="np-foot-name">从一首喜欢的歌开始</span>
+                <span class="np-foot-sep">-</span>
+                <span class="np-foot-artist">选择音乐</span>
+                <span class="np-foot-vip" style="display:none">VIP</span>
+              </div>
             </div>
             <div class="np-foot-acts">
               <button class="np-like" title="喜欢">${ICON.heart}</button>
               <button class="np-cbtn" title="评论">
                 ${ICON.comment}
-                <span class="np-cbtn-count">999+</span>
+                <span class="np-cbtn-count" style="display:none"></span>
               </button>
               <button class="np-addpl" title="加入歌单">${ICON.plus}</button>
-              <button class="np-foot-more-btn" title="更多选项">
-                ${ICON.more}
-              </button>
+              <div class="np-more">
+                <button class="np-foot-more-btn np-more-btn" title="更多选项">
+                  ${ICON.more}
+                </button>
+                <div class="np-more-menu">
+                  <div data-a="style" role="button" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3.2-3.2 3.2h-2.4a2.4 2.4 0 0 0-1.8 4c.4.4.6.9.6 1.4 0 .8-.6 1.4-1.4 1.4z"/><circle cx="7.6" cy="11.6" r="1"/><circle cx="10.6" cy="7.6" r="1"/><circle cx="15.2" cy="8.2" r="1"/></svg><span>播放器样式</span></div>
+                  <div data-a="download" role="button" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg><span>下载当前歌曲</span></div>
+                  <label class="np-speed-label">播放速度<select class="np-speed-select" aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1.0×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2.0×</option></select></label>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- 中间：顶部霓虹微光 + 控制按键 + 直线进度条 -->
+          <!-- 中间：顶部动态音频律动波形 + 控制按键 + 直线进度条 -->
           <div class="np-foot-center">
-            <div class="np-center-glow"></div>
+            <div class="np-center-glow">
+              <canvas class="np-sound-wave" width="480" height="32" aria-hidden="true"></canvas>
+            </div>
             <div class="np-main-ctrl">
               <button class="np-mode" title="播放模式"></button>
               <button class="np-prev" title="上一首">${ICON.prev}</button>
@@ -175,21 +174,17 @@
             </div>
           </div>
 
-          <!-- 右侧：样式切换 (切简约歌词/唱片) + 音质胶囊 + 音效 + 桌面歌词 + 播放队列 + 伴奏 -->
+          <!-- 右侧：样式切换 (切简约歌词/唱片) + 水平音质按钮 + 桌面歌词 + 播放队列 -->
           <div class="np-foot-right">
-            <button class="np-style-btn" id="npSkinToggle" title="切换简约歌词 / 封面分栏" aria-label="切换简约歌词与封面分栏">
+            <button class="np-style-btn" id="npSkinToggle" title="切换播放器样式" aria-label="切换播放器样式">
               ${ICON.tshirt}
             </button>
             <div class="np-q">
-              <button class="np-q-btn" title="选择音质"><span class="np-q-label">臻品音质</span></button>
+              <button class="np-q-btn q-master" id="npQBtn" title="选择音质"><span class="np-q-label">臻品音质</span></button>
               <div class="np-q-menu">${QUALITIES.map(q => `<div data-q="${q[0]}">${q[1]}</div>`).join('')}</div>
             </div>
-            <button class="np-eq-btn" title="音效设置" aria-label="音效设置">
-              ${ICON.eq}
-            </button>
             <button class="np-lyric" title="悬浮歌词显示/隐藏">词</button>
             <button class="np-qbtn" title="播放列表">${ICON.queue}</button>
-            <span class="np-foot-sub-badge">伴</span>
           </div>
           <div class="np-legacy" style="display:none"><button class="np-collapse"></button></div>
         </div>
@@ -198,13 +193,15 @@
       this.el = el;
       this.$ = (s) => el.querySelector(s);
       this.bg = this.$('.np-bg'); this.fluid = this.$('.np-fluid'); this.cover = this.$('.np-cover');
-      this.title = this.$('.np-title'); this.artist = this.$('.np-artist');
+      this.stageTitle = this.$('.np-stage-title'); this.stageArtist = this.$('.np-stage-artist');
       this.footName = this.$('.np-foot-name'); this.footArtist = this.$('.np-foot-artist');
       this.source = this.$('.np-source'); this.lyricsBox = this.$('.np-lyrics');
+      this.lyricsWrap = this.$('.np-lyrics-wrap');
       this.curT = this.$('.np-cur'); this.durT = this.$('.np-dur');
       this.bar = this.$('.np-bar'); this.fill = this.$('.np-bar-fill');
       this.playBtn = this.$('.np-play'); this.modeBtn = this.$('.np-mode');
-      this.qLabel = this.$('.np-q-label'); this.likeBtn = this.$('.np-like');
+      this.qLabel = this.$('.np-q-label'); this.qBtn = this.$('.np-q-btn');
+      this.likeBtn = this.$('.np-like');
       this.volBtn = this.$('.np-vol-btn'); this.volWrap = this.$('.np-vol'); this.volPop = this.$('.np-vol-pop');
       this.volTrack = this.$('.np-vol-track'); this.volFill = this.$('.np-vol-fill');
       this.volThumb = this.$('.np-vol-thumb'); this.volNum = this.$('.np-vol-num'); this.volMute = this.$('.np-vol-mute');
@@ -212,44 +209,60 @@
       this.srcBadge = this.$('.np-srcbadge');
       this.queuePanel = this.$('.np-queue'); this.queueList = this.$('.np-queue-list'); this.queueCount = this.$('.np-q-count');
       this.miniA = this.$('.np-mini-lyric .ml-a'); this.miniB = this.$('.np-mini-lyric .ml-b');
+      this.cbtnCount = this.$('.np-cbtn-count');
+      this.soundWave = this.$('.np-sound-wave');
       this.skinToggle = this.$('#npSkinToggle');
+      this.stylePanel = this.$('.np-style-panel');
       if (this.skinToggle) {
         this.skinToggle.addEventListener('click', (e) => {
           e.stopPropagation();
-          const cur = (this._ps && this._ps.skin) || 'square';
-          const target = cur === 'lyrics' ? 'square' : 'lyrics';
-          this.setSkin(target);
+          const open = !this.stylePanel.classList.contains('show');
+          this._closeAllPopups();
+          if (open) this.openStylePanel();
         });
       }
-      const footMore = this.$('.np-foot-more-btn');
-      if (footMore) {
-        footMore.addEventListener('click', (e) => {
+      const exitBtn = this.$('#npFootExit');
+      if (exitBtn) exitBtn.addEventListener('click', () => this.close());
+      const moreWrap = this.$('.np-more');
+      const moreBtn = this.$('.np-more-btn');
+      const moreMenu = this.$('.np-more-menu');
+      if (moreBtn && moreWrap) {
+        moreBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          const moreBtn = this.$('.np-more-btn');
-          if (moreBtn) moreBtn.click();
+          const willOpen = !moreWrap.classList.contains('open');
+          this._closeAllPopups(moreWrap);
+          if (willOpen) {
+            moreWrap.classList.add('open');
+            this.$('[data-a="download"]').hidden = !document.getElementById('pbDownload');
+            this.$('.np-speed-select').value = String(window.getPlaybackSpeed ? window.getPlaybackSpeed() : ((this.player && this.player.audio.playbackRate) || 1));
+          }
         });
       }
-      const topMin = this.$('.np-top-min');
-      if (topMin) topMin.addEventListener('click', () => this.close());
-      const topClose = this.$('.np-top-close');
-      if (topClose) topClose.addEventListener('click', () => this.close());
-      const topExpand = this.$('.np-top-expand');
-      if (topExpand) {
-        topExpand.addEventListener('click', () => {
-          try {
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
-            else document.exitFullscreen().catch(() => {});
-          } catch (_) {}
-        });
-      }
-      const eqBtn = this.$('.np-eq-btn');
-      if (eqBtn) {
-        eqBtn.addEventListener('click', (e) => {
+      if (moreMenu) {
+        moreMenu.addEventListener('click', (e) => {
+          const it = e.target.closest('[data-a]'); if (!it) return;
           e.stopPropagation();
-          eqBtn.classList.toggle('active');
+          if (moreWrap) moreWrap.classList.remove('open');
+          if (it.dataset.a === 'style') { this.openStylePanel(); }
+          if (it.dataset.a === 'download') { const button = document.getElementById('pbDownload'); if (button) button.click(); }
         });
+        const speedSelect = this.$('.np-speed-select');
+        if (speedSelect) {
+          speedSelect.addEventListener('click', e => e.stopPropagation());
+          speedSelect.addEventListener('change', e => {
+            e.stopPropagation(); const speed = Number(e.target.value);
+            if (window.setPlaybackSpeed) window.setPlaybackSpeed(speed);
+            else if (this.player && this.player.audio) this.player.audio.playbackRate = speed;
+            if (moreWrap) moreWrap.classList.remove('open');
+          });
+        }
       }
       this.cover.addEventListener('error', () => {
+        if (!this.cover.dataset.proxied && this.cover.src && (this.cover.src.includes('gtimg.cn') || this.cover.src.includes('y.qq.com') || this.cover.src.includes('126.net'))) {
+          this.cover.dataset.proxied = '1';
+          this.cover.src = (window.apiUrl ? window.apiUrl('/api/img?url=') : '/api/img?url=') + encodeURIComponent(this.cover.src);
+          return;
+        }
         const fallback = window.IMG_PLACEHOLDER || '/static/app-icon.png';
         if (this.cover.getAttribute('src') !== fallback) this.cover.src = fallback;
       });
@@ -272,12 +285,11 @@
         else if (this.el.classList.contains('open') && this.el.classList.contains('playing')) this._startRAF();
       });
 
-      // ===== 移动端两屏（封面页 ⇄ 歌词页，仿 QQ 音乐手机端）=====
+      // ===== 移动端两屏（封面页 ⇄ 歌词页）=====
       const mq = window.matchMedia ? window.matchMedia('(max-width: 820px)') : null;
       this._isMobile = () => !!(mq && mq.matches);
-      // 点封面 → 歌词页；点歌词页空白（非歌词行）→ 封面页；顶部圆点也可切换
       this.$('.np-cover-wrap').addEventListener('click', () => {
-        if (this._lpFired) { this._lpFired = false; return; }   // 刚长按开过大图，这一下不是切页
+        if (this._lpFired) { this._lpFired = false; return; }
         if (this._isMobile() && !this._lyricsOnly && (!this._ps || this._ps.skin !== 'lyrics')) this._setMPage('lyrics');
       });
       this.rightBox.addEventListener('click', (e) => {
@@ -291,7 +303,7 @@
 
       this.$('.np-close').addEventListener('click', () => this.close());
       this.$('.np-collapse').addEventListener('click', () => this.close());
-      // 歌手名可点（封面页 np-artist / 简约歌词 np-lyrhead）→ 收起全屏页，有 id 跳歌手页、无 id 搜索
+      // 歌手名点击跳转
       this.el.addEventListener('click', (e) => {
         const link = e.target.closest('.np-ar-link');
         if (link) {
@@ -309,10 +321,9 @@
       });
       // 播放列表
       this.$('.np-qbtn').addEventListener('click', (e) => { e.stopPropagation(); this._toggleQueue(); });
-      // 评论（复用主页面的评论面板，z-index 提到全屏页之上）
+      // 评论
       this.$('.np-cbtn').addEventListener('click', (e) => { e.stopPropagation(); this.closeQueue(); this.closeStylePanel(); if (window.Comments) window.Comments.toggle(); });
       this.$('.np-q-clear').addEventListener('click', () => { if (window.QueueCtl) { window.QueueCtl.clear(); this._renderQueue(); } });
-      // 点队列面板外部关闭
       this.el.addEventListener('click', (e) => {
         if (this.queuePanel.classList.contains('show') && !this.queuePanel.contains(e.target) && !e.target.closest('.np-qbtn')) {
           this.closeQueue();
@@ -331,9 +342,7 @@
       this.likeBtn.addEventListener('click', () => this._toggleLike());
       const addBtn = this.$('.np-addpl');
       if (addBtn) addBtn.addEventListener('click', () => { if (window.openAddModal && this.player && this.player.currentSong) window.openAddModal(this.player.currentSong); });
-      // 音质自定义下拉（与底栏一致，纯文字）
-      const qLabelFor = (q) => { const m = QUALITIES.find(x => x[0] === q); return m ? m[1] : '臻品音质'; };
-      this.qLabelFor = qLabelFor;
+
       const npq = this.$('.np-q');
       this.npq = npq;
       const closeAllPopups = (except) => {
@@ -345,27 +354,27 @@
         if (this.stylePanel && except !== this.stylePanel) this.closeStylePanel();
       };
       this._closeAllPopups = closeAllPopups;
-      this.$('.np-q-btn').addEventListener('click', (e) => {
+      this.qBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const willOpen = !npq.classList.contains('open');
         closeAllPopups();
         if (willOpen) npq.classList.add('open');
       });
       this.$('.np-q-menu').querySelectorAll('div').forEach(it => it.addEventListener('click', () => {
-        const q = it.dataset.q; if (this.player) this.player.setQuality(q); this.qLabel.textContent = qLabelFor(q); closeAllPopups();
+        const q = it.dataset.q; if (this.player) this.player.setQuality(q);
+        this.updateQualityBadge(q); closeAllPopups();
       }));
       // 桌面歌词「词」
       const npl = this.$('.np-lyric');
       npl.addEventListener('click', () => { if (window.DeskLyric) { const on = window.DeskLyric.toggle(); npl.classList.toggle('active', on); } });
       this._npl = npl;
-      // 点空白关掉全部弹窗
       this.el.addEventListener('click', (e) => {
         const inside = e.target.closest('.np-q, .np-vol, .np-more, .np-queue, .np-style-panel');
         if (!inside) closeAllPopups();
       });
-      // 播放列表关闭按钮
       this.$('.np-q-close').addEventListener('click', (e) => { e.stopPropagation(); this.queuePanel.classList.remove('show'); const qb = this.$('.np-qbtn'); if (qb) qb.classList.remove('active'); });
-      // 音量：喇叭弹出竖向调节条（默认 100）
+
+      // 音量
       const logicalVol = () => {
         const p = this.player;
         if (p && typeof p.volume === 'number' && !isNaN(p.volume)) return Math.max(0, Math.min(1, p.volume));
@@ -437,7 +446,8 @@
         e.preventDefault(); e.stopPropagation();
         applyVol(e.key === 'Home' ? 0 : e.key === 'End' ? 1 : logicalVol() + step, true);
       });
-      // 歌词滚轮预览：滚动时暂停自动跟随，2.5s 后恢复
+
+      // 歌词滑动与滚轮
       if (this.rightBox) {
         this.rightBox.addEventListener('wheel', (e) => {
           e.preventDefault();
@@ -454,7 +464,6 @@
             this._layoutLyrics();
           }, 2600);
         }, { passive: false });
-        // 触摸滑动预览（手机）：与滚轮同逻辑，手指拖动歌词、2.6s 后恢复自动跟随
         let _ty0 = 0, _tBase = 0, _tMoved = false;
         this.rightBox.addEventListener('touchstart', (e) => {
           if (!e.touches || !e.touches.length) return;
@@ -498,7 +507,8 @@
           this.rightBox.addEventListener('mouseleave', () => { this._hoverHold = false; if (!this._preview) this._layoutLyrics(); });
         }
       }
-      // 进度条：点击 + 拖动
+
+      // 进度条
       const barRatio = (e) => { const r = this.bar.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left) / Math.max(1, r.width))); };
       const barDur = () => { const st = this.player ? this.player.getState() : {}; return st.duration || (this.player && this.player.audio && this.player.audio.duration) || 0; };
       const paintDrag = ratio => { this._dragRatio = ratio; this._setProgress(ratio); this.curT.textContent = fmt(ratio * barDur()); };
@@ -525,7 +535,7 @@
         const cur = this.player.getState().currentTime || 0;
         this.player.seekTo(e.key === 'Home' ? 0 : e.key === 'End' ? dur : Math.max(0, Math.min(dur, cur + step)));
       });
-      // 悬停预览：左侧时间随光标 + 光标位置歌词气泡
+
       const npTip = this.$('.np-bar-tip');
       this.bar.addEventListener('mousemove', (e) => {
         if (this._barDrag) return;
@@ -535,13 +545,12 @@
         if (npTip) { const tx = this._lyricAt(rt * barDur()); npTip.textContent = tx; npTip.style.left = (rt * 100) + '%'; npTip.classList.toggle('show', !!tx); }
       });
       this.bar.addEventListener('mouseleave', () => { this._barHover = false; if (npTip) npTip.classList.remove('show'); });
-      // 仅歌词模式：点空白处关闭
       this.el.addEventListener('click', (e) => { if (this._lyricsOnly && !e.target.closest('.ln')) this.close(); });
       document.addEventListener('keydown', e => {
         if (!this.el.classList.contains('open') || e.defaultPrevented) return;
         if (document.querySelector('.modal-mask.open, .ov-mask.open, .comment-panel.open, .confirm-mask.open')) return;
         if (e.key === 'Tab') {
-          const nodes = [...this.el.querySelectorAll('button, input, select, [tabindex="0"]')].filter(n => n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden' && !n.disabled && !n.closest('.np-more:not(.open) .np-more-menu'));
+          const nodes = [...this.el.querySelectorAll('button, input, select, [tabindex="0"]')].filter(n => n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden' && !n.disabled);
           if (!nodes.length) return;
           const first = nodes[0], last = nodes[nodes.length - 1], active = document.activeElement;
           if (e.shiftKey && (active === first || active === this.el)) { e.preventDefault(); last.focus(); }
@@ -552,15 +561,14 @@
         e.preventDefault();
         if (this.preview && this.preview.classList.contains('show')) { this.closePreview(); return; }
         if (this.queuePanel.classList.contains('show')) { this.closeQueue(); return; }
-        const style = this.$('.np-style-panel');
-        if (style && style.classList.contains('show')) { this.closeStylePanel(); return; }
-        if (this.$('.np-more').classList.contains('open')) { this.$('.np-more').classList.remove('open'); return; }
-        if (this.$('.np-q').classList.contains('open')) { this.$('.np-q').classList.remove('open'); return; }
+        if (this.stylePanel && this.stylePanel.classList.contains('show')) { this.closeStylePanel(); return; }
+        if (this.$('.np-more') && this.$('.np-more').classList.contains('open')) { this.$('.np-more').classList.remove('open'); return; }
+        if (this.$('.np-q') && this.$('.np-q').classList.contains('open')) { this.$('.np-q').classList.remove('open'); return; }
         if (this.volWrap.classList.contains('open')) { this.volWrap.classList.remove('open'); return; }
         this.close();
       });
 
-      /* ===== 封面长按 → 沉浸大图预览 ===== */
+      // 封面预览
       this.preview = this.$('.np-preview');
       this.previewImg = this.preview.querySelector('img');
       const coverWrap = this.$('.np-cover-wrap');
@@ -594,38 +602,6 @@
         this.closePreview();
       });
 
-      /* ===== 顶栏「更多」菜单 ===== */
-      const moreWrap = this.$('.np-more'), moreMenu = this.$('.np-more-menu');
-      this.$('.np-more-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        const willOpen = !moreWrap.classList.contains('open');
-        this._closeAllPopups();
-        if (willOpen) {
-          moreWrap.classList.add('open');
-          this.$('[data-a="download"]').hidden = !document.getElementById('pbDownload');
-          this.$('.np-speed-select').value = String(window.getPlaybackSpeed ? window.getPlaybackSpeed() : ((this.player && this.player.audio.playbackRate) || 1));
-        }
-      });
-      moreMenu.addEventListener('click', (e) => {
-        const it = e.target.closest('[data-a]'); if (!it) return;
-        e.stopPropagation();
-        moreWrap.classList.remove('open');
-        if (it.dataset.a === 'style') { const sb = this.$('.np-style-btn'); if (sb) sb.click(); }
-        if (it.dataset.a === 'download') { const button = document.getElementById('pbDownload'); if (button) button.click(); }
-      });
-      moreMenu.addEventListener('keydown', e => {
-        const item = e.target.closest('[data-a]');
-        if (item && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); item.click(); }
-      });
-      this.$('.np-speed-select').addEventListener('click', e => e.stopPropagation());
-      this.$('.np-speed-select').addEventListener('change', e => {
-        e.stopPropagation(); const speed = Number(e.target.value);
-        if (window.setPlaybackSpeed) window.setPlaybackSpeed(speed);
-        else if (this.player && this.player.audio) this.player.audio.playbackRate = speed;
-        moreWrap.classList.remove('open');
-      });
-      this.el.addEventListener('click', () => moreWrap.classList.remove('open'));
-
       this._bindGestures();
     }
 
@@ -635,8 +611,8 @@
       this._resetGesture = () => { tracking = false; axis = ''; dx = dy = 0; el.style.transition = ''; el.style.transform = ''; };
       const startable = (t) =>
         !t.closest('.np-bar') && !t.closest('.np-queue') && !t.closest('.np-right') &&
-        !t.closest('.np-vol-pop') && !t.closest('.np-more-menu') && !t.closest('.np-q-menu') &&
-        !t.closest('.np-style-panel') && !t.closest('.np-main-ctrl') && !t.closest('.np-dock') &&
+        !t.closest('.np-vol-pop') && !t.closest('.np-q-menu') &&
+        !t.closest('.np-style-panel') && !t.closest('.np-main-ctrl') &&
         !t.closest('.np-preview');
       el.addEventListener('touchstart', (e) => {
         if (!e.touches || e.touches.length !== 1 || !startable(e.target)) { tracking = false; return; }
@@ -679,13 +655,76 @@
       }, { passive: true });
     }
 
+    setCommentCount(countText) {
+      if (!this.cbtnCount) return;
+      if (countText) {
+        this.cbtnCount.textContent = countText;
+        this.cbtnCount.style.display = 'inline-block';
+      } else {
+        this.cbtnCount.textContent = '';
+        this.cbtnCount.style.display = 'none';
+      }
+    }
+
+    updateQualityBadge(q) {
+      const isQQ = !(this.player && this.player.currentSong && String(this.player.currentSong.id).startsWith('netease:'));
+      let label = '标准', cls = 'q-standard';
+      if (q === 'master') {
+        label = isQQ ? '臻品音质' : '沉浸声';
+        cls = 'q-master';
+      } else if (q === 'hq') {
+        label = isQQ ? 'HQ' : '极高';
+        cls = 'q-hq';
+      } else if (q === 'flac') {
+        label = '无损';
+        cls = 'q-flac';
+      } else {
+        label = '标准';
+        cls = 'q-standard';
+      }
+      if (this.qLabel) this.qLabel.textContent = label;
+      if (this.qBtn) this.qBtn.className = 'np-q-btn ' + cls;
+    }
+
+    openStylePanel() {
+      const panel = this.stylePanel;
+      if (!panel) return;
+      const curSkin = (this._ps && this._ps.skin) || 'square';
+      const SKINS = [
+        ['vinyl', '经典黑胶', '<div class="sk-art-vinyl"><div class="sk-disk"></div><div class="sk-arm"></div></div>'],
+        ['square', '简约方形', '<div class="sk-art-sq"><div class="sk-cover"></div><div class="sk-lines"><i></i><i></i><i></i></div></div>'],
+        ['vinyl-color', '透明彩胶', '<div class="sk-art-color"><div class="sk-color-disk"></div><div class="sk-arm"></div></div>'],
+        ['lyrics', '简约歌词', '<div class="sk-art-lyr"><div class="sk-center-lines"><i></i><b></b><i></i></div></div>'],
+      ];
+      panel.innerHTML = `
+        <div class="nsp-head"><span>播放器样式</span><button class="nsp-x" title="关闭">×</button></div>
+        <div class="nsp-body">
+          <div class="nsp-skins">
+            ${SKINS.map(([k, n, pv]) => `
+              <div class="nsp-card ${curSkin === k ? 'active' : ''}" data-k="${k}">
+                <div class="nsp-prev">${pv}</div>
+                <div class="nsp-name">${n}</div>
+                <div class="nsp-check"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+      panel.classList.add('show');
+      panel.querySelector('.nsp-x').onclick = () => this.closeStylePanel();
+      panel.querySelectorAll('.nsp-card').forEach(c => {
+        c.onclick = () => {
+          this.setSkin(c.dataset.k);
+          this.openStylePanel();
+        };
+      });
+    }
+
     applyStyle() {
       const ps = Object.assign({}, PS_DEFAULTS, (window.AppSettings && window.AppSettings.playerStyle) || {});
-      if (!['square', 'lyrics'].includes(ps.skin)) ps.skin = 'square';
-      ps.bg = 'auto'; ps.lyricAlign = 'center'; ps.viz = 'line';
+      if (!['square', 'lyrics', 'vinyl', 'vinyl-color'].includes(ps.skin)) ps.skin = 'square';
+      ps.bg = 'auto'; ps.lyricAlign = 'center'; ps.viz = 'wave';
       try {
         const q = new URLSearchParams(location.search);
-        if (['square', 'lyrics'].includes(q.get('skin'))) ps.skin = q.get('skin');
+        if (['square', 'lyrics', 'vinyl', 'vinyl-color'].includes(q.get('skin'))) ps.skin = q.get('skin');
       } catch (_) {}
       this._ps = ps;
       this.el.dataset.skin = ps.skin;
@@ -703,7 +742,7 @@
     }
 
     setSkin(skin) {
-      skin = skin === 'lyrics' ? 'lyrics' : 'square';
+      if (!['square', 'lyrics', 'vinyl', 'vinyl-color'].includes(skin)) skin = 'square';
       this._ps = this._ps || {};
       this._ps.skin = skin;
       this.el.dataset.skin = skin;
@@ -749,7 +788,7 @@
     _artistHTML(s) {
       const arr = Array.isArray(s.artistList) ? s.artistList : (Array.isArray(s.artists) ? s.artists : null);
       if (arr && arr.length && arr[0] && arr[0].id) {
-        return arr.map(a => `<span class="np-ar-link" data-aid="${attr(a.id)}">${esc(a.name)}</span>`).join('<span class="np-ar-sep">, </span>');
+        return arr.map(a => `<span class="np-ar-link" data-aid="${attr(a.id)}">${esc(a.name)}</span>`).join('<span class="np-ar-sep"> / </span>');
       }
       const txt = (typeof s.artists === 'string' ? s.artists : '') || s.artist || '';
       return txt ? `<span class="np-ar-search">${esc(txt)}</span>` : '';
@@ -769,7 +808,7 @@
       player.on('lyricsloaded', () => this._renderLyrics());
       player.on('timeupdate', (d) => this._tick(d));
       player.on('playstate', (p) => this._renderPlay(p));
-      player.on('qualitychange', (q) => { if (this.qLabel) this.qLabel.textContent = (this.qLabelFor ? this.qLabelFor(q) : q); });
+      player.on('qualitychange', (q) => this.updateQualityBadge(q));
       if (player.audio) player.audio.addEventListener('volumechange', () => {
         if (this._renderVol && this._logicalVol) this._renderVol(this._logicalVol());
       });
@@ -783,7 +822,7 @@
     _syncFromState() {
       if (!this.player) return;
       const st = this.player.getState();
-      if (this.qLabel) this.qLabel.textContent = (this.qLabelFor ? this.qLabelFor(st.quality || 'standard') : '臻品音质');
+      this.updateQualityBadge(st.quality || 'standard');
       try { if (this._npl && window.DeskLyric) this._npl.classList.toggle('active', window.DeskLyric.isOn()); } catch (_) {}
       this._renderMode();
       try {
@@ -796,10 +835,11 @@
 
     _renderSong(s) {
       if (!s) return;
+      if (this.lyricsWrap) this.lyricsWrap.classList.add('lyrics-changing');
       const name = s.name || '未知歌曲';
       const arHTML = this._artistHTML(s);
-      this.title.textContent = name;
-      this.artist.innerHTML = arHTML;
+      this.el.querySelectorAll('.np-title').forEach(el => el.textContent = name);
+      this.el.querySelectorAll('.np-artist').forEach(el => el.innerHTML = arHTML);
       if (this.footName) this.footName.textContent = name;
       if (this.footArtist) this.footArtist.innerHTML = arHTML;
       const lh = this.$('.np-lyrhead');
@@ -812,7 +852,14 @@
           : (src === 'netease' ? '<img src="/static/wyyyy.jpg" alt="网易云音乐">' : '');
         this.srcBadge.classList.toggle('show', !!src);
       }
+      // VIP 判断：根据渠道真实判断
+      const isVip = !!(s.vip || (s.pay && (s.pay.pay_month || s.pay.pay_play || s.pay.pay_down)) || s.fee === 1 || s.fee === 4);
+      this.el.querySelectorAll('.np-vip-badge, .np-foot-vip').forEach(el => {
+        el.style.display = isVip ? 'inline-block' : 'none';
+      });
+
       const pic = (window.httpsify ? window.httpsify(s.picUrl || s.pic) : (s.picUrl || s.pic)) || '';
+      delete this.cover.dataset.proxied;
       this.cover.src = pic || window.IMG_PLACEHOLDER || '/static/app-icon.png';
       this.cover.alt = (s.name || '当前歌曲') + ' · 专辑封面';
       this._lastPic = pic;
@@ -820,8 +867,8 @@
       const psBg = this._ps && this._ps.bg;
       if (psBg && psBg !== 'auto') this._applyBg(hexRgb(psBg));
       else this._extractColor(pic);
-      this._applyFluidPref();
       this._updateLikeState();
+      this.updateQualityBadge(this.player ? this.player.quality : 'standard');
     }
 
     _extractColor(picUrl) {
@@ -860,21 +907,19 @@
         } catch (e) { this._applyBg(null); }
       };
       img.onerror = () => { if (this._lastPic === picUrl) this._applyBg(null); };
-      img.src = /^(blob:|data:)/.test(picUrl) ? picUrl : apiUrl('/api/img?url=' + encodeURIComponent(picUrl));
+      img.src = /^(blob:|data:)/.test(picUrl) ? picUrl : (window.apiUrl ? window.apiUrl('/api/img?url=' + encodeURIComponent(picUrl)) : '/api/img?url=' + encodeURIComponent(picUrl));
     }
 
     _applyBg(c) {
-      this.bg.style.removeProperty('background');
-      this.el.style.setProperty('--np-tint', (c || [150, 150, 160]).map(n => Math.round(Math.max(0, Math.min(255, n)))).join(' '));
-    }
-
-    _applyFluidPref() {
-      this.el.classList.remove('fluid-on');
+      const rgb = (c || [250, 35, 59]).map(n => Math.round(Math.max(0, Math.min(255, n))));
+      this._themeColor = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+      this.el.style.setProperty('--np-theme-color', this._themeColor);
+      this.el.style.setProperty('--np-theme-glow', `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.45)`);
+      this.el.style.setProperty('--np-tint', rgb.join(' '));
     }
 
     _lineInner(l) {
-      const wbw = window.AppSettings && window.AppSettings.wordByWord && window.AppSettings.wordByWord.enabled;
-      if (wbw && l.words && l.words.length) {
+      if (l.words && l.words.length) {
         return l.words.map(w => `<span class="w" data-t="${w.time}">${esc(w.text)}</span>`).join('');
       }
       return esc(l.text || '♪');
@@ -885,6 +930,7 @@
       this._preview = false; this._previewY = null; clearTimeout(this._previewTimer);
       if (this.lyricsBox) { this.lyricsBox.style.transition = 'none'; this.lyricsBox.style.transform = 'translateY(0)'; }
       this._renderMini(this.player ? this.player.currentLyricIndex : -1);
+      if (this.lyricsWrap) this.lyricsWrap.classList.remove('lyrics-changing');
       if (!ly.length) { this.lyricsBox.innerHTML = '<div class="empty">暂无歌词 / 纯音乐</div>'; return; }
       this.lyricsBox.innerHTML = ly.map((l, i) =>
         `<div class="ln" data-i="${i}"><span class="seekt">${fmt(l.time)}</span><span class="ln-tx">${this._lineInner(l)}${l.translation ? `<span class="tr">${esc(l.translation)}</span>` : ''}</span></div>`
@@ -968,7 +1014,6 @@
       if (cur) cur.scrollIntoView({ block: 'nearest' });
     }
 
-    /* 精准居中当前行：基于父容器绝对坐标计算，彻底消除视口重排与缩放误差 */
     _layoutLyrics() {
       if (!this.lyricsBox) return;
       const lines = this.lyricsBox.querySelectorAll('.ln');
@@ -977,7 +1022,7 @@
       lines.forEach((n, i) => {
         const d = Math.abs(i - idx);
         n.classList.toggle('active', i === idx);
-        n.style.opacity = i === idx ? '1' : String(Math.max(0.16, 0.5 - d * 0.07));
+        n.style.opacity = i === idx ? '1' : String(Math.max(0.16, 0.45 - d * 0.08));
       });
       if (this._preview || this._hoverHold) return;
       const box = this.rightBox; if (!box) return;
@@ -1021,26 +1066,92 @@
       ratio = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0;
       this.bar.style.setProperty('--progress', ratio.toFixed(5));
     }
+
+    _drawSoundWave(isPlaying) {
+      const cv = this.soundWave;
+      if (!cv) return;
+      const ctx = cv.getContext('2d');
+      if (!ctx) return;
+      const w = cv.width, h = cv.height, cy = h / 2;
+      ctx.clearRect(0, 0, w, h);
+
+      // 目标振幅平滑过渡：播放时起伏，暂停时平缓归零成直线
+      const targetAmp = isPlaying ? 7.5 : 0;
+      this._waveAmp += (targetAmp - this._waveAmp) * 0.08;
+      this._wavePhase += isPlaying ? 0.045 : 0.01;
+
+      const grad = ctx.createLinearGradient(0, 0, w, 0);
+      grad.addColorStop(0, 'rgba(255,255,255,0)');
+      grad.addColorStop(0.18, this._themeColor || '#ffe066');
+      grad.addColorStop(0.82, this._themeColor || '#ffe066');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+
+      ctx.save();
+      ctx.lineCap = 'round';
+
+      // 主律动波
+      ctx.beginPath();
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = this._themeColor || '#ffe066';
+      ctx.shadowBlur = isPlaying ? 8 : 4;
+      for (let x = 0; x <= w; x += 4) {
+        const envelope = Math.sin((x / w) * Math.PI);
+        const y = cy + Math.sin(x * 0.024 + this._wavePhase) * this._waveAmp * envelope;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // 次层交错波（播放时呈现层次感）
+      if (this._waveAmp > 0.4) {
+        ctx.beginPath();
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.4;
+        ctx.globalAlpha = 0.55;
+        for (let x = 0; x <= w; x += 4) {
+          const envelope = Math.sin((x / w) * Math.PI);
+          const y = cy + Math.sin(x * 0.038 - this._wavePhase * 0.8 + 1.2) * (this._waveAmp * 0.65) * envelope;
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     _rafTick() {
       const p = this.player;
       if (!p) return;
+      const isPlaying = !p.audio.paused;
+      this._drawSoundWave(isPlaying);
       if (p._qSwitch) return;
       const dur = p.duration || (p.audio && p.audio.duration) || 0;
       const t = (p.audio && p.audio.currentTime) || p.currentTime || 0;
       if (!this._barDrag) this._setProgress(dur > 0 ? t / dur : 0);
-      const wbw = window.AppSettings && window.AppSettings.wordByWord && window.AppSettings.wordByWord.enabled;
+
       const idx = p.currentLyricIndex, ly = p.lyrics || [];
-      if (!wbw || idx < 0 || !ly[idx] || !ly[idx].words) return;
+      if (idx < 0 || !ly[idx]) return;
       const c = ly[idx], n = ly[idx + 1];
       const lnEl = this.lyricsBox.querySelectorAll('.ln')[idx];
       if (!lnEl) return;
-      const spans = lnEl.querySelectorAll('.w');
-      for (let i = 0; i < c.words.length; i++) {
-        const start = c.words[i].time;
-        const end = i + 1 < c.words.length ? c.words[i + 1].time : (n ? n.time : start + 0.6);
-        let pct = end > start ? (t - start) / (end - start) : (t >= start ? 1 : 0);
-        pct = pct < 0 ? 0 : pct > 1 ? 1 : pct;
-        if (spans[i]) spans[i].style.setProperty('--p', (pct * 100).toFixed(1) + '%');
+
+      // 逐字卡拉OK动效
+      if (c.words && c.words.length) {
+        const spans = lnEl.querySelectorAll('.w');
+        for (let i = 0; i < c.words.length; i++) {
+          const start = c.words[i].time;
+          const end = i + 1 < c.words.length ? c.words[i + 1].time : (n ? n.time : start + 0.6);
+          let pct = end > start ? (t - start) / (end - start) : (t >= start ? 1 : 0);
+          pct = pct < 0 ? 0 : pct > 1 ? 1 : pct;
+          if (spans[i]) spans[i].style.setProperty('--p', (pct * 100).toFixed(1) + '%');
+        }
+      } else {
+        // 无逐字歌词时的单句行级平滑卡拉OK过渡
+        const start = c.time;
+        const end = n ? n.time : start + 3.5;
+        let linePct = end > start ? (t - start) / (end - start) : 1;
+        linePct = Math.max(0, Math.min(1, linePct));
+        lnEl.classList.add('has-line-p');
+        lnEl.style.setProperty('--line-p', (linePct * 100).toFixed(1) + '%');
       }
     }
 
@@ -1077,7 +1188,8 @@
 
     reset() {
       this._lastPic = ''; this._applyBg(null); this.closePreview();
-      this.title.textContent = '从一首喜欢的歌开始'; this.artist.textContent = '选择音乐，开始聆听';
+      this.el.querySelectorAll('.np-title').forEach(el => el.textContent = '从一首喜欢的歌开始');
+      this.el.querySelectorAll('.np-artist').forEach(el => el.textContent = '选择音乐，开始聆听');
       this.source.textContent = '';
       this.cover.src = window.IMG_PLACEHOLDER || '/static/app-icon.png'; this.cover.alt = '专辑封面';
       this.srcBadge.classList.remove('show'); this.srcBadge.innerHTML = '';
@@ -1116,7 +1228,8 @@
       this._barDrag = false; this._dragRatio = null; this.bar.classList.remove('dragging');
       document.body.style.overflow = this._previousOverflow || '';
       this._stopRAF(); this.closeStylePanel(); this.closeQueue(); this.closePreview();
-      this.$('.np-more').classList.remove('open'); this.$('.np-q').classList.remove('open'); this.volWrap.classList.remove('open');
+      if (this.$('.np-more')) this.$('.np-more').classList.remove('open');
+      this.$('.np-q').classList.remove('open'); this.volWrap.classList.remove('open');
       if (this._returnFocus && this._returnFocus.isConnected) this._returnFocus.focus({ preventScroll: true });
     }
     toggle() { this.el.classList.contains('open') ? this.close() : this.open(false); }

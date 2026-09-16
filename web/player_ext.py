@@ -86,11 +86,15 @@ def norm_qq_song(s: dict) -> dict:
     if not pic and singers:
         smid = singers[0].get("mid", "")
         pic = f"https://y.gtimg.cn/music/photo_new/T001R300x300M000{smid}.jpg" if smid else ""
+    pay = s.get("pay") or {}
+    if isinstance(pay, dict):
+        is_vip = bool(pay.get("pay_month") or pay.get("pay_play") or pay.get("pay_down"))
+    else:
+        is_vip = bool(getattr(s, "fee", 0) in (1, 4) or getattr(s, "vip", False))
     return {
         "id": f"qq:{s.get('mid', '')}",
         "name": s.get("name", "") or s.get("title", ""),
         "artist": artist,
-        # 歌手数组（P5 歌手页）：id 带源前缀，前端点歌手名跳 #/artist/qq/<mid>。artist 字符串保留不变。
         "artists": [{"id": f"qq:{x.get('mid', '')}", "name": x.get("name", "")}
                     for x in singers if isinstance(x, dict) and x.get("name") and x.get("mid")],
         "pic": pic,
@@ -98,6 +102,7 @@ def norm_qq_song(s: dict) -> dict:
         "album_id": f"qq:{album_mid}" if album_mid else "",
         "duration": int(s.get("interval", 0) or 0),
         "sources": ["qq"],
+        "vip": is_vip,
     }
 
 
@@ -111,6 +116,8 @@ def norm_ncm_song(s: dict) -> dict:
         pic = ""
     dur = (s.get("dt") or s.get("duration") or 0) or 0
     alid = al.get("id")
+    fee = s.get("fee", 0)
+    is_vip = bool(fee in (1, 4) or s.get("vip"))
     return {
         "id": f"netease:{s.get('id', '')}",
         "name": s.get("name", ""),
@@ -122,6 +129,7 @@ def norm_ncm_song(s: dict) -> dict:
         "album_id": f"netease:{alid}" if alid else "",
         "duration": int(dur / 1000),
         "sources": ["netease"],
+        "vip": is_vip,
     }
 
 

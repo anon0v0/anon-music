@@ -414,11 +414,8 @@
   function renderAccount() {
     const box = $('#account'); if (!box) return;
     if (me) {
-      const av = me.avatar || '';
       const disp = me.nickname || String(me.email).split('@')[0];
-      // 未设 emoji 头像 → 默认用应用 logo（不再用邮箱首字母）
-      const avInner = av ? `<div class="av av-emoji" title="编辑资料">${esc(av)}</div>`
-        : `<div class="av av-logo" title="编辑资料"><img src="/static/music-logo.png?v=20260721e" alt=""></div>`;
+      const avInner = `<div class="av av-logo" title="编辑资料"><img src="/static/music-logo.png?v=20260721e" alt=""></div>`;
       box.innerHTML = `<div class="user">${avInner}
         <div class="em" title="${esc(me.email)}（点击编辑资料）">${esc(disp)}</div><button class="lo">登出</button></div>`;
       box.querySelector('.lo').onclick = async () => { await api('/api/auth/logout', { method: 'POST' }); window.apiToken.set(''); location.reload(); };
@@ -445,15 +442,9 @@
     const p = $('#profilePanel', profileModal);
     let curAv = me.avatar || '';
     p.innerHTML = `
-      <div class="lbl" style="margin-bottom:10px">emoji 头像</div>
-      <div class="emoji-grid">${PROFILE_EMOJIS.map(e2 => `<span class="emoji-opt ${curAv === e2 ? 'active' : ''}" data-e="${e2}">${e2}</span>`).join('')}</div>
-      <div class="lbl" style="margin:16px 0 8px">显示昵称（评论区 / 一起听用这个名字）</div>
+      <div class="lbl" style="margin:8px 0 8px">显示昵称（评论区使用这个名字）</div>
       <div class="bgurl-row"><input id="pfNick" maxlength="20" placeholder="${esc(String(me.email).split('@')[0])}" value="${esc(me.nickname || '')}"><button id="pfSave">保存</button></div>
       <div style="color:var(--muted);font-size:13px;padding-top:12px">留空昵称则显示邮箱前缀。</div>`;
-    p.querySelectorAll('.emoji-opt').forEach(el => el.onclick = () => {
-      curAv = (curAv === el.dataset.e) ? '' : el.dataset.e;   // 再点一次取消
-      p.querySelectorAll('.emoji-opt').forEach(x => x.classList.toggle('active', x.dataset.e === curAv));
-    });
     p.querySelector('#pfSave').onclick = async () => {
       const nick = ($('#pfNick', profileModal).value || '').trim();
       try {
@@ -708,32 +699,39 @@
   (function mountStylePanel() {
     const np = window.NowPlaying;
     if (!np || !np.el) return;
-    const panel = document.createElement('div');
+    const panel = np.el.querySelector('.np-style-panel') || document.createElement('div');
+    if (!panel.parentElement) np.el.appendChild(panel);
     panel.className = 'np-style-panel';
-    np.el.appendChild(panel);
-    np.el.classList.add('has-nsp');   // 面板已挂载 → 显示入口按钮（旧下载页无面板则按钮保持隐藏）
+    np.el.classList.add('has-nsp');   // 面板已挂载 → 显示入口按钮
     const btn = np.el.querySelector('.np-style-btn');
     function render() {
       const S = window.AppSettings;
       const ps = S.playerStyle = Object.assign({}, PS_DEFAULTS, S.playerStyle || {});
       const b = S.background;
-      if (!['square', 'lyrics'].includes(ps.skin)) ps.skin = 'square';
+      if (!['square', 'lyrics', 'vinyl', 'vinyl-color'].includes(ps.skin)) ps.skin = 'square';
       ps.bg = 'auto'; ps.lyricAlign = 'center'; ps.viz = 'wave';
       b.fluid = true; b.mode = 'fluid';
       const SKINS = [
-        ['square', '简约方形', '<span class="sk-square"></span>'],
-        ['lyrics', '简约歌词', '<span class="sk-lyr"><i></i><i></i><i></i></span>'],
+        ['vinyl', '经典黑胶', '<div class="sk-art-vinyl"><div class="sk-disk"></div><div class="sk-arm"></div></div>'],
+        ['square', '简约方形', '<div class="sk-art-sq"><div class="sk-cover"></div><div class="sk-lines"><i></i><i></i><i></i></div></div>'],
+        ['vinyl-color', '透明彩胶', '<div class="sk-art-color"><div class="sk-color-disk"></div><div class="sk-arm"></div></div>'],
+        ['lyrics', '简约歌词', '<div class="sk-art-lyr"><div class="sk-center-lines"><i></i><b></b><i></i></div></div>'],
       ];
       panel.innerHTML = `
-        <div class="nsp-head">播放器样式<button class="nsp-x" title="关闭">×</button></div>
+        <div class="nsp-head"><span>播放器样式</span><button class="nsp-x" title="关闭">×</button></div>
         <div class="nsp-body">
-          <div class="nsp-skins">${SKINS.map(([k, n, pv]) => `<div class="nsp-card ${ps.skin === k ? 'active' : ''}" data-k="${k}"><div class="nsp-prev">${pv}</div><div class="nsp-name">${n}</div></div>`).join('')}</div>
-          <div class="nsp-fixed-note">直线进度条 · 专辑轻染色 · 跟随深浅主题</div>
+          <div class="nsp-skins">${SKINS.map(([k, n, pv]) => `
+            <div class="nsp-card ${ps.skin === k ? 'active' : ''}" data-k="${k}">
+              <div class="nsp-prev">${pv}</div>
+              <div class="nsp-name">${n}</div>
+              <div class="nsp-check"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+            </div>`).join('')}</div>
         </div>`;
       const apply = () => { applyBackground(b); saveSettings(); if (np.applyStyle) np.applyStyle(); };
       panel.querySelector('.nsp-x').onclick = () => { panel.classList.remove('show'); if (btn) btn.classList.remove('active'); };
       panel.querySelectorAll('.nsp-card').forEach(c => c.onclick = () => { ps.skin = c.dataset.k; apply(); render(); });
     }
+    np.openStylePanel = () => { if (btn) btn.click(); };
     panel.addEventListener('click', (e) => e.stopPropagation());
     if (btn) btn.addEventListener('click', (e) => {
       e.stopPropagation();
