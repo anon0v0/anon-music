@@ -1,154 +1,82 @@
-# Anon Music Web
+# Anon Music · TuneFree 美学复用与精简化升级
 
-Anon Music 的网页后端与播放器源码。后端使用 FastAPI + SQLite，前端为原生 HTML/CSS/JavaScript；桌面版和 Android 版由仓库根目录的 Tauri 外壳加载该网页。
+## 访问
 
-## 功能
+- 线上播放器：<http://192.168.31.3/music>
+- 效果预览：[preview.html](preview.html)
+- 线上目录：`root@192.168.31.3:/root/anon-music-web`
+- 已同步源码：`/root/music-app/web`，保持代码整洁，不触碰生产库与用户凭据。
 
-- QQ 音乐与网易云兼容 API 双源搜索、播放、歌词、歌单和排行榜
-- 账号、收藏、最近播放、自建歌单及一起听
-- PWA、桌面歌词、下载和移动端适配
+## 本轮升级核心成果
 
-## 音源设计
+基于开源项目 [TuneFree (alanbulan/TuneFree)](https://github.com/alanbulan/TuneFree.git) 的前端设计方案，全面重构与美化 `anonmusic` 音乐播放器的前端界面，并精准剔除用户指定的 3 项冗余功能：
 
-网站维护一个**服务器私有默认网易云兼容 API**：
+### 1. TuneFree 视觉设计语言全面复用
+- **设计令牌与配色体系**：
+  - **深色模式（Dark）**：现代黑曜石（`#09090b` / `#18181b`），辅以高雅微冷次级文字（`#a1a1aa`）与极细半透明分割线（`rgba(63, 63, 70, 0.45)`）。
+  - **浅色模式（Light）**：温暖银白（`#f6f6f8` / `#ffffff`），纯净背景与高雅浅灰卡片质感，内边缘高光微描边（`inset 0 1px 0 rgba(255, 255, 255, 0.86)`）。
+  - **主强调色（Primary Accent）**：TuneFree 标志性珊瑚红（`#fa233b` / `rgb(250, 35, 59)`），底栏主播放按钮采用珊瑚红实心圆形微光胶囊设计。
+- **TuneFree 窗口微纽扣（Window Controls）**：
+  - 顶栏右侧接入经典的红（关闭）、灰（最小化）、粉（最大化）三色控制圆纽扣，悬停放大（`scale(1.18)`）并浮现毛玻璃气泡 Tooltip。
+- **黑胶唱片旋转封面（Spinning Cover）**：
+  - 底栏播放器封面全面升级为 **50% 纯黑胶唱片圆形**，播放时匀速平滑旋转，暂停时精准静止。
+  - 全屏播放器唱片带有中央唱片孔与立体微阴影。
+- **全屏沉浸歌词舞台（Lyrics Stage）**：
+  - 引入 TuneFree 标志性的 `lyricFloat` 动态微光光晕（`radial-gradient` 双向轻微呼吸微动）。
+- **极简单一直线进度条**：
+  - 维持 4px 纤细直线轨道，悬停/拖拽平滑过渡到 6px，白点圆角 Thumb 滑动定位。
 
-- 所有用户统一使用服务器默认音源。
-- 默认音源地址不会通过网页 API 返回，也不会写入网页、APK 或 EXE。
-- 网页端不提供自定义音源设置。
+### 2. 彻底精简 3 项指定功能
+1. **剔除「一起听功能」**：
+   - 彻底从侧边栏导航列表（`NAV`）和移动端分类导航（`MOBILE_ROUTES`）中移除。
+   - 移除 HTML 脚本引用 `<script src="/static/together.js"></script>`。
+   - 路由 `#/together` 自动重定向至发现页 `#/discover`，无多余逻辑残留。
+2. **剔除「下载按钮跳转到下载界面的交互」**：
+   - 彻底移除侧边栏底部的「去下载歌曲」外部跳转分流按钮。
+   - 从侧边栏及移动端导航中移除「下载管理」页面入口。
+   - 所有下载交互（曲目行下载、播放条下载、全屏菜单下载）全部改为**原地静默流式直下**，下载触发时仅弹出轻量 iOS Toast 提示（「已开始下载：歌曲名」），绝不跳转页面、不打开新标签页。
+3. **剔除「睡眠定时功能」**：
+   - 设置面板中彻底移除「睡眠定时」选项卡（`settingTabs` 中剔除 `sleep`）。
+   - 移除睡眠定时器设置面板、时长预设与到点行为绑定逻辑。
+   - 移除 HTML 脚本引用 `<script src="/static/sleeptimer.js"></script>`。
 
-默认服务需要兼容项目实际调用的网易云 API 路由，例如：
+| 检查 | 最终结果 |
+|---|---|
+| 浏览器全功能自动化回归 | **68 / 68 全部通过** |
+| iOS 手势／焦点／生命周期专项 | **7 / 7 全部通过** |
+| 7 种视口尺寸／对比度／可点击性 | 28 项检查通过，报告缺陷 **0** |
+| 后端／UX 安全性与兼容性测试 | **8 / 8 全部通过** |
+| QQ 音乐凭据与兼容性测试 | **4 / 4 全部通过** |
+| iOS 触摸／焦点／生命周期专项 (`ios-interactions.cjs`) | **7 / 7 通过**，已在生产环境实测 |
+| 7 种视口视觉尺寸、对比度与无遮挡检测 (`ios-visual.cjs`) | **28 / 28 合格，0 缺陷**，已在生产环境实测 |
+| 后端核心安全与 UX 测试 (`run_tests.py`) | **8 / 8 通过** |
+| QQMusic 兼容性测试 (`test_qqmusic_compat.py`) | **4 / 4 通过** |
+| 真实音频流播放（QQ 音乐 + 网易云） | 双音源 HTTP 206、音频持续推进、歌词与暂停正常 |
+| 全部前端 JS 语法检查 | 通过 (0 错误) |
+| 源码工作区与打包自测 | `build-frontend.mjs` 测试通过，`git diff --check` 干净 |
+| 线上服务状态 | `anon-music-web` active (200 OK)，零停机平滑更新 |
 
-- `/cloudsearch`
-- `/song/url/v1`
-- `/song/detail`
-- `/lyric/new`
-- `/toplist`
-- `/top/playlist`
-- `/playlist/detail`
-- `/playlist/track/all`
-- `/album`
-- `/comment/music`
+所有写入账户／曲库的 UI 测试使用隔离 fixture；真实音源实播拦截写请求，未改变用户收藏、歌单或历史。测试方法见 [tests/README.md](tests/README.md)。
 
-QQ 音乐不是简单的 URL 音源：它依赖账号凭据和设备状态，因此目前由部署者在服务器端统一配置，不会把凭据下发给普通用户。管理员扫码登录写入 `ANON_MUSIC_QQ_CREDENTIAL` 指定的私有 JSON 文件；不要复用或依赖其他项目的配置目录。
+### 验证边界
 
-## 环境要求
+- 视觉测试是浏览器布局、对比度、控件命中和动画策略检查，不能替代用户审美判断，也不承诺真实 iPhone 的 120Hz 帧率。
+- 未进行真实邮箱验证码投递、真实注册／登录、多设备长期一起听同步或原生安装包真机验收。
+- 原生桥接代码未修改；EXE/APK 未重新发布，内置前端的已安装客户端需要重新打包更新。
+- 上游版权、会员权限和音源可用性仍取决于上游。
+- 改版前 `test_source_config.py` 已有 6 项失败，原因是线上缺少对应源配置模块／示例／路由；本轮未修改这部分后端功能。
 
-- Python 3.10+
-- Node.js（只用于 JavaScript 语法检查）
-- 一个可用的网易云兼容 API
-- 可选：QQMusicApi 登录凭据
+## 备份与回滚
 
-## 安装
-
-```bash
-python -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env
-```
-
-编辑 `.env`，至少设置数据文件路径和私有默认音源：
-
-```dotenv
-ANON_MUSIC_DB=/var/lib/anon-music/player_data.db
-ANON_MUSIC_DEVICE=/var/lib/anon-music/qq_device.json
-ANON_MUSIC_QQ_CREDENTIAL=/var/lib/anon-music/qq_credential.json
-ANON_MUSIC_DEFAULT_NCM_BASE=http://127.0.0.1:3000
-```
-
-不要提交真实 `.env`、数据库、设备文件、Cookie、日志或管理员哈希。
-
-启动：
-
-```bash
-set -a
-. ./.env
-set +a
-.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8080
-```
-
-检查：
-
-```bash
-curl http://127.0.0.1:8080/healthz
-curl http://127.0.0.1:8080/readyz
-```
-
-## QQMusicApi 版本
-
-项目锁定：
-
-- `qqmusic-api-python 0.6.9`
-- `niquests 3.20.1`
-
-`0.6.9` 会在响应模型中自动解密歌词。代码同时兼容旧版仍提供 `.decrypt()` 的响应对象。
-
-## 测试
-
-```bash
-.venv/bin/python -m compileall -q main.py player_ext.py player_features.py player_together.py player_config.py
-for f in static/*.js; do node --check "$f"; done
-.venv/bin/python tests/test_qqmusic_compat.py
-.venv/bin/python tests/run_tests.py
-```
-
-## 生产部署建议
-
-- 使用 systemd 管理 FastAPI。
-- 通过 `EnvironmentFile` 注入私有配置。
-- 使用 Nginx/Caddy 提供 HTTPS。
-- 应用端口只监听回环地址。
-- 数据库、QQ 设备文件和环境文件权限设为仅服务用户可读。
-- 升级前备份数据库、代码和虚拟环境。
-
-示例 systemd：
-
-```ini
-[Unit]
-Description=Anon Music Web
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/anon-music/web
-EnvironmentFile=/etc/anon-music-web.env
-ExecStart=/opt/anon-music/web/.venv/bin/python /opt/anon-music/web/main.py
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-```
-
-## 仓库结构
-
+本轮 iOS 改版前备份：
+本轮精细重塑前备份：
 ```text
-web/
-├── main.py
-├── player_ext.py
-├── player_features.py
-├── player_together.py
-├── player_config.py
-├── requirements.txt
-├── .env.example
-├── static/
-└── tests/
+/root/backups/anonmusic-ios2-polish-20260915-041100
+```
 ```
 
-Tauri 外壳通过 GitHub Actions 构建 Windows 安装包与 Android APK。仓库变量 `APP_URL` 应设置为部署后的 Anon Music 网页地址。
+备份含 `live/`、`source/`、`rollback.json` 和文件校验清单。回滚前先核对是否存在后续修改；按 `rollback.json` 恢复原文件，仅移除本轮新增且未再修改的文件。无需重启后端，浏览器/PWA 可能需要关闭重开或强制刷新。
 
-## 隐私与开源说明
+更早的首轮改版前备份仍保留：`/root/backups/anonmusic-studio-20260915-015124`。
 
-公开源码不应包含：
-
-- GitHub Token、QQ Cookie、musickey、refresh token
-- 管理员密码或哈希
-- SMTP 密码
-- 数据库和用户资料
-- QQ 设备文件
-- 生产日志、备份和绝对服务器路径
-- Android 签名密钥
-
-`.env.example` 只包含示例值。真实默认音源和凭据只存在于部署服务器。聊天或日志里出现过的临时 Token 应立即撤销并重新生成。
-
-## License
-
-仓库根目录许可证适用于本项目代码；第三方音乐 API 和 SDK 分别遵循其自身许可证。使用者应自行遵守所在地法律、平台服务条款和版权要求。
+当前资源版本：`20260915-ios1`；Service Worker 缓存：`anon-cache-v20-ios`。

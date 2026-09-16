@@ -46,10 +46,11 @@ for _runtime_path in (DEVICE_PATH, DB_PATH):
         os.makedirs(_runtime_parent, mode=0o700, exist_ok=True)
 
 IMAGE_PROXY_HOSTS = {
-    "y.gtimg.cn", "p1.music.126.net", "p2.music.126.net", "p3.music.126.net",
+    "y.gtimg.cn", "gtimg.cn", "p1.music.126.net", "p2.music.126.net", "p3.music.126.net",
     "p4.music.126.net", "p5.music.126.net", "p6.music.126.net",
     "p7.music.126.net", "p8.music.126.net", "p9.music.126.net", "p10.music.126.net",
-    "qpic.y.qq.com", "thirdqq.qlogo.cn", "qlogo.cn",
+    "126.net", "qpic.y.qq.com", "y.qq.com", "music-file.y.qq.com", "arkpublic6.y.qq.com",
+    "thirdqq.qlogo.cn", "qlogo.cn", "qpic.cn",
 }
 AUDIO_PROXY_HOSTS = {"qqmusic.qq.com", "music.126.net"}
 

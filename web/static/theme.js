@@ -1,10 +1,7 @@
-/* 主题切换（P3）：html[data-theme] 驱动 app.css 语义 token。
-   深色默认；浅色为首版（P4 视觉重做时完成全部组件适配）。
-   app.html <head> 有 3 行内联预置脚本先读 localStorage 设 data-theme 防闪白，这里是完整实现。
-   全屏播放页(nowplaying)保持专辑取色深底，不随主题。 */
+/* 深浅主题：主界面与正在播放页共享主题选择；保留用户已保存的偏好。 */
 (function () {
   'use strict';
-  const META_COLOR = { dark: '#0e0e12', light: '#f5f6f8' };
+  const META_COLOR = { dark: '#141416', light: '#f5f5f7' };
   function apply(t, save) {
     t = (t === 'light') ? 'light' : 'dark';
     document.documentElement.dataset.theme = t;

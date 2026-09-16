@@ -81,7 +81,7 @@ def frontend_accessibility():
 def asset_versioning():
     html = (ROOT / "static" / "app.html").read_text(encoding="utf-8")
     sw = (ROOT / "static" / "service-worker.js").read_text(encoding="utf-8")
-    for asset in ("app.js", "appext.js", "player.js"):
+    for asset in ("app.js", "appext.js", "player.js", "nowplaying.js", "nowplaying.css", "studio.css"):
         assert f"/static/{asset}?v=" in html
     # apibase.js 必须先于所有业务脚本加载，否则 apiFetch/apiUrl 未定义 → 整页 ReferenceError
     assert "/static/apibase.js" in html
@@ -144,12 +144,21 @@ def ux_features():
     assert "--music-card-size:" in css
     assert ".home-feature-grid" in css and "repeat(4" in css
     assert ".home-rec-grid" in css
-    assert ".home-recommend-panels { grid-template-columns: repeat(2,minmax(0,1fr)); }" in css
+    studio = (ROOT / "static" / "studio.css").read_text(encoding="utf-8")
+    assert ".home-recommend-panels" in studio and "--studio-art: 148px" in studio
+    assert "grid-auto-flow: column" in studio and "gap: 24px" in studio
     assert "slice(0, 12)" in app
     assert "positionQueuePanel" in app
     assert "positionQueuePanel" in (ROOT / "static" / "nowplaying.js").read_text(encoding="utf-8")
-    assert "scale(1.015)" in (ROOT / "static" / "nowplaying.css").read_text(encoding="utf-8")
-    assert "max-height: min(68dvh, 680px)" in (ROOT / "static" / "nowplaying.css").read_text(encoding="utf-8")
+    np_css = (ROOT / "static" / "nowplaying.css").read_text(encoding="utf-8")
+    np_js = (ROOT / "static" / "nowplaying.js").read_text(encoding="utf-8")
+    for token in (".np-queue", "max-height: min(64dvh, 640px)", "overscroll-behavior: contain", "prefers-reduced-motion", ".np-lyrics .ln.active"):
+        assert token in np_css, token
+    for token in ('role="slider"', "aria-valuenow", "ArrowRight", "ArrowDown", "this._lastPic !== picUrl", "reset()"):
+        assert token in np_js, token
+    assert 'class="np-wave"' not in np_js and "_drawWave" not in np_js
+    assert ".np-bar-track" in np_css and "scaleX(var(--progress))" in np_css
+    assert "touchcancel" in np_js and "_volDragCleanup" in np_js and "_backgroundInert" in np_js
     assert "M7 8h10M7 12h7M7 16h4" in app + (ROOT / "static" / "app.html").read_text(encoding="utf-8")
     assert "repeat(auto-fill,minmax(var(--music-card-size),1fr))" in css
     assert "home-feature-card" in app

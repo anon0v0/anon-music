@@ -7,7 +7,7 @@
  *  - 跨源(CDN 音频/封面) → 不拦截，放行
  *  bump CACHE 版本即可整体失效旧缓存（activate 时清理）。
  */
-const CACHE = 'anon-cache-v17';
+const CACHE = 'anon-cache-v20260916-tf6';
 const OFFLINE_URL = '/music';
 
 self.addEventListener('install', (event) => {
@@ -43,8 +43,7 @@ self.addEventListener('fetch', (event) => {
   ) return;
 
   // 导航请求：stale-while-revalidate
-  //  有缓存 → 立即返回缓存壳（冷启动不再等网络），同时后台拉新版写回，下次启动生效
-  //  无缓存 → 走网络，成功则缓存；失败回退到内置提示页
+  // 导航请求：有缓存优先后台拉新版（stale-while-revalidate），网络断开才纯离线
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       const url = new URL(req.url);
@@ -64,16 +63,15 @@ self.addEventListener('fetch', (event) => {
         event.waitUntil(fetching.catch(() => {}));
         return cached;
       }
-
       try {
         return await fetching;
       } catch (err) {
         return new Response(
           '<!doctype html><meta charset="utf-8"><title>Anon Music 离线</title>' +
-          '<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#07111f;color:#e8f1ff;font-family:system-ui,sans-serif">' +
+          '<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#09090b;color:#f4f4f5;font-family:system-ui,sans-serif">' +
           '<main style="text-align:center;padding:2rem"><h1>暂时无法连接</h1>' +
-          '<p style="color:#9bb0c7">请检查网络后刷新。服务恢复后即可继续使用。</p>' +
-          '<p><button onclick="location.reload()" style="padding:.6rem 1rem;border-radius:8px;border:0;cursor:pointer">刷新</button></p></main>' +
+          '<p style="color:#a1a1aa">请检查网络后刷新。服务恢复后即可继续使用。</p>' +
+          '<p><button onclick="location.reload()" style="padding:.6rem 1.2rem;border-radius:8px;border:0;background:#fa233b;color:#fff;cursor:pointer">刷新</button></p></main>' +
           '<script>setInterval(()=>location.reload(),20000)</script></body>',
           { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } },
         );

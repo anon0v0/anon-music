@@ -62,9 +62,9 @@
     const d = document.createElement('div');
     d.id = 'winCtl';
     d.innerHTML = `
-      <button id="wcMin" title="最小化"><svg viewBox="0 0 12 12"><rect x="1.5" y="5.4" width="9" height="1.2" fill="currentColor"/></svg></button>
-      <button id="wcMax" title="最大化 / 还原"><svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></button>
-      <button id="wcClose" title="关闭"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.3"/></svg></button>`;
+      <button id="wcMin" title="最小化" aria-label="最小化"><svg viewBox="0 0 12 12"><rect x="1.5" y="5.4" width="9" height="1.2" fill="currentColor"/></svg></button>
+      <button id="wcMax" title="最大化 / 还原" aria-label="最大化"><svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></button>
+      <button id="wcClose" title="关闭" aria-label="关闭"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.3"/></svg></button>`;
     (tb || document.body).appendChild(d);
     d.querySelector('#wcMin').onclick = () => { try { W.minimize(); } catch (e) {} };
     d.querySelector('#wcMax').onclick = () => { try { W.toggleMaximize(); } catch (e) {} };
@@ -73,10 +73,20 @@
     emit('wc-ready', {});
   }
   let _wcMounted = false;
-  function tryMountWinCtl() { if (_wcMounted) return; if (shell.caps.indexOf('wc') >= 0) { _wcMounted = true; mountWinCtl(); } }
+  function tryMountWinCtl() {
+    if (_wcMounted) return;
+    if ((raw && !isAndroid && raw.window) || (shell && shell.caps && shell.caps.indexOf('wc') >= 0)) {
+      _wcMounted = true;
+      mountWinCtl();
+    }
+  }
   listen('shell-info', tryMountWinCtl);
-  tryMountWinCtl();
-
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryMountWinCtl);
+  } else {
+    tryMountWinCtl();
+  }
+  setTimeout(tryMountWinCtl, 150);
   // 壳内维护遮罩（"节拍跑者"离线小游戏）已移除：它靠 window 'offline' 事件无条件挂载，
   // 而 WebView 启动瞬间常误报一次 offline（安卓无 ACCESS_NETWORK_STATE 时 navigator.onLine 恒 false），
   // 导致明明联网也弹出小游戏、且要等 20s 轮询才消失。后端真挂时由反代 502→/maintenance 独立页承接。

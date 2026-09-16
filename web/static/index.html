@@ -8,9 +8,7 @@
     <meta name="color-scheme" content="light">
     <meta name="referrer" content="no-referrer">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        document.write('<link rel="stylesheet" href="/static/player.css?v=' + Date.now() + '">');
-    </script>
+    <link rel="stylesheet" href="/static/player.css?v=20260811a">
     <style>
         body { background-color: #f3f4f6; }
         @media (max-width: 640px) {
@@ -581,24 +579,22 @@
                         alert('获取播放地址失败: ' + (json.msg || '无权限，需重新扫码刷新凭证'));
                     }
                 } catch (e) {
-                    alert('播放出错: ' + e.message + '\n' + e.stack);
-                    btnContainer.innerHTML = `<div class="text-center w-full py-2 text-red-500 font-medium">${e.message}</div>`;
+                    console.error('播放失败', e);
+                    alert('播放出错: ' + (e.message || '请稍后重试'));
                 }
             }
         }
     </script>
     <!-- API 出口统一层：player.js / nowplaying.js 依赖 apiFetch/apiUrl，必须先加载 -->
     <script src="/static/apibase.js?v=20260811a"></script>
-    <script>
-        document.write('<script src="/static/player.js?v=' + Date.now() + '"><\/script>');
-    </script>
+    <script src="/static/player.js?v=20260811a"></script>
     <script>
         window.qqPlayer = NeteaseMiniPlayer.initPlayer(document.getElementById('globalPlayer'));
         window.player = window.qqPlayer;
         document.getElementById('globalPlayer').setAttribute('data-initialized', 'true');
     </script>
     <!-- 全屏歌词（点击左下角迷你播放器的歌曲信息区进入） -->
-    <link rel="stylesheet" href="/static/nowplaying.css?v=20260707u">
-    <script src="/static/nowplaying.js?v=20260707u"></script>
+    <link rel="stylesheet" href="/static/nowplaying.css?v=20260915-ios1">
+    <script src="/static/nowplaying.js?v=20260915-ios1"></script>
 </body>
 </html>
