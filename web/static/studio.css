@@ -2228,23 +2228,48 @@ body.playing .pb-cover {
 .pb-progress:hover .pb-fill {
   height: 6px;
 }
-.pb-tip {
+.pb-thumb {
   position: absolute;
   top: 50%;
   left: 0;
-  width: 12px;
-  height: 12px;
-  margin-left: -6px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
   border-radius: 50%;
   background: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   transform: translateY(-50%) scale(0);
   transition: transform 0.16s var(--studio-ease);
   pointer-events: none;
 }
-.pb-progress:hover .pb-tip,
-.pb-progress.dragging .pb-tip {
+.pb-progress:hover .pb-thumb,
+.pb-progress.dragging .pb-thumb {
   transform: translateY(-50%) scale(1);
+}
+.pb-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  transform: translateX(-50%);
+  max-width: 420px;
+  padding: 4px 10px;
+  background: var(--studio-raised, #202023);
+  border: 1px solid var(--studio-line, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--studio-text, #ffffff);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 20;
+}
+.pb-tip.show {
+  opacity: 1;
 }
 @keyframes coverSpin {
   from { transform: rotate(0deg); }

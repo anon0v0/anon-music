@@ -85,6 +85,7 @@
             <!-- 左栏：大尺寸高清方形专辑封面 (Image 1 规范) / 黑胶 -->
             <div class="np-left">
               <div class="np-cover-wrap">
+                <div class="np-vinyl-aura" aria-hidden="true"></div>
                 <div class="np-disc"><img class="np-cover" alt="专辑封面" referrerpolicy="no-referrer" src="/static/app-icon.png"></div>
                 <div class="np-tonearm"><div class="tonearm-base"></div><div class="tonearm-arm"><div class="tonearm-stick"></div><div class="tonearm-head"></div></div></div>
                 <span class="np-srcbadge"></span>
@@ -391,40 +392,43 @@
         const lines = Array.from(this.lyricsBox.querySelectorAll('.ln'));
         if (!lines.length) { this.seekPill.classList.remove('show'); return; }
         const wrapRect = this.lyricsWrap.getBoundingClientRect();
-        const clientY = (e && e.clientY !== undefined) ? e.clientY : (this._lastMouseY || wrapRect.top + wrapRect.height / 2);
-        this._lastMouseY = clientY;
+        // 胶囊位置在视口垂直方向严格固定！作为像指针一样的准星刻度 (完全对标参考图 6、7、8)
+        const fixedTopPct = 0.38;
+        const fixedTopPx = wrapRect.height * fixedTopPct;
+        const targetCenterY = wrapRect.top + fixedTopPx + 14;
+
+        // 寻找当前正在滚动横切胶囊水平线的这一行歌词
         let closest = null, minDiff = Infinity, closestIdx = -1;
         for (let i = 0; i < lines.length; i++) {
           const ln = lines[i];
           const r = ln.getBoundingClientRect();
           const midY = (r.top + r.bottom) / 2;
-          const diff = Math.abs(midY - clientY);
+          const diff = Math.abs(midY - targetCenterY);
           if (diff < minDiff) { minDiff = diff; closest = ln; closestIdx = +ln.dataset.i; }
         }
-        if (closest && minDiff < 42) {
+        if (closest && minDiff < 52) {
           const ly = (this.player && this.player.lyrics) || [];
           const lineData = ly[closestIdx];
           if (lineData && Number.isFinite(lineData.time)) {
             this._hoveredLyricIdx = closestIdx;
             if (this.seekPillTime) this.seekPillTime.textContent = fmt(lineData.time);
-            const r = closest.getBoundingClientRect();
-            const topOffset = r.top - wrapRect.top + (r.height - 28) / 2;
             const txEl = closest.querySelector('.ln-tx') || closest;
             const tr = txEl.getBoundingClientRect();
-            // 悬停时间胶囊固定在左侧！(彻底与歌词文字隔离，绝不重叠)
-            const isLyricsMode = this.el.dataset.skin === 'lyrics';
-            const fixedLeft = isLyricsMode ? 24 : 14;
-            this.seekPill.style.top = `${Math.max(4, Math.min(wrapRect.height - 32, topOffset))}px`;
-            this.seekPill.style.left = `${fixedLeft}px`;
 
-            // 计算点状虚线导引律动线（从胶囊右端连接到歌词文字左端）
+            // 悬停时间胶囊完全固定位置（不会上下移动，也不会遮挡歌词）
+            const isLyricsMode = this.el.dataset.skin === 'lyrics';
+            const fixedLeft = isLyricsMode ? Math.max(20, (wrapRect.width - 780) / 2 - 100) : 14;
+            this.seekPill.style.top = `${fixedTopPx}px`;
+            this.seekPill.style.left = `${Math.max(10, fixedLeft)}px`;
+
+            // 虚线导引律动线延伸到当前这行歌词首字
             const guideLine = this.seekPill.querySelector('.pill-guide-line');
             if (guideLine) {
               const pillBadge = this.seekPill.querySelector('.pill-badge');
               const badgeWidth = pillBadge ? pillBadge.offsetWidth : 76;
               const textLeftInWrap = tr.left - wrapRect.left;
-              const lineGap = textLeftInWrap - (fixedLeft + badgeWidth + 8);
-              if (lineGap > 10) {
+              const lineGap = textLeftInWrap - (fixedLeft + badgeWidth + 6);
+              if (lineGap > 8) {
                 guideLine.style.width = `${lineGap}px`;
                 guideLine.style.display = 'block';
               } else {
@@ -837,11 +841,12 @@
       if (!panel) return;
       this._closeAllPopups(panel);
       const curSkin = (this._ps && this._ps.skin) || 'square';
+      const pic = this._lastPic || (this.player && this.player.currentSong && (this.player.currentSong.picUrl || this.player.currentSong.pic)) || '/static/app-icon.png';
       const SKINS = [
-        ['vinyl', '经典黑胶', '<div class="sk-art-vinyl"><div class="sk-disk"></div><div class="sk-arm"></div></div>'],
-        ['square', '简约方形', '<div class="sk-art-sq"><div class="sk-cover"></div><div class="sk-lines"><i></i><i></i><i></i></div></div>'],
-        ['vinyl-color', '透明彩胶', '<div class="sk-art-color"><div class="sk-color-disk"></div><div class="sk-arm"></div></div>'],
-        ['lyrics', '简约歌词', '<div class="sk-art-lyr"><div class="sk-center-lines"><i></i><b></b><i></i></div></div>'],
+        ['vinyl', '经典黑胶', `<div class="sk-art-vinyl"><div class="sk-disk"><img class="sk-cover-circle" src="${pic}" alt=""></div><div class="sk-arm"></div><div class="sk-text-lines"><i></i><i></i><i></i></div></div>`],
+        ['square', '简约方形', `<div class="sk-art-sq"><div class="sk-cover-box"><img src="${pic}" alt=""></div><div class="sk-text-lines"><b></b><i></i><i></i></div></div>`],
+        ['vinyl-color', '透明彩胶', `<div class="sk-art-color"><div class="sk-color-disk"><img class="sk-cover-circle" src="${pic}" alt=""></div><div class="sk-arm"></div><div class="sk-text-lines"><i></i><i></i><i></i></div></div>`],
+        ['lyrics', '简约歌词', `<div class="sk-art-lyr"><div class="sk-title-line"></div><div class="sk-center-lines"><i></i><b style="background:var(--np-theme-color,#22c55e);"></b><i></i></div></div>`],
       ];
       panel.innerHTML = `
         <div class="nsp-head"><span>播放器样式</span><button class="nsp-x" title="关闭">×</button></div>

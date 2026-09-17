@@ -711,11 +711,12 @@
       if (!['square', 'lyrics', 'vinyl', 'vinyl-color'].includes(ps.skin)) ps.skin = 'square';
       ps.bg = 'auto'; ps.lyricAlign = 'center'; ps.viz = 'wave';
       b.fluid = true; b.mode = 'fluid';
+      const pic = (np && np._lastPic) || (window.player && window.player.currentSong && (window.player.currentSong.picUrl || window.player.currentSong.pic)) || '/static/app-icon.png';
       const SKINS = [
-        ['vinyl', '经典黑胶', '<div class="sk-art-vinyl"><div class="sk-disk"></div><div class="sk-arm"></div></div>'],
-        ['square', '简约方形', '<div class="sk-art-sq"><div class="sk-cover"></div><div class="sk-lines"><i></i><i></i><i></i></div></div>'],
-        ['vinyl-color', '透明彩胶', '<div class="sk-art-color"><div class="sk-color-disk"></div><div class="sk-arm"></div></div>'],
-        ['lyrics', '简约歌词', '<div class="sk-art-lyr"><div class="sk-center-lines"><i></i><b></b><i></i></div></div>'],
+        ['vinyl', '经典黑胶', `<div class="sk-art-vinyl"><div class="sk-disk"><img class="sk-cover-circle" src="${pic}" alt=""></div><div class="sk-arm"></div><div class="sk-text-lines"><i></i><i></i><i></i></div></div>`],
+        ['square', '简约方形', `<div class="sk-art-sq"><div class="sk-cover-box"><img src="${pic}" alt=""></div><div class="sk-text-lines"><b></b><i></i><i></i></div></div>`],
+        ['vinyl-color', '透明彩胶', `<div class="sk-art-color"><div class="sk-color-disk"><img class="sk-cover-circle" src="${pic}" alt=""></div><div class="sk-arm"></div><div class="sk-text-lines"><i></i><i></i><i></i></div></div>`],
+        ['lyrics', '简约歌词', `<div class="sk-art-lyr"><div class="sk-title-line"></div><div class="sk-center-lines"><i></i><b style="background:var(--np-theme-color,#22c55e);"></b><i></i></div></div>`],
       ];
       panel.innerHTML = `
         <div class="nsp-head"><span>播放器样式</span><button class="nsp-x" title="关闭">×</button></div>
