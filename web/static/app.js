@@ -489,7 +489,8 @@
     const pl2 = (shuffledNcm.length > 1 ? shuffledNcm[1] : null) || ncm[1] || {};
 
     const heroCover = (s1.pic && httpsify(s1.pic)) || (s1.cover && httpsify(s1.cover)) || '/static/anon1.jpg';
-    const heroName = (s1.name ? (s1.name + (artistStr(s1) ? ' - ' + artistStr(s1) : '')) : '远山少年 - 窝窝');
+    const heroSinger = artistStr(s1) || '热门歌手';
+    const heroName = (s1.name ? (s1.name + (heroSinger ? ' - ' + heroSinger : '')) : '远山少年 - 窝窝');
     const song2Cover = (s2.pic && httpsify(s2.pic)) || (s2.cover && httpsify(s2.cover)) || '/static/anon1.jpg';
     const song2Name = (s2.name ? (s2.name + (artistStr(s2) ? ' - ' + artistStr(s2) : '')) : '恋爱告急 (氛围版) - 尹露浠');
     const pl1Cover = (pl1.cover && httpsify(pl1.cover)) || '/static/anon2.jpg';
@@ -547,20 +548,23 @@
             <a class="see-all-stats" href="#/stats">查看听歌报告 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
           </div>
           <div class="cards home-feature-grid home-feature-track">
-            <!-- 卡片 1：今日为你推荐可折叠特色大卡 (对标参考图 3) -->
+            <!-- 卡片 1：今日为你推荐可折叠特色大卡 (对标参考图 3 & QQ 音乐主流风格) -->
             <div class="card home-feature-card feat-banner-card feat-fold-card" role="button" tabindex="0" aria-label="${timeTheme} 播放" id="featBannerPlay">
               <div class="fbc-box">
                 <div class="fbc-fold-left">
                   <img class="fbc-fold-bg" src="${attr(heroCover)}" alt="">
                   <div class="fbc-fold-meta">
                     <div class="fbc-badge-title">${timeTheme}</div>
-                    <div class="fbc-user-tag">${esc(userNick || 'Anon')}</div>
-                    <div class="fbc-vip-tag">SVIP 7年</div>
+                    <div class="fbc-user-info">
+                      <div class="fbc-user-tag">${esc(userNick || 'Anon')}</div>
+                      <div class="fbc-vip-tag">💎 SVIP 7年</div>
+                    </div>
                   </div>
                 </div>
                 <div class="fbc-fold-right">
-                  <div class="fbc-badge-tip">猜你喜欢 · 沉浸刷歌</div>
+                  <div class="fbc-badge-tip">猜你喜欢 · 沉浸刷歌 🎵</div>
                   <div class="fbc-song-title">${esc(heroName)}</div>
+                  <div class="fbc-artist-sub">${esc(heroSinger || '热门推荐')}</div>
                   <button class="fbc-play-btn" type="button" aria-label="播放${timeTheme}">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                   </button>
@@ -611,19 +615,12 @@
             </div>
           </div>
         </section>
-
-        <!-- “新歌/发行音乐”一屏三行展示 (对标参考图 5) -->
+        <!-- “新歌/发行音乐”一屏三行展示 (对标 QQ 音乐主流风格) -->
         <section class="discover-new-songs-section">
           <div class="dns-header">
             <div class="dns-head-left">
-              <h3>重温那些年你的「最爱」</h3>
+              <h3>听「${esc((newSongPool[0] && artistStr(newSongPool[0])) || '精选推荐')}」的也在听 <span style="color:#22c55e;font-size:14px;">▶</span></h3>
               <button class="dns-play-all" id="dnsPlayAll" title="全部播放"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-            </div>
-            <div class="dns-tags" id="dnsTags">
-              <button class="dns-tag active" data-tag="all">全部</button>
-              <button class="dns-tag" data-tag="zh">华语</button>
-              <button class="dns-tag" data-tag="ea">欧美</button>
-              <button class="dns-tag" data-tag="kr">日韩</button>
             </div>
           </div>
           <div class="dns-swipe-track">
@@ -633,7 +630,10 @@
                   <div class="dns-song-row" data-id="${attr(s.id)}" role="button" tabindex="0">
                     <img class="dns-song-cover" src="${attr(httpsify(s.pic || s.cover || s.picUrl) || IMG_PLACEHOLDER)}" alt="">
                     <div class="dns-song-meta">
-                      <div class="dns-song-title">${esc(s.name || '未知歌曲')} ${s.vip ? '<span class="badge-vip">VIP</span>' : ''}</div>
+                      <div class="dns-song-title">
+                        <span class="dns-song-name">${esc(s.name || '未知歌曲')}</span>
+                        <span class="dns-song-tag">本周热播 &gt;</span>
+                      </div>
                       <div class="dns-song-artist">${esc(artistStr(s) || '未知歌手')}</div>
                     </div>
                     <button class="dns-like-btn iconbtn like ${Library.isLiked(s.id) ? 'liked' : ''}" data-like-id="${attr(s.id)}" title="喜欢">
@@ -644,6 +644,7 @@
               </div>
             `).join('')}
           </div>
+        </section>
         </section>
 
         <!-- 发现音乐整合区：桌面端继续支持 Tab 切换与左右滑动 -->
@@ -711,15 +712,27 @@
     // 绑定顶部三栏子导航切换 (推荐 / 歌单广场 / 排行榜)
     const subNavBtns = view.querySelectorAll('.dsn-tab');
     subNavBtns.forEach(btn => {
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        e.preventDefault();
         subNavBtns.forEach(b => b.classList.toggle('active', b === btn));
         const sub = btn.dataset.sub;
         const vRec = $('#dsvRec');
         const vPlaza = $('#dsvPlaza');
         const vCharts = $('#dsvCharts');
-        if (vRec) vRec.classList.toggle('dsv-active', sub === 'rec');
-        if (vPlaza) vPlaza.classList.toggle('dsv-active', sub === 'plaza');
-        if (vCharts) vCharts.classList.toggle('dsv-active', sub === 'charts');
+        if (vRec) {
+          vRec.classList.toggle('dsv-active', sub === 'rec');
+          vRec.style.setProperty('display', sub === 'rec' ? 'block' : 'none', 'important');
+        }
+        if (vPlaza) {
+          vPlaza.classList.toggle('dsv-active', sub === 'plaza');
+          vPlaza.style.setProperty('display', sub === 'plaza' ? 'block' : 'none', 'important');
+        }
+        if (vCharts) {
+          vCharts.classList.toggle('dsv-active', sub === 'charts');
+          vCharts.style.setProperty('display', sub === 'charts' ? 'block' : 'none', 'important');
+        }
+        const v = $('#view');
+        if (v) v.scrollTo({ top: 0, behavior: 'smooth' });
       };
     });
 

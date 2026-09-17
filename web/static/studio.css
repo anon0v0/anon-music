@@ -2406,31 +2406,82 @@ body.playing .pb-cover {
     padding: calc(22px + env(safe-area-inset-top)) 16px 22px;
   }
   .topbar {
-    min-height: 0;
-    padding: calc(10px + env(safe-area-inset-top)) 20px 13px;
-    gap: 12px;
-    border: 0;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    padding: calc(6px + env(safe-area-inset-top)) 14px 6px !important;
+    gap: 8px !important;
+    border: 0 !important;
   }
   .topbar .menu-btn {
-    right: 18px;
-    top: calc(12px + env(safe-area-inset-top));
+    position: static !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--studio-text) !important;
+    flex: 0 0 34px !important;
+    padding: 0 !important;
+    cursor: pointer !important;
   }
-  .topbar .search {
-    order: 2;
-    flex: 0 0 100%;
-    width: 100%;
-    max-width: none;
-    height: 36px;
-    margin: 0;
+  .topbar .menu-btn svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  .topbar .side-expand,
+  .topbar .topbar-spacer,
+  .topbar-right-group .account,
+  .topbar-right-group .side-tools {
+    display: none !important;
+  }
+  .topbar-right-group {
+    display: flex !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
   }
   .studio-np-btn {
-    height: 32px;
-    padding: 0 12px;
-    font-size: 12px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 50% !important;
+    background: rgba(34, 197, 94, 0.12) !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+    color: #22c55e !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2) !important;
   }
-  .studio-np-icon {
-    width: 15px;
-    height: 15px;
+  .studio-np-btn .studio-np-title {
+    display: none !important;
+  }
+  .studio-np-btn .studio-np-icon {
+    width: 16px !important;
+    height: 16px !important;
+    margin: 0 !important;
+  }
+  .topbar .search {
+    order: unset !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    max-width: none !important;
+    height: 38px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    background: var(--studio-panel) !important;
+    border: 1px solid var(--studio-line) !important;
+    border-radius: 999px !important;
+    padding: 0 8px 0 12px !important;
   }
   .mobile-route-nav {
     display: none !important;
@@ -3077,33 +3128,41 @@ body.playing .pb-cover {
 
   /* 2. 顶部三栏子导航 (对标参考图 1、图 4) */
   .discover-sub-nav {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    background: var(--studio-bg) !important;
+    backdrop-filter: blur(24px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
     display: flex !important;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 16px 10px !important;
+    margin: 0 -20px 14px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
   .discover-sub-nav::-webkit-scrollbar {
-    display: none;
+    display: none !important;
   }
   .dsn-tab {
-    flex: 0 0 auto;
-    background: transparent;
-    border: none;
-    color: var(--studio-secondary);
-    font-size: 14px;
-    font-weight: 550;
-    padding: 6px 14px;
-    border-radius: 999px;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    flex: 0 0 auto !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--studio-secondary) !important;
+    font-size: 15px !important;
+    font-weight: 550 !important;
+    padding: 6px 14px !important;
+    border-radius: 999px !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
   }
   .dsn-tab.active {
     background: #22c55e !important;
     color: #ffffff !important;
-    font-weight: 700;
-    box-shadow: 0 3px 10px rgba(34, 197, 94, 0.35);
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    padding: 6px 18px !important;
+    box-shadow: 0 3px 12px rgba(34, 197, 94, 0.4) !important;
   }
   .discover-sub-view {
     display: none !important;
@@ -3115,93 +3174,118 @@ body.playing .pb-cover {
 
   /* 3. “今日为你推荐”可折叠大卡片 (对标参考图 3) */
   .feat-fold-card {
+    flex: 0 0 calc(100vw - 76px) !important;
+    max-width: 320px !important;
+    height: 148px !important;
+    scroll-snap-align: start !important;
     border-radius: 16px !important;
     overflow: hidden !important;
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.18) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
-    border: 1px solid rgba(34, 197, 94, 0.25) !important;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
+    border: 1px solid rgba(34, 197, 94, 0.28) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18) !important;
   }
   .feat-fold-card .fbc-box {
     display: flex !important;
     flex-direction: row !important;
     align-items: stretch !important;
-    height: 140px !important;
+    height: 100% !important;
   }
   .fbc-fold-left {
-    position: relative;
-    width: 38%;
-    flex: 0 0 38%;
-    overflow: hidden;
-    border-right: 1px dashed rgba(255, 255, 255, 0.2);
+    position: relative !important;
+    width: 116px !important;
+    flex: 0 0 116px !important;
+    overflow: hidden !important;
+    border-radius: 14px 0 0 14px !important;
+    border-right: 1px dashed rgba(255, 255, 255, 0.22) !important;
   }
   .fbc-fold-bg {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
   }
   .fbc-fold-meta {
-    position: absolute;
-    inset: 0;
-    padding: 10px;
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.7) 100%);
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
+    position: absolute !important;
+    inset: 0 !important;
+    padding: 10px !important;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.78) 100%) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
   }
   .fbc-fold-meta .fbc-badge-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: #ffffff;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    line-height: 1.2 !important;
   }
   .fbc-user-tag {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.8);
-    margin-top: 2px;
+    font-size: 11px !important;
+    color: rgba(255, 255, 255, 0.88) !important;
   }
   .fbc-vip-tag {
-    display: inline-block;
-    font-size: 9px;
-    color: #ffd700;
-    font-weight: 700;
-    margin-top: 2px;
+    display: inline-block !important;
+    font-size: 9px !important;
+    color: #ffd700 !important;
+    font-weight: 700 !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    margin-top: 2px !important;
   }
   .fbc-fold-right {
-    flex: 1 1 auto;
-    padding: 14px 12px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-width: 0;
+    flex: 1 1 auto !important;
+    padding: 12px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    min-width: 0 !important;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(34, 197, 94, 0.08) 100%) !important;
   }
   .fbc-fold-right .fbc-badge-tip {
-    font-size: 11px;
-    color: #22c55e;
-    font-weight: 600;
+    font-size: 12px !important;
+    color: #22c55e !important;
+    font-weight: 600 !important;
   }
   .fbc-fold-right .fbc-song-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--studio-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: var(--studio-text) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 4px 0 2px !important;
+  }
+  .fbc-fold-right .fbc-artist-sub {
+    font-size: 11px !important;
+    color: var(--studio-secondary) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
   .fbc-fold-right .fbc-play-btn {
-    align-self: flex-end;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #22c55e;
-    color: #ffffff;
-    border: none;
-    display: grid;
-    place-items: center;
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
-    cursor: pointer;
+    align-self: flex-end !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: #ffffff !important;
+    color: #22c55e !important;
+    border: none !important;
+    display: grid !important;
+    place-items: center !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28) !important;
+    cursor: pointer !important;
   }
   .fbc-fold-right .fbc-play-btn svg {
-    width: 15px;
-    height: 15px;
-    margin-left: 2px;
+    width: 17px !important;
+    height: 17px !important;
+    margin-left: 2px !important;
+    fill: #22c55e !important;
+  }
+  .home-feature-card.feat-norm-card {
+    flex: 0 0 132px !important;
+    width: 132px !important;
+    height: 148px !important;
+    scroll-snap-align: start !important;
   }
 
   /* 4. “新歌/发行音乐”一屏三行展示 (对标参考图 5) */
@@ -3282,57 +3366,104 @@ body.playing .pb-cover {
     gap: 10px;
   }
   .dns-song-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 8px;
-    border-radius: 12px;
-    background: var(--studio-panel);
-    border: 1px solid var(--studio-line);
-    cursor: pointer;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 6px 4px !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease !important;
+  }
+  .dns-song-row:active {
+    background: rgba(255, 255, 255, 0.05) !important;
   }
   .dns-song-cover {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
-    object-fit: cover;
-    flex: 0 0 44px;
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 8px !important;
+    object-fit: cover !important;
+    flex: 0 0 48px !important;
   }
   .dns-song-meta {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 3px !important;
   }
   .dns-song-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--studio-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--studio-text) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+  .dns-song-tag {
+    display: inline-block !important;
+    font-size: 10px !important;
+    color: var(--studio-secondary) !important;
+    background: var(--studio-panel) !important;
+    border: 1px solid var(--studio-line) !important;
+    border-radius: 4px !important;
+    padding: 1px 5px !important;
+    font-weight: 400 !important;
+    white-space: nowrap !important;
   }
   .dns-song-artist {
-    font-size: 11px;
-    color: var(--studio-secondary);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 12px !important;
+    color: var(--studio-secondary) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
   .dns-like-btn {
-    flex: 0 0 auto;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: transparent;
-    border: none;
-    color: var(--studio-muted);
-    cursor: pointer;
+    flex: 0 0 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--studio-secondary) !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    cursor: pointer !important;
   }
   .dns-like-btn.liked {
-    color: #fa233b !important;
+    color: #ef4444 !important;
+  }
+  .dns-like-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  .discover-shelf-section {
+    margin-top: 24px !important;
+  }
+  .discover-shelf-section .shelf-header {
+    display: none !important;
+  }
+  .discover-shelf-section::before {
+    content: "热门推荐歌单";
+    display: block;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--studio-text);
+    margin-bottom: 12px;
+  }
+  .cards.discover-shelf-grid {
+    display: grid !important;
+    grid-auto-flow: column !important;
+    grid-auto-columns: 132px !important;
+    overflow-x: auto !important;
+    gap: 16px !important;
+    padding-bottom: 8px !important;
   }
 
   /* 5. 【歌单广场】与【排行榜】 2 列卡片 (对标参考图 4) */
