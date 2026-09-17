@@ -38,7 +38,7 @@
     if (t && t.tagName === 'IMG' && t.src && t.src !== IMG_PLACEHOLDER) {
       if (t.src.indexOf('http://') === 0) {
         t.src = httpsify(t.src);
-      } else if (!t.dataset.proxied && (t.src.includes('gtimg.cn') || t.src.includes('y.qq.com') || t.src.includes('126.net') || t.src.includes('qpic.cn'))) {
+      } else if (!t.dataset.proxied && !t.src.includes('/api/img?url=') && (t.src.includes('gtimg.cn') || t.src.includes('y.qq.com') || t.src.includes('126.net') || t.src.includes('qpic.cn') || t.src.includes('qq.com'))) {
         t.dataset.proxied = '1';
         const orig = t.src;
         t.src = (window.apiUrl ? window.apiUrl('/api/img?url=') : '/api/img?url=') + encodeURIComponent(orig);

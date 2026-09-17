@@ -29,8 +29,9 @@
     tshirt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>',
   };
   const MODE = { list: { icon: ICON.list, label: '列表循环' }, single: { icon: ICON.single, label: '单曲循环' }, shuffle: { icon: ICON.shuffle, label: '随机播放' } };
-  const QUALITIES = [['standard', '标准'], ['hq', 'HQ 320'], ['flac', '无损'], ['master', '母带']];
-
+  const QUALITIES_QQ = [['standard', '标准'], ['hq', 'HQ 320'], ['flac', '无损'], ['master', '臻品音质']];
+  const QUALITIES_NCM = [['standard', '标准'], ['hq', '极高 320'], ['flac', '无损'], ['master', '沉浸声']];
+  const QUALITIES = QUALITIES_QQ;
   function fmt(s) { s = Math.floor(s || 0); const m = Math.floor(s / 60); const ss = s % 60; return m + ':' + (ss < 10 ? '0' : '') + ss; }
   function esc(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
   function attr(t) { return esc(t).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
@@ -106,6 +107,10 @@
               </div>
               <div class="np-lyrhead" style="display:none"><div class="t"></div><div class="a"></div></div>
               <div class="np-lyrics-wrap">
+                <div class="np-lyric-seek-pill" style="display:none">
+                  <svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                  <span class="pill-time">00:00</span>
+                </div>
                 <div class="np-lyrics"><div class="empty">歌词会在这里，随音乐展开</div></div>
               </div>
             </div>
@@ -197,6 +202,8 @@
       this.footName = this.$('.np-foot-name'); this.footArtist = this.$('.np-foot-artist');
       this.source = this.$('.np-source'); this.lyricsBox = this.$('.np-lyrics');
       this.lyricsWrap = this.$('.np-lyrics-wrap');
+      this.seekPill = this.$('.np-lyric-seek-pill');
+      this.seekPillTime = this.$('.np-lyric-seek-pill .pill-time');
       this.curT = this.$('.np-cur'); this.durT = this.$('.np-dur');
       this.bar = this.$('.np-bar'); this.fill = this.$('.np-bar-fill');
       this.playBtn = this.$('.np-play'); this.modeBtn = this.$('.np-mode');
@@ -216,10 +223,15 @@
       if (this.skinToggle) {
         this.skinToggle.addEventListener('click', (e) => {
           e.stopPropagation();
-          const open = !this.stylePanel.classList.contains('show');
-          this._closeAllPopups();
-          if (open) this.openStylePanel();
+          const sp = this.stylePanel || this.$('.np-style-panel');
+          const isShow = sp && sp.classList.contains('show');
+          this._closeAllPopups(sp);
+          if (!isShow) this.openStylePanel();
+          else this.closeStylePanel();
         });
+      }
+      if (this.stylePanel) {
+        this.stylePanel.addEventListener('click', (e) => e.stopPropagation());
       }
       const exitBtn = this.$('#npFootExit');
       if (exitBtn) exitBtn.addEventListener('click', () => this.close());
@@ -258,9 +270,12 @@
         }
       }
       this.cover.addEventListener('error', () => {
-        if (!this.cover.dataset.proxied && this.cover.src && (this.cover.src.includes('gtimg.cn') || this.cover.src.includes('y.qq.com') || this.cover.src.includes('126.net'))) {
+        const raw = this.cover.getAttribute('src') || this.cover.src || '';
+        if (!this.cover.dataset.proxied && raw && !raw.startsWith('data:') && !raw.includes('/api/img?url=')) {
           this.cover.dataset.proxied = '1';
-          this.cover.src = (window.apiUrl ? window.apiUrl('/api/img?url=') : '/api/img?url=') + encodeURIComponent(this.cover.src);
+          const proxied = (window.apiUrl ? window.apiUrl('/api/img?url=') : '/api/img?url=') + encodeURIComponent(raw);
+          this.cover.src = proxied;
+          if (this.bg) this.bg.style.backgroundImage = `url("${proxied}")`;
           return;
         }
         const fallback = window.IMG_PLACEHOLDER || '/static/app-icon.png';
@@ -324,6 +339,66 @@
       // 评论
       this.$('.np-cbtn').addEventListener('click', (e) => { e.stopPropagation(); this.closeQueue(); this.closeStylePanel(); if (window.Comments) window.Comments.toggle(); });
       this.$('.np-q-clear').addEventListener('click', () => { if (window.QueueCtl) { window.QueueCtl.clear(); this._renderQueue(); } });
+      const updatePill = (e) => {
+        if (!this.lyricsBox || !this.seekPill || !this.lyricsWrap) return;
+        const lines = Array.from(this.lyricsBox.querySelectorAll('.ln'));
+        if (!lines.length) { this.seekPill.classList.remove('show'); return; }
+        const wrapRect = this.lyricsWrap.getBoundingClientRect();
+        const clientY = (e && e.clientY !== undefined) ? e.clientY : (this._lastMouseY || wrapRect.top + wrapRect.height / 2);
+        this._lastMouseY = clientY;
+        let closest = null, minDiff = Infinity, closestIdx = -1;
+        for (let i = 0; i < lines.length; i++) {
+          const ln = lines[i];
+          const r = ln.getBoundingClientRect();
+          const midY = (r.top + r.bottom) / 2;
+          const diff = Math.abs(midY - clientY);
+          if (diff < minDiff) { minDiff = diff; closest = ln; closestIdx = +ln.dataset.i; }
+        }
+        if (closest && minDiff < 42) {
+          const ly = (this.player && this.player.lyrics) || [];
+          const lineData = ly[closestIdx];
+          if (lineData && Number.isFinite(lineData.time)) {
+            this._hoveredLyricIdx = closestIdx;
+            if (this.seekPillTime) this.seekPillTime.textContent = fmt(lineData.time);
+            const r = closest.getBoundingClientRect();
+            const topOffset = r.top - wrapRect.top + (r.height - 28) / 2;
+            const isLyricsMode = this.el.dataset.skin === 'lyrics';
+            this.seekPill.style.top = `${Math.max(4, Math.min(wrapRect.height - 32, topOffset))}px`;
+            if (isLyricsMode) {
+              const textEl = closest.querySelector('.ln-tx');
+              const textWidth = textEl ? textEl.offsetWidth : 220;
+              this.seekPill.style.left = `${Math.max(10, (wrapRect.width - textWidth) / 2 - 82)}px`;
+            } else {
+              this.seekPill.style.left = '8px';
+            }
+            this.seekPill.style.display = 'inline-flex';
+            requestAnimationFrame(() => this.seekPill.classList.add('show'));
+            return;
+          }
+        }
+        this.seekPill.classList.remove('show');
+      };
+      if (this.lyricsWrap) {
+        this.lyricsWrap.addEventListener('mousemove', (e) => updatePill(e));
+        this.lyricsWrap.addEventListener('wheel', (e) => { requestAnimationFrame(() => updatePill(e)); }, { passive: true });
+        this.lyricsWrap.addEventListener('mouseleave', () => {
+          if (this.seekPill) {
+            this.seekPill.classList.remove('show');
+            setTimeout(() => { if (this.seekPill && !this.seekPill.classList.contains('show')) this.seekPill.style.display = 'none'; }, 200);
+          }
+        });
+      }
+      if (this.seekPill) {
+        this.seekPill.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const ly = (this.player && this.player.lyrics) || [];
+          if (this._hoveredLyricIdx >= 0 && ly[this._hoveredLyricIdx] && this.player) {
+            this.player.seekTo(ly[this._hoveredLyricIdx].time);
+            if (this.player.audio && this.player.audio.paused) this.player.play();
+            this.seekPill.classList.remove('show');
+          }
+        });
+      }
       this.el.addEventListener('click', (e) => {
         if (this.queuePanel.classList.contains('show') && !this.queuePanel.contains(e.target) && !e.target.closest('.np-qbtn')) {
           this.closeQueue();
@@ -360,16 +435,20 @@
         closeAllPopups();
         if (willOpen) npq.classList.add('open');
       });
-      this.$('.np-q-menu').querySelectorAll('div').forEach(it => it.addEventListener('click', () => {
-        const q = it.dataset.q; if (this.player) this.player.setQuality(q);
-        this.updateQualityBadge(q); closeAllPopups();
-      }));
+      this.$('.np-q-menu').addEventListener('click', (e) => {
+        const it = e.target.closest('[data-q]');
+        if (!it) return;
+        const q = it.dataset.q;
+        if (this.player) this.player.setQuality(q);
+        this.updateQualityBadge(q);
+        closeAllPopups();
+      });
       // 桌面歌词「词」
       const npl = this.$('.np-lyric');
       npl.addEventListener('click', () => { if (window.DeskLyric) { const on = window.DeskLyric.toggle(); npl.classList.toggle('active', on); } });
       this._npl = npl;
       this.el.addEventListener('click', (e) => {
-        const inside = e.target.closest('.np-q, .np-vol, .np-more, .np-queue, .np-style-panel');
+        const inside = e.target.closest('.np-q, .np-vol, .np-more, .np-queue, .np-style-panel, .np-style-btn');
         if (!inside) closeAllPopups();
       });
       this.$('.np-q-close').addEventListener('click', (e) => { e.stopPropagation(); this.queuePanel.classList.remove('show'); const qb = this.$('.np-qbtn'); if (qb) qb.classList.remove('active'); });
@@ -684,11 +763,17 @@
       }
       if (this.qLabel) this.qLabel.textContent = label;
       if (this.qBtn) this.qBtn.className = 'np-q-btn ' + cls;
+      const qMenu = this.$('.np-q-menu');
+      if (qMenu) {
+        const list = isQQ ? QUALITIES_QQ : QUALITIES_NCM;
+        qMenu.innerHTML = list.map(item => `<div data-q="${item[0]}" class="${item[0] === q ? 'active' : ''}">${item[1]}</div>`).join('');
+      }
     }
 
     openStylePanel() {
-      const panel = this.stylePanel;
+      const panel = this.stylePanel || this.$('.np-style-panel');
       if (!panel) return;
+      this._closeAllPopups(panel);
       const curSkin = (this._ps && this._ps.skin) || 'square';
       const SKINS = [
         ['vinyl', '经典黑胶', '<div class="sk-art-vinyl"><div class="sk-disk"></div><div class="sk-arm"></div></div>'],
@@ -709,9 +794,13 @@
           </div>
         </div>`;
       panel.classList.add('show');
-      panel.querySelector('.nsp-x').onclick = () => this.closeStylePanel();
+      if (this.skinToggle) this.skinToggle.classList.add('active');
+      this.closeQueue();
+      if (window.Comments) window.Comments.close();
+      panel.querySelector('.nsp-x').onclick = (e) => { e.stopPropagation(); this.closeStylePanel(); };
       panel.querySelectorAll('.nsp-card').forEach(c => {
-        c.onclick = () => {
+        c.onclick = (e) => {
+          e.stopPropagation();
           this.setSkin(c.dataset.k);
           this.openStylePanel();
         };
@@ -1077,23 +1166,39 @@
 
       // 目标振幅平滑过渡：播放时起伏，暂停时平缓归零成直线
       const targetAmp = isPlaying ? 7.5 : 0;
-      this._waveAmp += (targetAmp - this._waveAmp) * 0.08;
-      this._wavePhase += isPlaying ? 0.045 : 0.01;
+      this._waveAmp += (targetAmp - this._waveAmp) * 0.12;
+      if (!isPlaying && this._waveAmp < 0.05) this._waveAmp = 0;
+      this._wavePhase += isPlaying ? 0.045 : 0.006;
 
+      const themeCol = this._themeColor || '#22c55e';
       const grad = ctx.createLinearGradient(0, 0, w, 0);
       grad.addColorStop(0, 'rgba(255,255,255,0)');
-      grad.addColorStop(0.18, this._themeColor || '#ffe066');
-      grad.addColorStop(0.82, this._themeColor || '#ffe066');
+      grad.addColorStop(0.18, themeCol);
+      grad.addColorStop(0.82, themeCol);
       grad.addColorStop(1, 'rgba(255,255,255,0)');
 
       ctx.save();
       ctx.lineCap = 'round';
 
+      // 当已彻底暂停（振幅为 0）时，绘制一条笔直优雅的中心发光直线
+      if (this._waveAmp === 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2.0;
+        ctx.shadowColor = themeCol;
+        ctx.shadowBlur = 4;
+        ctx.moveTo(w * 0.1, cy);
+        ctx.lineTo(w * 0.9, cy);
+        ctx.stroke();
+        ctx.restore();
+        return;
+      }
+
       // 主律动波
       ctx.beginPath();
       ctx.strokeStyle = grad;
       ctx.lineWidth = 2.2;
-      ctx.shadowColor = this._themeColor || '#ffe066';
+      ctx.shadowColor = themeCol;
       ctx.shadowBlur = isPlaying ? 8 : 4;
       for (let x = 0; x <= w; x += 4) {
         const envelope = Math.sin((x / w) * Math.PI);
@@ -1142,7 +1247,11 @@
           const end = i + 1 < c.words.length ? c.words[i + 1].time : (n ? n.time : start + 0.6);
           let pct = end > start ? (t - start) / (end - start) : (t >= start ? 1 : 0);
           pct = pct < 0 ? 0 : pct > 1 ? 1 : pct;
-          if (spans[i]) spans[i].style.setProperty('--p', (pct * 100).toFixed(1) + '%');
+          if (spans[i]) {
+            spans[i].style.setProperty('--p', (pct * 100).toFixed(1) + '%');
+            const isCur = (t >= start && t < end);
+            spans[i].classList.toggle('word-active', isCur);
+          }
         }
       } else {
         // 无逐字歌词时的单句行级平滑卡拉OK过渡
@@ -1160,7 +1269,13 @@
       this.playBtn.title = p ? '暂停' : '播放';
       this.playBtn.setAttribute('aria-label', this.playBtn.title);
       this.el.classList.toggle('playing', !!p);
-      if (p) this._startRAF(); else { this._stopRAF(); this._rafTick(); }
+      if (p) {
+        this._startRAF();
+      } else {
+        this._stopRAF();
+        this._waveAmp = 0;
+        this._drawSoundWave(false);
+      }
       const status = this.$('.np-status');
       if (status) status.textContent = p ? '正在播放' : (this.player && this.player.currentSong ? '已暂停' : '等待播放');
     }

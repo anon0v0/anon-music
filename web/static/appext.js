@@ -731,24 +731,24 @@
       panel.querySelector('.nsp-x').onclick = () => { panel.classList.remove('show'); if (btn) btn.classList.remove('active'); };
       panel.querySelectorAll('.nsp-card').forEach(c => c.onclick = () => { ps.skin = c.dataset.k; apply(); render(); });
     }
-    np.openStylePanel = () => { if (btn) btn.click(); };
+    np.openStylePanel = () => {
+      render();
+      panel.classList.add('show');
+      if (btn) btn.classList.add('active');
+      if (np.closeQueue) np.closeQueue();
+      if (window.Comments) window.Comments.close();
+      document.querySelectorAll('.tg-panel.open').forEach(el => el.classList.remove('open'));
+    };
+    np.closeStylePanel = () => {
+      panel.classList.remove('show');
+      if (btn) btn.classList.remove('active');
+    };
     panel.addEventListener('click', (e) => e.stopPropagation());
-    if (btn) btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const open = !panel.classList.contains('show');
-      panel.classList.toggle('show', open);
-      btn.classList.toggle('active', open);
-      if (open) {
-        render();
-        if (np.closeQueue) np.closeQueue();
-        if (window.Comments) window.Comments.close();
-        document.querySelectorAll('.tg-panel.open').forEach(el => el.classList.remove('open'));   // 与一起听面板互斥
-      }
-    });
     // 点面板外任意处关闭（按钮/面板内部已 stopPropagation）
     np.el.addEventListener('click', (e) => {
       if (e.target.closest('.np-style-panel, .np-style-btn')) return;
-      panel.classList.remove('show'); if (btn) btn.classList.remove('active');
+      panel.classList.remove('show');
+      if (btn) btn.classList.remove('active');
     });
     // 调试：?sp=1 自动打开（配合 ?np=1 无头截图）
     if (/[?&]sp=1\b/.test(location.search)) setTimeout(() => { panel.classList.add('show'); render(); }, 1400);

@@ -202,7 +202,7 @@ form.search { margin: 0; }
 .search-tabs button.active { background: var(--accent); border-color: transparent; color: #04210f; font-weight: 700; }
 .src-switch { display: none; gap: 8px; }
 .src-switch button { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: none; color: var(--muted); font-size: 13px; cursor: pointer; }
-.src-switch button.active { color: var(--text-bright); border-color: var(--accent); background: rgba(34,197,94,.14); }
+.src-switch button.active { color: var(--text-bright); border-color: transparent; box-shadow: 0 4px 14px rgba(0,0,0,.45); background: var(--fill-3); }
 .src-switch.list-srcbar { margin: 0 0 14px; }   /* 排行榜/歌单广场独立成行的音源切换条（窄屏才显示） */
 .search-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; }
 .search-col { min-width: 0; }
