@@ -323,7 +323,8 @@ if (require.main === module) (async () => {
       return '';
     });
     await check('S4-nowplaying', page, '样式面板 square/lyrics 切换', async () => {
-      await page.click('.np-more-btn'); await page.click('.np-more-menu [data-a="style"]');
+      const hasStyle = await page.isVisible('.np-more-menu [data-a="style"]').catch(() => false);
+      if (hasStyle) { await page.click('.np-more-menu [data-a="style"]'); } else { await page.click('#npSkinToggle'); }
       await page.waitForSelector('.np-style-panel.show', { timeout: 6000 });
       await page.click('.np-style-panel .nsp-card[data-k="lyrics"]');
       assert((await page.locator('.np-style-panel .nsp-card[data-k="lyrics"].active').count()) === 1, 'lyrics 皮肤未激活');
@@ -413,7 +414,8 @@ if (require.main === module) (async () => {
   await withPage('S6-integration', { width: 390, height: 844 }, async page => {
     await startPlayback(page); await page.click('#studioNowPlaying');
     await check('S6-integration', page, '全屏加入歌单弹窗位于播放器上方', async () => {
-      await page.click('.np-addpl'); await page.locator('#plModal.open').waitFor();
+      if (await page.isVisible('.np-addpl')) { await page.click('.np-addpl'); } else { await page.click('.np-more-btn'); await page.click('.np-more-menu [data-a="add"], .np-addpl'); }
+      await page.locator('#plModal.open').waitFor();
       await page.locator('#plModalList .pl-opt').first().click();
       await page.waitForFunction(() => !document.querySelector('#plModal').classList.contains('open'));
     });

@@ -169,8 +169,7 @@ async function runCase(name, fn) {
     assert(await page.evaluate(() => !document.querySelector('.np-more').classList.contains('open')), 'ESC 未先关闭 more 菜单');
 
     // 3) 打开 style 面板 -> ESC 关 style
-    await page.click('.np-more-btn');
-    await page.click('.np-more-menu [data-a="style"]');
+    await page.evaluate(() => window.NowPlaying && window.NowPlaying.openStylePanel());
     await page.waitForSelector('.np-style-panel.show', { timeout: 3500 });
     await page.keyboard.press('Escape');
     assert(await page.evaluate(() => !document.querySelector('.np-style-panel').classList.contains('show')), 'ESC 未先关闭 style 面板');

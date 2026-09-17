@@ -67,6 +67,8 @@
         <div class="np-fluid" aria-hidden="true">
           <div class="np-fluid-orb orb1"></div>
           <div class="np-fluid-orb orb2"></div>
+          <div class="np-fluid-orb orb3"></div>
+          <div class="np-fluid-orb orb4"></div>
         </div>
         <div class="np-topbar">
           <button class="np-close" title="收起播放页" aria-label="收起播放页">
@@ -87,8 +89,29 @@
               <div class="np-cover-wrap">
                 <canvas class="np-vinyl-wave" width="540" height="540" aria-hidden="true"></canvas>
                 <div class="np-vinyl-aura" aria-hidden="true"></div>
-                <div class="np-disc"><img class="np-cover" alt="专辑封面" referrerpolicy="no-referrer" src="/static/app-icon.png"></div>
-                <div class="np-tonearm"><div class="tonearm-base"></div><div class="tonearm-arm"><div class="tonearm-stick"></div><div class="tonearm-head"></div></div></div>
+                <div class="np-turntable-deck" aria-hidden="true">
+                  <div class="np-deck-well"></div>
+                  <div class="np-deck-logo" title="anon music">
+                    <img src="/static/music-logo.png" alt="logo">
+                  </div>
+                </div>
+                <div class="np-disc">
+                  <div class="np-disc-grooves" aria-hidden="true"></div>
+                  <img class="np-cover" alt="专辑封面" referrerpolicy="no-referrer" src="/static/app-icon.png">
+                  <div class="np-disc-center-hole" aria-hidden="true"></div>
+                </div>
+                <div class="np-tonearm">
+                  <div class="tonearm-base">
+                    <div class="tonearm-weight"></div>
+                    <div class="tonearm-knob"></div>
+                  </div>
+                  <div class="tonearm-arm">
+                    <div class="tonearm-stick"></div>
+                    <div class="tonearm-head">
+                      <div class="tonearm-needle"></div>
+                    </div>
+                  </div>
+                </div>
                 <span class="np-srcbadge"></span>
               </div>
               <div class="np-meta" style="display:none">
@@ -220,6 +243,7 @@
       this.el = el;
       this.$ = (s) => el.querySelector(s);
       this.bg = this.$('.np-bg'); this.fluid = this.$('.np-fluid'); this.cover = this.$('.np-cover');
+      this.disc = this.$('.np-disc'); this.coverWrap = this.$('.np-cover-wrap');
       this.stageTitle = this.$('.np-stage-title'); this.stageArtist = this.$('.np-stage-artist');
       this.footName = this.$('.np-foot-name'); this.footArtist = this.$('.np-foot-artist');
       this.rightBox = this.$('.np-right');
@@ -886,15 +910,23 @@
         if (['square', 'lyrics', 'vinyl', 'vinyl-color'].includes(q.get('skin'))) ps.skin = q.get('skin');
       } catch (_) {}
       this._ps = ps;
+      const prevSkin = this.el.dataset.skin;
+      if (prevSkin && prevSkin !== ps.skin) {
+        this.el.classList.add('skin-switching');
+        clearTimeout(this._skinSwitchTimer);
+        this._skinSwitchTimer = setTimeout(() => {
+          this.el.classList.remove('skin-switching');
+        }, 480);
+      }
       this.el.dataset.skin = ps.skin;
       this.el.dataset.lyralign = ps.lyricAlign;
       this.el.dataset.viz = ps.viz;
-      const c = hexRgb(ps.vinylColor) || [225, 79, 174];
+      const c = hexRgb(ps.vinylColor) || [34, 197, 94];
       this.el.style.setProperty('--vinylC', `rgb(${c[0]},${c[1]},${c[2]})`);
       this.el.style.setProperty('--vinylCA', `rgba(${c[0]},${c[1]},${c[2]},.34)`);
       this.el.style.setProperty('--vinylCB', `rgba(${c[0]},${c[1]},${c[2]},.55)`);
       this.el.style.setProperty('--vinylCR', `rgba(${c[0]},${c[1]},${c[2]},.82)`);
-      if (ps.bg && ps.bg !== 'auto') this._applyBg(hexRgb(ps.bg));
+      if (ps.bg && ps.bg !== 'auto') this._applyBg(hexRgb(ps.bg), null);
       else if (this._lastPic !== undefined) this._extractColor(this._lastPic);
       if (ps.skin === 'lyrics') this._setMPage('lyrics');
       else if (!this.el.dataset.mpage) this._setMPage('cover');
@@ -902,8 +934,14 @@
 
     setSkin(skin) {
       if (!['square', 'lyrics', 'vinyl', 'vinyl-color'].includes(skin)) skin = 'square';
+      if (this.el.dataset.skin === skin) return;
       this._ps = this._ps || {};
       this._ps.skin = skin;
+      this.el.classList.add('skin-switching');
+      clearTimeout(this._skinSwitchTimer);
+      this._skinSwitchTimer = setTimeout(() => {
+        this.el.classList.remove('skin-switching');
+      }, 480);
       this.el.dataset.skin = skin;
       try {
         let st = JSON.parse(localStorage.getItem('anon_player_style') || '{}');
@@ -918,7 +956,6 @@
       this._layoutLyrics();
       requestAnimationFrame(() => this._layoutLyrics());
     }
-
     _setMPage(pg) {
       pg = pg === 'lyrics' ? 'lyrics' : 'cover';
       const changed = this.el.dataset.mpage !== pg;
@@ -1016,73 +1053,167 @@
       this.el.querySelectorAll('.np-vip-badge, .np-foot-vip').forEach(el => {
         el.style.display = isVip ? 'inline-block' : 'none';
       });
-
       let pic = (window.httpsify ? window.httpsify(s.picUrl || s.pic || s.cover || (s.al && s.al.picUrl)) : (s.picUrl || s.pic || s.cover || (s.al && s.al.picUrl))) || '';
       if (!pic && String(s.id || '').startsWith('qq:')) {
         const mid = String(s.id).slice(3).split('|')[0];
         if (mid) pic = `https://y.gtimg.cn/music/photo_new/T002R300x300M000${mid}.jpg`;
       }
-      delete this.cover.dataset.proxied;
-      this.cover.src = pic || window.IMG_PLACEHOLDER || '/static/app-icon.png';
+
       this.cover.alt = (s.name || '当前歌曲') + ' · 专辑封面';
+      const curSrc = this.cover.getAttribute('src') || '';
+      const isSamePic = !!pic && (curSrc === pic || (this.cover.dataset.rawsrc === pic && !curSrc.includes('app-icon')));
+
+      if (!isSamePic) {
+        this.cover.dataset.rawsrc = pic || '';
+        if (!pic) {
+          delete this.cover.dataset.proxied;
+          this.cover.src = window.IMG_PLACEHOLDER || '/static/app-icon.png';
+        } else {
+          // 后台平滑预加载，彻底杜绝音乐开始播放或切歌时封面先消失一瞬间的异常
+          const targetUrl = pic;
+          const pre = new Image();
+          pre.referrerPolicy = 'no-referrer';
+          pre.onload = () => {
+            if (this._lastPic !== pic) return;
+            delete this.cover.dataset.proxied;
+            this.cover.src = targetUrl;
+          };
+          pre.onerror = () => {
+            if (this._lastPic !== pic) return;
+            const proxied = (window.apiUrl ? window.apiUrl('/api/img?url=') : '/api/img?url=') + encodeURIComponent(targetUrl);
+            const preProxy = new Image();
+            preProxy.onload = () => {
+              if (this._lastPic !== pic) return;
+              this.cover.dataset.proxied = '1';
+              this.cover.src = proxied;
+            };
+            preProxy.onerror = () => {
+              if (this._lastPic !== pic) return;
+              this.cover.src = window.IMG_PLACEHOLDER || '/static/app-icon.png';
+            };
+            preProxy.src = proxied;
+          };
+          pre.src = targetUrl;
+        }
+      }
       this._lastPic = pic;
-      if (this.bg && pic) this.bg.style.backgroundImage = `url("${pic}")`;
+      if (this.bg && pic && (!this.bg.style.backgroundImage || !this.bg.style.backgroundImage.includes(encodeURIComponent(pic)))) {
+        this.bg.style.backgroundImage = `url("${pic}")`;
+      }
       const psBg = this._ps && this._ps.bg;
-      if (psBg && psBg !== 'auto') this._applyBg(hexRgb(psBg));
+      if (psBg && psBg !== 'auto') this._applyBg(hexRgb(psBg), null);
       else this._extractColor(pic);
       this._updateLikeState();
       this.updateQualityBadge(this.player ? this.player.quality : 'standard');
     }
 
     _extractColor(picUrl) {
-      if (!picUrl) { this._applyBg(null); return; }
+      if (!picUrl) { this._applyBg(null, null); return; }
       this._colorCache = this._colorCache || new Map();
       const cached = this._colorCache.get(picUrl);
-      if (cached) { this._applyBg(cached); return; }
+      if (cached) { this._applyBg(cached.c1, cached.c2); return; }
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         if (this._lastPic !== picUrl) return;
         try {
           const cv = document.createElement('canvas');
-          const w = cv.width = 40, h = cv.height = 40;
+          const w = cv.width = 48, h = cv.height = 48;
           const ctx = cv.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
           const data = ctx.getImageData(0, 0, w, h).data;
-          let r = 0, g = 0, b = 0, n = 0, fr = 0, fg = 0, fb = 0, fn = 0;
+          
+          const buckets = [];
+          for (let i = 0; i < 16; i++) buckets.push({ r: 0, g: 0, b: 0, weight: 0, count: 0 });
+          let fallbackR = 0, fallbackG = 0, fallbackB = 0, fallbackCount = 0;
+
           for (let i = 0; i < data.length; i += 4) {
             const R = data[i], G = data[i + 1], B = data[i + 2], A = data[i + 3];
             if (A < 125) continue;
-            r += R; g += G; b += B; n++;
+
+            const lum = (R * 299 + G * 587 + B * 114) / 1000;
             const mx = Math.max(R, G, B), mn = Math.min(R, G, B);
             const sat = mx === 0 ? 0 : (mx - mn) / mx;
-            if (sat > 0.28 && mx > 50 && mx < 245) { fr += R; fg += G; fb += B; fn++; }
+
+            // 严格排除纯黑/过暗与纯白/过亮无彩色 (要求 3)
+            if (lum < 42 || mx < 45) continue;
+            if (lum > 222 || (mn > 212 && sat < 0.20)) continue;
+
+            if (sat < 0.18) {
+              fallbackR += R; fallbackG += G; fallbackB += B; fallbackCount++;
+              continue;
+            }
+
+            let hue = 0;
+            if (mx !== mn) {
+              const d = mx - mn;
+              if (mx === R) hue = ((G - B) / d + (G < B ? 6 : 0)) * 60;
+              else if (mx === G) hue = ((B - R) / d + 2) * 60;
+              else hue = ((R - G) / d + 4) * 60;
+            }
+
+            const lumWeight = 1 - Math.abs(lum - 128) / 128;
+            const weight = sat * sat * (0.4 + 0.6 * lumWeight);
+            const bIdx = Math.min(15, Math.floor((hue % 360) / 22.5));
+
+            buckets[bIdx].r += R * weight;
+            buckets[bIdx].g += G * weight;
+            buckets[bIdx].b += B * weight;
+            buckets[bIdx].weight += weight;
+            buckets[bIdx].count++;
           }
-          let c;
-          if (fn > n * 0.06) c = [Math.round(fr / fn), Math.round(fg / fn), Math.round(fb / fn)];
-          else if (n) c = [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
-          else c = null;
-          if (c) {
-            this._colorCache.set(picUrl, c);
-            while (this._colorCache.size > 50) this._colorCache.delete(this._colorCache.keys().next().value);
+
+          const sorted = buckets.map((b, idx) => ({ ...b, idx })).filter(b => b.weight > 0).sort((a, b) => b.weight - a.weight);
+          let c1 = null, c2 = null;
+          if (sorted.length > 0) {
+            const top = sorted[0];
+            c1 = [Math.round(top.r / top.weight), Math.round(top.g / top.weight), Math.round(top.b / top.weight)];
+            for (let k = 1; k < sorted.length; k++) {
+              const diff = Math.abs(sorted[k].idx - top.idx);
+              const angleDiff = Math.min(diff, 16 - diff) * 22.5;
+              if (angleDiff >= 35 && sorted[k].weight > top.weight * 0.12) {
+                c2 = [Math.round(sorted[k].r / sorted[k].weight), Math.round(sorted[k].g / sorted[k].weight), Math.round(sorted[k].b / sorted[k].weight)];
+                break;
+              }
+            }
+          } else if (fallbackCount > 0) {
+            c1 = [Math.round(fallbackR / fallbackCount), Math.round(fallbackG / fallbackCount), Math.round(fallbackB / fallbackCount)];
           }
-          this._applyBg(c);
-        } catch (e) { this._applyBg(null); }
+
+          if (!c1 || Math.max(...c1) < 42 || Math.min(...c1) > 224) {
+            c1 = [34, 197, 94];
+          }
+          if (!c2) {
+            c2 = [
+              Math.min(255, Math.max(30, Math.round(c1[0] * 0.75 + c1[2] * 0.25))),
+              Math.min(255, Math.max(30, Math.round(c1[1] * 0.82 + 25))),
+              Math.min(255, Math.max(30, Math.round(c1[2] * 0.75 + c1[0] * 0.25)))
+            ];
+          }
+
+          this._colorCache.set(picUrl, { c1, c2 });
+          while (this._colorCache.size > 50) this._colorCache.delete(this._colorCache.keys().next().value);
+          this._applyBg(c1, c2);
+        } catch (e) { this._applyBg(null, null); }
       };
-      img.onerror = () => { if (this._lastPic === picUrl) this._applyBg(null); };
+      img.onerror = () => { if (this._lastPic === picUrl) this._applyBg(null, null); };
       img.src = /^(blob:|data:)/.test(picUrl) ? picUrl : (window.apiUrl ? window.apiUrl('/api/img?url=' + encodeURIComponent(picUrl)) : '/api/img?url=' + encodeURIComponent(picUrl));
     }
 
-    _applyBg(c) {
-      const rgb = (c || [34, 197, 94]).map(n => Math.round(Math.max(0, Math.min(255, n))));
-      this._themeColor = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+    _applyBg(c1, c2) {
+      const rgb1 = (c1 || [34, 197, 94]).map(n => Math.round(Math.max(0, Math.min(255, n))));
+      const rgb2 = (c2 || [16, 185, 129]).map(n => Math.round(Math.max(0, Math.min(255, n))));
+      this._themeColor = `rgb(${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]})`;
+      this._secColor = `rgb(${rgb2[0]}, ${rgb2[1]}, ${rgb2[2]})`;
       this.el.style.setProperty('--np-theme-color', this._themeColor);
-      this.el.style.setProperty('--np-theme-glow', `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.45)`);
-      this.el.style.setProperty('--np-tint', rgb.join(' '));
-      this.el.style.setProperty('--vinylC', `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`);
-      this.el.style.setProperty('--vinylCA', `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.35)`);
-      this.el.style.setProperty('--vinylCB', `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.65)`);
-      this.el.style.setProperty('--vinylCR', `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.85)`);
+      this.el.style.setProperty('--np-theme-glow', `rgba(${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]}, 0.45)`);
+      this.el.style.setProperty('--np-color-sec', this._secColor);
+      this.el.style.setProperty('--np-color-sec-glow', `rgba(${rgb2[0]}, ${rgb2[1]}, ${rgb2[2]}, 0.4)`);
+      this.el.style.setProperty('--np-tint', rgb1.join(' '));
+      this.el.style.setProperty('--vinylC', `rgb(${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]})`);
+      this.el.style.setProperty('--vinylCA', `rgba(${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]}, 0.35)`);
+      this.el.style.setProperty('--vinylCB', `rgba(${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]}, 0.65)`);
+      this.el.style.setProperty('--vinylCR', `rgba(${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]}, 0.88)`);
     }
 
     _lineInner(l) {
@@ -1309,32 +1440,44 @@
       const cx = w / 2, cy = h / 2;
       ctx.clearRect(0, 0, w, h);
 
-      // 彩胶外半径大约 210px
-      const baseR = 214;
+      // 动态获取当前彩胶唱盘的实际渲染尺寸与外圈半径 (保证各屏幕与DPI下严丝合缝)
+      const discEl = this.disc || this.$('.np-disc');
+      const wrapEl = this.coverWrap || this.$('.np-cover-wrap');
+      const discBox = discEl ? discEl.getBoundingClientRect() : (wrapEl ? wrapEl.getBoundingClientRect() : null);
+      const cvBox = cv.getBoundingClientRect();
+      const scale = (cvBox && cvBox.width > 0) ? (w / cvBox.width) : 1;
+
+      const discRadiusCSS = (discBox && discBox.width > 0) ? (discBox.width / 2) : 210;
+      const rDiscCanvas = discRadiusCSS * scale;
+
+      // 唱片外圈基准半径：严格设定在唱盘边缘外 10px 处，绝不缩入唱片内部！(要求 2)
+      const baseR = rDiscCanvas + (10 * scale);
       const amp = this._waveAmp || 0; // 随主播放态平滑起伏(7.5 -> 0)
       const themeCol = this._themeColor || '#38bdf8';
+      const secCol = this._secColor || '#22c55e';
 
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // 1. 播放时的多层起伏环形线条 (更优雅、更有节奏感，完全还原参考图 2 & 图 3)
-      if (isPlaying && amp > 0.1) {
-        // 主波动线条 (舒缓呼吸起伏的大波浪，约 5 个自然波峰)
+      if (isPlaying && amp > 0.08) {
+        // 播放状态：双层柔美环形律动波浪线（波谷严格锁定在 baseR，保证全部在唱片外圈，对标图 1）
+        // 主波动线条：优雅 5 波峰，波动因子 >= 0 绝不侵入唱片
         ctx.beginPath();
         ctx.strokeStyle = themeCol;
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = 2.2 * scale;
         ctx.shadowColor = themeCol;
-        ctx.shadowBlur = 10;
-        ctx.globalAlpha = 0.85;
+        ctx.shadowBlur = 12 * scale;
+        ctx.globalAlpha = 0.9;
 
-        const points = 160;
+        const points = 180;
+        const maxWave = Math.max(2, amp * 1.6) * scale;
         for (let i = 0; i <= points; i++) {
           const theta = (i / points) * Math.PI * 2;
-          // 优雅、有节奏感的双频大波纹起伏
-          const wave1 = Math.sin(theta * 5 + this._wavePhase * 0.6) * (amp * 1.3);
-          const wave2 = Math.cos(theta * 3 - this._wavePhase * 0.4) * (amp * 0.7);
-          const r = baseR + wave1 + wave2;
+          const s1 = (Math.sin(theta * 5 - this._wavePhase * 0.6) + 1) * 0.5;
+          const s2 = (Math.cos(theta * 3 + this._wavePhase * 0.35) + 1) * 0.5;
+          const wave = Math.pow((s1 * 0.7 + s2 * 0.3), 1.3) * maxWave;
+          const r = baseR + wave;
           const x = cx + Math.cos(theta) * r;
           const y = cy + Math.sin(theta) * r;
           if (i === 0) ctx.moveTo(x, y);
@@ -1343,15 +1486,19 @@
         ctx.closePath();
         ctx.stroke();
 
-        // 次层柔光辅助线条
+        // 次层微光外环：进一步向外呼吸扩散
         ctx.beginPath();
-        ctx.strokeStyle = themeCol;
-        ctx.lineWidth = 1.1;
-        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = secCol;
+        ctx.lineWidth = 1.4 * scale;
+        ctx.shadowColor = secCol;
+        ctx.shadowBlur = 8 * scale;
+        ctx.globalAlpha = 0.45;
+
         for (let i = 0; i <= points; i++) {
           const theta = (i / points) * Math.PI * 2;
-          const wave = Math.sin(theta * 6 - this._wavePhase * 0.5 + 1.0) * (amp * 0.9);
-          const r = baseR + 4 + wave;
+          const s = (Math.sin(theta * 6 - this._wavePhase * 0.5 + 1.2) + 1) * 0.5;
+          const wave = Math.pow(s, 1.2) * (maxWave * 0.75);
+          const r = baseR + (6 * scale) + wave;
           const x = cx + Math.cos(theta) * r;
           const y = cy + Math.sin(theta) * r;
           if (i === 0) ctx.moveTo(x, y);
@@ -1360,13 +1507,13 @@
         ctx.closePath();
         ctx.stroke();
       } else {
-        // 暂停状态：立即恢复成完整的正圆！(完全对齐参考图 1)
+        // 暂停状态：收缩为一个闭合、平滑、贴合在彩胶外围的正圆微光环 (完全对标图 1)
         ctx.beginPath();
         ctx.strokeStyle = themeCol;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.8 * scale;
         ctx.shadowColor = themeCol;
-        ctx.shadowBlur = 8;
-        ctx.globalAlpha = 0.6;
+        ctx.shadowBlur = 10 * scale;
+        ctx.globalAlpha = 0.68;
         ctx.arc(cx, cy, baseR, 0, Math.PI * 2);
         ctx.stroke();
       }
