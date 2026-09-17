@@ -213,7 +213,7 @@
           <!-- 中间：顶部动态音频律动波形 + 控制按键 + 直线进度条 -->
           <div class="np-foot-center">
             <div class="np-center-glow">
-              <canvas class="np-sound-wave" width="480" height="32" aria-hidden="true"></canvas>
+              <canvas class="np-sound-wave" width="760" height="36" aria-hidden="true"></canvas>
             </div>
             <div class="np-main-ctrl">
               <button class="np-mode" title="播放模式"></button>
@@ -846,8 +846,31 @@
         if (this.volWrap.classList.contains('open')) { this.volWrap.classList.remove('open'); return; }
         this.close();
       });
+      let idleTimer = null;
+      let isFooterHovered = false;
+      const footerEl = this.$('.np-footer');
+      if (footerEl) {
+        footerEl.addEventListener('mouseenter', () => { isFooterHovered = true; resetIdle(); });
+        footerEl.addEventListener('mouseleave', () => { isFooterHovered = false; resetIdle(); });
+      }
+      const resetIdle = () => {
+        this.el.classList.remove('np-idle');
+        clearTimeout(idleTimer);
+        if (!this.el.classList.contains('open')) return;
+        const hasOpenPopup = !!this.el.querySelector('.np-more.open, .np-speed.open, .np-vol.open, .np-queue.show, .np-style-panel.show');
+        if (isFooterHovered || this._barDrag || this._isDragging || this._volDragging || hasOpenPopup) return;
+        idleTimer = setTimeout(() => {
+          if (!this.el.classList.contains('open')) return;
+          const stillPopup = !!this.el.querySelector('.np-more.open, .np-speed.open, .np-vol.open, .np-queue.show, .np-style-panel.show');
+          if (isFooterHovered || this._barDrag || this._isDragging || this._volDragging || stillPopup) return;
+          this.el.classList.add('np-idle');
+        }, 2800);
+      };
+      this._resetIdle = resetIdle;
+      ['mousemove', 'mousedown', 'keydown', 'touchstart'].forEach(ev => {
+        this.el.addEventListener(ev, resetIdle, { passive: true });
+      });
 
-      // 封面预览
       this.preview = this.$('.np-preview');
       this.previewImg = this.preview.querySelector('img');
       const coverWrap = this.$('.np-cover-wrap');
@@ -1533,7 +1556,7 @@
       ctx.shadowBlur = isPlaying ? 8 : 4;
       for (let x = 0; x <= w; x += 4) {
         const envelope = Math.sin((x / w) * Math.PI);
-        const y = cy + Math.sin(x * 0.024 + this._wavePhase) * this._waveAmp * envelope;
+        const y = cy + Math.sin(x * 0.016 + this._wavePhase) * this._waveAmp * envelope;
         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
@@ -1753,6 +1776,10 @@
       this._renderMini(this.player ? this.player.currentLyricIndex : -1);
       this.el.inert = false;
       this.el.classList.add('open'); document.body.style.overflow = 'hidden'; this._startRAF();
+      if (this._resetIdle) this._resetIdle();
+      const isPlaying = !!(this.player && this.player.audio && !this.player.audio.paused);
+      this._drawSoundWave(isPlaying);
+      this._drawVinylWave(isPlaying);
       this.el.setAttribute('aria-hidden', 'false');
       this.el.focus({ preventScroll: true });
       this._layoutLyrics();
@@ -1761,7 +1788,8 @@
     closePreview() { if (this.preview) this.preview.classList.remove('show'); }
     close() {
       this.el.classList.remove('open'); this.el.setAttribute('aria-hidden', 'true');
-      if (this._resetGesture) this._resetGesture();
+      this.el.classList.remove('np-idle');
+      if (this._resetIdle) this._resetIdle();
       if (this._volDragCleanup) this._volDragCleanup();
       (this._backgroundInert || []).forEach(([node, wasInert]) => { node.inert = wasInert; }); this._backgroundInert = [];
       this.el.inert = true;

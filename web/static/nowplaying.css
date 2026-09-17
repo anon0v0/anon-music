@@ -709,11 +709,15 @@
   align-items: flex-start;
   width: 100%;
 }
+/* 标题与歌手信息：与歌词首字严格垂直对齐 (用户反馈 1，对标图 1) */
 .np-stage-header {
   flex: 0 0 auto;
   margin-bottom: 20px;
   width: 100%;
   text-align: left;
+  padding-left: 106px;
+  padding-right: 24px;
+  box-sizing: border-box;
 }
 .np-title-row {
   display: flex;
@@ -1010,21 +1014,38 @@
 
 
 /* ===== 4. 贯穿通栏底栏控制台 (Image 1 & 2 完全一致) ===== */
+/* ===== 4. 贯穿通栏底栏控制台：底部一体化无分割线 + 悬浮融合效果 (用户反馈 2) ===== */
 .np-footer {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 108px;
+  height: 106px;
   padding: 6px 36px calc(14px + env(safe-area-inset-bottom, 0px));
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(380px, 580px) minmax(220px, 1fr);
+  grid-template-columns: minmax(180px, 1fr) minmax(460px, 780px) minmax(180px, 1fr);
   align-items: center;
-  background: rgba(12, 12, 16, 0.78);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  background: transparent !important;
+  border-top: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   z-index: 50;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.38s ease;
+}
+
+/* 全屏空闲无操作时，底部菜单与顶栏自动向下滑动隐藏 (用户反馈 4) */
+.np-overlay.np-idle .np-footer {
+  transform: translateY(115%);
+  opacity: 0;
+  pointer-events: none;
+}
+.np-overlay.np-idle .np-topbar {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.np-overlay.np-idle {
+  cursor: none;
 }
 
 
@@ -1292,14 +1313,14 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 580px;
+  max-width: 780px;
   margin: -2px auto 0;
   padding-bottom: 6px;
 }
 .np-center-glow {
-  width: 480px;
+  width: 740px;
   max-width: 100%;
-  height: 22px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2184,8 +2205,10 @@ html[data-theme="light"] .np-overlay[data-skin="lyrics"] .np-lyrics .ln.active {
   color: #18181b !important;
 }
 html[data-theme="light"] .np-footer {
-  background: rgba(255, 255, 255, 0.88) !important;
-  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+  background: transparent !important;
+  border-top: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 html[data-theme="light"] .np-foot-name {
   color: #18181b !important;
