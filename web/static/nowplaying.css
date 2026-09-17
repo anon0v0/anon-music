@@ -1033,19 +1033,16 @@
   transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.38s ease;
 }
 
-/* 全屏空闲无操作时，底部菜单与顶栏自动向下滑动隐藏 (用户反馈 4) */
-.np-overlay.np-idle .np-footer {
-  transform: translateY(115%);
-  opacity: 0;
-  pointer-events: none;
-}
-.np-overlay.np-idle .np-topbar {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-}
-.np-overlay.np-idle {
-  cursor: none;
+/* 桌面端全屏空闲无操作时，底部菜单自动向下滑动隐藏 (用户反馈 4) */
+@media (min-width: 821px) {
+  .np-overlay.np-idle .np-footer {
+    transform: translateY(115%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .np-overlay.np-idle {
+    cursor: none;
+  }
 }
 
 
@@ -1711,6 +1708,31 @@
 @keyframes np-sheet {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 封面大图全屏预览灯箱 (默认绝对隐藏，绝不泄露在底栏) */
+.np-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 95;
+  display: none !important;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  cursor: pointer;
+}
+.np-preview.show {
+  display: flex !important;
+  animation: np-sheet 0.26s var(--np-ease);
+}
+.np-preview img {
+  max-width: min(86vw, 560px);
+  max-height: min(86vh, 560px);
+  object-fit: contain;
+  border-radius: 16px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.75);
 }
 .np-queue-head, .nsp-head {
   display: flex;

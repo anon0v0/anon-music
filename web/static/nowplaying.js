@@ -272,7 +272,7 @@
           </div>
           <div class="np-legacy" style="display:none"><button class="np-collapse"></button></div>
         </div>
-        <div class="np-preview"><img alt="封面大图"></div>`;
+        <div class="np-preview" style="display:none;" aria-hidden="true"><img alt=""></div>`;
       document.body.appendChild(el);
       this.el = el;
       this.$ = (s) => el.querySelector(s);
@@ -881,7 +881,9 @@
         this._lpFired = true;
         this._pvAt = Date.now();
         this.previewImg.src = src;
-        this.preview.classList.add('show');
+        this.preview.style.display = 'flex';
+        this.preview.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => this.preview.classList.add('show'));
       };
       coverWrap.addEventListener('touchstart', (e) => {
         if (!e.touches || e.touches.length !== 1) return;
@@ -1785,7 +1787,18 @@
       this._layoutLyrics();
       requestAnimationFrame(() => this._layoutLyrics());
     }
-    closePreview() { if (this.preview) this.preview.classList.remove('show'); }
+    closePreview() {
+      if (this.preview) {
+        this.preview.classList.remove('show');
+        this.preview.setAttribute('aria-hidden', 'true');
+        setTimeout(() => {
+          if (this.preview && !this.preview.classList.contains('show')) {
+            this.preview.style.display = 'none';
+            if (this.previewImg) this.previewImg.removeAttribute('src');
+          }
+        }, 220);
+      }
+    }
     close() {
       this.el.classList.remove('open'); this.el.setAttribute('aria-hidden', 'true');
       this.el.classList.remove('np-idle');
