@@ -1318,24 +1318,23 @@
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // 1. 播放时的多层起伏环形线条 (完全还原参考图 2、图 3)
-      if (amp > 0.1) {
-        // 主波动线条
+      // 1. 播放时的多层起伏环形线条 (更优雅、更有节奏感，完全还原参考图 2 & 图 3)
+      if (isPlaying && amp > 0.1) {
+        // 主波动线条 (舒缓呼吸起伏的大波浪，约 5 个自然波峰)
         ctx.beginPath();
         ctx.strokeStyle = themeCol;
         ctx.lineWidth = 1.8;
         ctx.shadowColor = themeCol;
-        ctx.shadowBlur = isPlaying ? 14 : 4;
+        ctx.shadowBlur = 10;
         ctx.globalAlpha = 0.85;
 
-        const points = 120;
+        const points = 160;
         for (let i = 0; i <= points; i++) {
           const theta = (i / points) * Math.PI * 2;
-          // 多频正弦叠加，生成真实柔和的环形声浪起伏
-          const wave1 = Math.sin(theta * 7 + this._wavePhase * 1.5) * (amp * 1.8);
-          const wave2 = Math.sin(theta * 13 - this._wavePhase * 1.2) * (amp * 0.9);
-          const wave3 = Math.cos(theta * 4 + this._wavePhase * 0.8) * (amp * 1.2);
-          const r = baseR + wave1 + wave2 + wave3;
+          // 优雅、有节奏感的双频大波纹起伏
+          const wave1 = Math.sin(theta * 5 + this._wavePhase * 0.6) * (amp * 1.3);
+          const wave2 = Math.cos(theta * 3 - this._wavePhase * 0.4) * (amp * 0.7);
+          const r = baseR + wave1 + wave2;
           const x = cx + Math.cos(theta) * r;
           const y = cy + Math.sin(theta) * r;
           if (i === 0) ctx.moveTo(x, y);
@@ -1344,15 +1343,15 @@
         ctx.closePath();
         ctx.stroke();
 
-        // 次层环状微光线条（内外呼应）
+        // 次层柔光辅助线条
         ctx.beginPath();
         ctx.strokeStyle = themeCol;
-        ctx.lineWidth = 1.2;
-        ctx.globalAlpha = 0.45;
+        ctx.lineWidth = 1.1;
+        ctx.globalAlpha = 0.35;
         for (let i = 0; i <= points; i++) {
           const theta = (i / points) * Math.PI * 2;
-          const wave = Math.sin(theta * 9 - this._wavePhase * 1.1 + 1.5) * (amp * 1.3);
-          const r = baseR + 5 + wave;
+          const wave = Math.sin(theta * 6 - this._wavePhase * 0.5 + 1.0) * (amp * 0.9);
+          const r = baseR + 4 + wave;
           const x = cx + Math.cos(theta) * r;
           const y = cy + Math.sin(theta) * r;
           if (i === 0) ctx.moveTo(x, y);
@@ -1361,7 +1360,7 @@
         ctx.closePath();
         ctx.stroke();
       } else {
-        // 暂停状态：收束为贴合胶片边缘的笔直静止柔光圆环 (完全对齐参考图 1)
+        // 暂停状态：立即恢复成完整的正圆！(完全对齐参考图 1)
         ctx.beginPath();
         ctx.strokeStyle = themeCol;
         ctx.lineWidth = 1.5;
@@ -1435,6 +1434,7 @@
         this._stopRAF();
         this._waveAmp = 0;
         this._drawSoundWave(false);
+        this._drawVinylWave(false);
       }
       const status = this.$('.np-status');
       if (status) status.textContent = p ? '正在播放' : (this.player && this.player.currentSong ? '已暂停' : '等待播放');
