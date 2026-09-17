@@ -50,6 +50,8 @@
       this._themeColor = '#3b82f6';
       this._wavePhase = 0;
       this._waveAmp = 0;
+      this._vinylPhase = 0;
+      this._vinylAmp = 0;
       this._build();
     }
 
@@ -101,15 +103,47 @@
                   <div class="np-disc-center-hole" aria-hidden="true"></div>
                 </div>
                 <div class="np-tonearm">
-                  <div class="tonearm-base">
-                    <div class="tonearm-weight"></div>
-                    <div class="tonearm-knob"></div>
-                  </div>
+                  <div class="tonearm-weight" aria-hidden="true"></div>
+                  <div class="tonearm-base" aria-hidden="true"></div>
                   <div class="tonearm-arm">
-                    <div class="tonearm-stick"></div>
-                    <div class="tonearm-head">
-                      <div class="tonearm-needle"></div>
-                    </div>
+                    <svg class="tonearm-svg" viewBox="0 0 110 260" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="armMetalGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stop-color="#3f3f46" />
+                          <stop offset="35%" stop-color="#e4e4e7" />
+                          <stop offset="70%" stop-color="#a1a1aa" />
+                          <stop offset="100%" stop-color="#27272a" />
+                        </linearGradient>
+                        <linearGradient id="armWhiteGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stop-color="#ffffff" />
+                          <stop offset="40%" stop-color="#f8fafc" />
+                          <stop offset="85%" stop-color="#cbd5e1" />
+                          <stop offset="100%" stop-color="#94a3b8" />
+                        </linearGradient>
+                        <linearGradient id="headMetalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="#3f3f46" />
+                          <stop offset="60%" stop-color="#18181b" />
+                          <stop offset="100%" stop-color="#09090b" />
+                        </linearGradient>
+                        <linearGradient id="headWhiteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="#ffffff" />
+                          <stop offset="65%" stop-color="#f1f5f9" />
+                          <stop offset="100%" stop-color="#cbd5e1" />
+                        </linearGradient>
+                        <filter id="armDropShadow" x="-30%" y="-20%" width="160%" height="150%">
+                          <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.45" />
+                        </filter>
+                      </defs>
+                      <g filter="url(#armDropShadow)">
+                        <!-- 一体化无缝金属杆身，绝不脱节断裂 -->
+                        <path class="arm-shaft" d="M 50 14 L 50 162 Q 50 178 36 195 L 18 214" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+                        <!-- 唱头与唱针 -->
+                        <g class="arm-head-group">
+                          <rect class="arm-head" x="7" y="206" width="16" height="28" rx="5" transform="rotate(-34 15 220)" />
+                          <polygon class="arm-needle" points="15,234 11,241 19,241" fill="#e4e4e7" />
+                        </g>
+                      </g>
+                    </svg>
                   </div>
                 </div>
                 <span class="np-srcbadge"></span>
@@ -419,7 +453,7 @@
         const lines = Array.from(this.lyricsBox.querySelectorAll('.ln'));
         if (!lines.length) { this.seekPill.classList.remove('show'); return; }
         const wrapRect = this.lyricsWrap.getBoundingClientRect();
-        // 胶囊位置在视口垂直方向严格固定！作为像指针一样的准星刻度 (完全对标参考图 6、7、8)
+        // 胶囊位置在视口垂直方向严格固定！作为像指针一样的准星刻度 (对标图 2、图 3)
         const fixedTopPct = 0.38;
         const fixedTopPx = wrapRect.height * fixedTopPct;
         const targetCenterY = wrapRect.top + fixedTopPx + 14;
@@ -442,25 +476,31 @@
             const txEl = closest.querySelector('.ln-tx') || closest;
             const tr = txEl.getBoundingClientRect();
 
-            // 悬停时间胶囊完全固定位置（不会上下移动，也不会遮挡歌词）
             const isLyricsMode = this.el.dataset.skin === 'lyrics';
-            const fixedLeft = isLyricsMode ? Math.max(20, (wrapRect.width - 780) / 2 - 100) : 14;
-            this.seekPill.style.top = `${fixedTopPx}px`;
-            this.seekPill.style.left = `${Math.max(10, fixedLeft)}px`;
-
-            // 虚线导引律动线延伸到当前这行歌词首字
             const guideLine = this.seekPill.querySelector('.pill-guide-line');
-            if (guideLine) {
-              const pillBadge = this.seekPill.querySelector('.pill-badge');
-              const badgeWidth = pillBadge ? pillBadge.offsetWidth : 76;
-              const textLeftInWrap = tr.left - wrapRect.left;
-              const lineGap = textLeftInWrap - (fixedLeft + badgeWidth + 6);
-              if (lineGap > 8) {
-                guideLine.style.width = `${lineGap}px`;
-                guideLine.style.display = 'block';
-              } else {
-                guideLine.style.display = 'none';
+            if (isLyricsMode) {
+              // 简约歌词模式：歌词居中，胶囊靠左较远，用虚线连接过去 (对标图 3)
+              const fixedLeft = Math.max(24, Math.round((wrapRect.width - 640) / 2 - 120));
+              this.seekPill.style.top = `${fixedTopPx}px`;
+              this.seekPill.style.left = `${fixedLeft}px`;
+              if (guideLine) {
+                const pillBadge = this.seekPill.querySelector('.pill-badge');
+                const badgeWidth = pillBadge ? pillBadge.offsetWidth : 76;
+                const textLeftInWrap = tr.left - wrapRect.left;
+                const lineGap = textLeftInWrap - (fixedLeft + badgeWidth + 4);
+                if (lineGap > 8) {
+                  guideLine.style.width = `${lineGap}px`;
+                  guideLine.style.display = 'block';
+                } else {
+                  guideLine.style.display = 'none';
+                }
               }
+            } else {
+              // 简约方形、经典黑胶、透明彩胶模式：歌词靠左排版，胶囊紧贴歌词左边，去掉虚线 (对标图 2)
+              const fixedLeft = 10;
+              this.seekPill.style.top = `${fixedTopPx}px`;
+              this.seekPill.style.left = `${fixedLeft}px`;
+              if (guideLine) guideLine.style.display = 'none';
             }
 
             this.seekPill.style.display = 'inline-flex';
@@ -470,6 +510,7 @@
         }
         this.seekPill.classList.remove('show');
       };
+      this._updatePill = updatePill;
       if (this.lyricsWrap) {
         this.lyricsWrap.addEventListener('mousemove', (e) => updatePill(e));
         this.lyricsWrap.addEventListener('wheel', (e) => { requestAnimationFrame(() => updatePill(e)); }, { passive: true });
@@ -619,23 +660,78 @@
         applyVol(e.key === 'Home' ? 0 : e.key === 'End' ? 1 : logicalVol() + step, true);
       });
 
-      // 歌词滑动与滚轮
+      // 歌词滑动、鼠标左键拖动与滚轮 (用户反馈 3、7)
       if (this.rightBox) {
+        // 鼠标滚轮精细化微调滚动
         this.rightBox.addEventListener('wheel', (e) => {
           e.preventDefault();
           this._preview = true;
           const base = (this._previewY == null) ? this._curLyricY() : this._previewY;
-          this._previewY = base - e.deltaY;
-          this._clampPreview();
+          // 减小单次滚动幅度：约 34px/格，平滑容易对准时间胶囊 (用户反馈 7)
+          const step = Math.sign(e.deltaY) * Math.min(36, Math.max(16, Math.abs(e.deltaY) * 0.32));
+          this._previewY = this._clampPreview(base - step);
           this.lyricsBox.style.transition = 'none';
           this.lyricsBox.style.transform = `translateY(${this._previewY}px)`;
+          if (this._updatePill) this._updatePill(e);
           clearTimeout(this._previewTimer);
           this._previewTimer = setTimeout(() => {
             this._preview = false; this._previewY = null;
             this.lyricsBox.style.transition = '';
             this._layoutLyrics();
+            if (this.seekPill) {
+              this.seekPill.classList.remove('show');
+              setTimeout(() => { if (this.seekPill && !this.seekPill.classList.contains('show')) this.seekPill.style.display = 'none'; }, 200);
+            }
           }, 2600);
         }, { passive: false });
+        // 鼠标左键按住拉动歌词 (用户反馈 3)
+        let _mDown = false, _mStartY = 0, _mBaseY = 0;
+        this._isDragging = false;
+        this.rightBox.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return; // 仅左键响应
+          if (e.target.closest('button, a, input, .np-lyric-seek-pill')) return;
+          _mDown = true;
+          _mStartY = e.clientY;
+          _mBaseY = (this._previewY == null) ? this._curLyricY() : this._previewY;
+          this._isDragging = false;
+          clearTimeout(this._previewTimer);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!_mDown) return;
+          const dy = e.clientY - _mStartY;
+          if (!this._isDragging && Math.abs(dy) > 3) {
+            this._isDragging = true;
+            if (this.lyricsWrap) this.lyricsWrap.classList.add('is-dragging');
+          }
+          if (this._isDragging) {
+            this._preview = true;
+            this._previewY = this._clampPreview(_mBaseY + dy);
+            this.lyricsBox.style.transition = 'none';
+            this.lyricsBox.style.transform = `translateY(${this._previewY}px)`;
+            if (this._updatePill) this._updatePill(e);
+          }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+          if (!_mDown) return;
+          _mDown = false;
+          if (this.lyricsWrap) this.lyricsWrap.classList.remove('is-dragging');
+          if (this._isDragging) {
+            clearTimeout(this._previewTimer);
+            this._previewTimer = setTimeout(() => {
+              this._preview = false; this._previewY = null;
+              this.lyricsBox.style.transition = '';
+              this._layoutLyrics();
+              if (this.seekPill) {
+                this.seekPill.classList.remove('show');
+                setTimeout(() => { if (this.seekPill && !this.seekPill.classList.contains('show')) this.seekPill.style.display = 'none'; }, 200);
+              }
+            }, 2600);
+            setTimeout(() => { this._isDragging = false; }, 80);
+          }
+        });
+
         let _ty0 = 0, _tBase = 0, _tMoved = false;
         this.rightBox.addEventListener('touchstart', (e) => {
           if (!e.touches || !e.touches.length) return;
@@ -650,10 +746,11 @@
           const dy = e.touches[0].clientY - _ty0;
           if (!_tMoved && Math.abs(dy) < 4) return;
           _tMoved = true;
+          this._isDragging = true;
           this._preview = true;
-          this._previewY = _tBase + dy;
-          this._clampPreview();
+          this._previewY = this._clampPreview(_tBase + dy);
           this.lyricsBox.style.transform = `translateY(${this._previewY}px)`;
+          if (this._updatePill) this._updatePill(e);
         }, { passive: true });
         this.rightBox.addEventListener('touchend', () => {
           if (!_tMoved) {
@@ -663,8 +760,13 @@
                 this._preview = false; this._previewY = null;
                 this.lyricsBox.style.transition = '';
                 this._layoutLyrics();
+                if (this.seekPill) {
+                  this.seekPill.classList.remove('show');
+                  setTimeout(() => { if (this.seekPill && !this.seekPill.classList.contains('show')) this.seekPill.style.display = 'none'; }, 200);
+                }
               }, 2600);
             } else { this.lyricsBox.style.transition = ''; }
+            setTimeout(() => { this._isDragging = false; }, 80);
             return;
           }
           clearTimeout(this._previewTimer);
@@ -672,7 +774,12 @@
             this._preview = false; this._previewY = null;
             this.lyricsBox.style.transition = '';
             this._layoutLyrics();
+            if (this.seekPill) {
+              this.seekPill.classList.remove('show');
+              setTimeout(() => { if (this.seekPill && !this.seekPill.classList.contains('show')) this.seekPill.style.display = 'none'; }, 200);
+            }
           }, 2600);
+          setTimeout(() => { this._isDragging = false; }, 80);
         }, { passive: true });
         if (window.matchMedia && matchMedia('(hover: hover)').matches) {
           this.rightBox.addEventListener('mouseenter', () => { if (!this._lyricsOnly) this._hoverHold = true; });
@@ -1210,6 +1317,7 @@
       this.el.style.setProperty('--np-color-sec', this._secColor);
       this.el.style.setProperty('--np-color-sec-glow', `rgba(${rgb2[0]}, ${rgb2[1]}, ${rgb2[2]}, 0.4)`);
       this.el.style.setProperty('--np-tint', rgb1.join(' '));
+      this.el.style.setProperty('--vinyl-tint', `${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]}`);
       this.el.style.setProperty('--vinylC', `rgb(${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]})`);
       this.el.style.setProperty('--vinylCA', `rgba(${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]}, 0.35)`);
       this.el.style.setProperty('--vinylCB', `rgba(${rgb1[0]}, ${rgb1[1]}, ${rgb1[2]}, 0.65)`);
@@ -1235,6 +1343,7 @@
       ).join('');
       this.lyricsBox.querySelectorAll('.ln').forEach((n) => {
         n.addEventListener('click', () => {
+          if (this._isDragging) return;
           const i = +n.dataset.i;
           if (this.player && ly[i]) {
             this.player.seekTo(ly[i].time);
@@ -1253,13 +1362,16 @@
       return m ? parseFloat(m[1]) : 0;
     }
 
-    _clampPreview() {
+    _clampPreview(val) {
       const box = this.rightBox, inner = this.lyricsBox;
-      if (!box || !inner) return;
+      let y = (val !== undefined) ? val : this._previewY;
+      if (!box || !inner) { this._previewY = y; return y; }
       const max = box.clientHeight / 2;
       const min = box.clientHeight / 2 - inner.scrollHeight;
-      if (this._previewY > max) this._previewY = max;
-      if (this._previewY < min) this._previewY = min;
+      if (y > max) y = max;
+      if (y < min) y = min;
+      this._previewY = y;
+      return y;
     }
 
     closeQueue() { if (this.queuePanel) this.queuePanel.classList.remove('show'); const b = this.$('.np-qbtn'); if (b) b.classList.remove('active'); }
@@ -1354,8 +1466,18 @@
 
     _startRAF() {
       this._stopRAF();
-      if (document.hidden || !this.el.classList.contains('open') || !this.el.classList.contains('playing')) return;
-      const loop = () => { this._rafTick(); this._raf = requestAnimationFrame(loop); };
+      if (document.hidden || !this.el.classList.contains('open')) return;
+      const loop = () => {
+        this._rafTick();
+        const p = this.player;
+        const isPlaying = !!(p && p.audio && !p.audio.paused);
+        const needsMore = isPlaying || this._waveAmp > 0.02 || this._vinylAmp > 0.02;
+        if (needsMore && this.el.classList.contains('open') && !document.hidden) {
+          this._raf = requestAnimationFrame(loop);
+        } else {
+          this._raf = null;
+        }
+      };
       loop();
     }
     _stopRAF() { if (this._raf) cancelAnimationFrame(this._raf); this._raf = null; }
@@ -1440,43 +1562,48 @@
       const cx = w / 2, cy = h / 2;
       ctx.clearRect(0, 0, w, h);
 
-      // 动态获取当前彩胶唱盘的实际渲染尺寸与外圈半径 (保证各屏幕与DPI下严丝合缝)
+      // 动态获取当前彩胶唱盘的实际渲染尺寸与外圈半径 (保证在各分辨率下始终居中且不溢出)
       const discEl = this.disc || this.$('.np-disc');
       const wrapEl = this.coverWrap || this.$('.np-cover-wrap');
       const discBox = discEl ? discEl.getBoundingClientRect() : (wrapEl ? wrapEl.getBoundingClientRect() : null);
       const cvBox = cv.getBoundingClientRect();
       const scale = (cvBox && cvBox.width > 0) ? (w / cvBox.width) : 1;
 
-      const discRadiusCSS = (discBox && discBox.width > 0) ? (discBox.width / 2) : 210;
+      const discRadiusCSS = (discBox && discBox.width > 0) ? (discBox.width / 2) : 170;
       const rDiscCanvas = discRadiusCSS * scale;
 
-      // 唱片外圈基准半径：严格设定在唱盘边缘外 10px 处，绝不缩入唱片内部！(要求 2)
-      const baseR = rDiscCanvas + (10 * scale);
-      const amp = this._waveAmp || 0; // 随主播放态平滑起伏(7.5 -> 0)
-      const themeCol = this._themeColor || '#38bdf8';
-      const secCol = this._secColor || '#22c55e';
+      // 唱片外圈基准半径：设定在唱盘边缘外 14px 处，绝不缩入唱片内部 (对标图 5 静止状态)
+      const baseR = rDiscCanvas + (14 * scale);
+
+      // 播放时平滑起伏，暂停时平滑回到初始正圆 (用户反馈 9)
+      const targetAmp = isPlaying ? 5.5 : 0;
+      this._vinylAmp += (targetAmp - this._vinylAmp) * 0.085;
+      if (!isPlaying && this._vinylAmp < 0.015) this._vinylAmp = 0;
+      this._vinylPhase += isPlaying ? 0.035 : 0.004;
+
+      const amp = this._vinylAmp * scale;
+      const themeCol = this._themeColor || '#22c55e';
+      const secCol = this._secColor || '#10b981';
 
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      if (isPlaying && amp > 0.08) {
-        // 播放状态：双层柔美环形律动波浪线（波谷严格锁定在 baseR，保证全部在唱片外圈，对标图 1）
-        // 主波动线条：优雅 5 波峰，波动因子 >= 0 绝不侵入唱片
+      if (amp > 0.02) {
+        // 播放状态：双层柔美环形律动波浪线，波动始终在彩胶外圈 (对标图 6、图 7)
         ctx.beginPath();
         ctx.strokeStyle = themeCol;
-        ctx.lineWidth = 2.2 * scale;
+        ctx.lineWidth = 2.0 * scale;
         ctx.shadowColor = themeCol;
-        ctx.shadowBlur = 12 * scale;
+        ctx.shadowBlur = 10 * scale;
         ctx.globalAlpha = 0.9;
 
         const points = 180;
-        const maxWave = Math.max(2, amp * 1.6) * scale;
         for (let i = 0; i <= points; i++) {
           const theta = (i / points) * Math.PI * 2;
-          const s1 = (Math.sin(theta * 5 - this._wavePhase * 0.6) + 1) * 0.5;
-          const s2 = (Math.cos(theta * 3 + this._wavePhase * 0.35) + 1) * 0.5;
-          const wave = Math.pow((s1 * 0.7 + s2 * 0.3), 1.3) * maxWave;
+          // 5 波峰优雅呼吸律动，波形因子 >= 0 保证绝对在唱盘外圈
+          const s = (Math.sin(theta * 5 - this._vinylPhase * 0.8) * 0.6 + Math.cos(theta * 3 + this._vinylPhase * 0.4) * 0.4 + 1) * 0.5;
+          const wave = Math.pow(s, 1.2) * (amp * 1.5);
           const r = baseR + wave;
           const x = cx + Math.cos(theta) * r;
           const y = cy + Math.sin(theta) * r;
@@ -1486,34 +1613,35 @@
         ctx.closePath();
         ctx.stroke();
 
-        // 次层微光外环：进一步向外呼吸扩散
-        ctx.beginPath();
-        ctx.strokeStyle = secCol;
-        ctx.lineWidth = 1.4 * scale;
-        ctx.shadowColor = secCol;
-        ctx.shadowBlur = 8 * scale;
-        ctx.globalAlpha = 0.45;
-
-        for (let i = 0; i <= points; i++) {
-          const theta = (i / points) * Math.PI * 2;
-          const s = (Math.sin(theta * 6 - this._wavePhase * 0.5 + 1.2) + 1) * 0.5;
-          const wave = Math.pow(s, 1.2) * (maxWave * 0.75);
-          const r = baseR + (6 * scale) + wave;
-          const x = cx + Math.cos(theta) * r;
-          const y = cy + Math.sin(theta) * r;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+        // 次层微光外环：柔和向外呼应
+        if (amp > 1.0) {
+          ctx.beginPath();
+          ctx.strokeStyle = secCol;
+          ctx.lineWidth = 1.2 * scale;
+          ctx.shadowColor = secCol;
+          ctx.shadowBlur = 6 * scale;
+          ctx.globalAlpha = 0.45;
+          for (let i = 0; i <= points; i++) {
+            const theta = (i / points) * Math.PI * 2;
+            const s = (Math.sin(theta * 6 - this._vinylPhase * 0.6 + 1.2) + 1) * 0.5;
+            const wave = Math.pow(s, 1.1) * (amp * 0.9);
+            const r = baseR + (4 * scale) + wave;
+            const x = cx + Math.cos(theta) * r;
+            const y = cy + Math.sin(theta) * r;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.stroke();
         }
-        ctx.closePath();
-        ctx.stroke();
       } else {
-        // 暂停状态：收缩为一个闭合、平滑、贴合在彩胶外围的正圆微光环 (完全对标图 1)
+        // 暂停状态：收拢并恢复至初始位置的外围封闭微光正圆 (完全对标图 5)
         ctx.beginPath();
         ctx.strokeStyle = themeCol;
-        ctx.lineWidth = 1.8 * scale;
+        ctx.lineWidth = 1.6 * scale;
         ctx.shadowColor = themeCol;
-        ctx.shadowBlur = 10 * scale;
-        ctx.globalAlpha = 0.68;
+        ctx.shadowBlur = 8 * scale;
+        ctx.globalAlpha = 0.72;
         ctx.arc(cx, cy, baseR, 0, Math.PI * 2);
         ctx.stroke();
       }
@@ -1575,14 +1703,8 @@
       this.playBtn.title = p ? '暂停' : '播放';
       this.playBtn.setAttribute('aria-label', this.playBtn.title);
       this.el.classList.toggle('playing', !!p);
-      if (p) {
-        this._startRAF();
-      } else {
-        this._stopRAF();
-        this._waveAmp = 0;
-        this._drawSoundWave(false);
-        this._drawVinylWave(false);
-      }
+      // 启动 RAF 持续绘制平滑减速与回缩正圆动效 (用户反馈 9)
+      this._startRAF();
       const status = this.$('.np-status');
       if (status) status.textContent = p ? '正在播放' : (this.player && this.player.currentSong ? '已暂停' : '等待播放');
     }

@@ -340,18 +340,18 @@
               0 1px 2px rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
-/* 底座右下角凹槽与网站 Logo (彻底替换原参考图 2 的绿色 q 标 - 要求 1) */
+/* 底座右下角凹槽与网站 Logo (增大尺寸清晰展示 - 用户反馈 8) */
 .np-deck-logo {
   position: absolute;
-  right: 20px;
-  bottom: 20px;
-  width: 34px;
-  height: 34px;
+  right: 22px;
+  bottom: 22px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: radial-gradient(circle, #1a1a1d 0%, #0c0c0e 100%);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.9),
-              0 1px 2px rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: radial-gradient(circle, #1c1c20 0%, #0c0c0e 100%);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.95),
+              0 1px 2px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -359,13 +359,12 @@
   pointer-events: auto;
 }
 .np-deck-logo img {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   border-radius: 50%;
-  filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.65));
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.75));
 }
-
 /* ================== 经典黑胶 (vinyl) 与 透明彩胶 (vinyl-color) 唱盘 ================== */
 /* 旋转动画定义：黑胶和彩胶播放时都要旋转，中间封面同步转动 (要求 2) */
 @keyframes np-spin {
@@ -400,17 +399,19 @@
   animation-play-state: running;
 }
 /* 黑胶逼真密纹音轨与各向异性金属光泽 (对标图 2) */
+/* 黑胶渐变色泽：吸取封面颜色做出的金属质感反光 (用户反馈 8，对标图 4) */
 .np-overlay[data-skin="vinyl"] .np-disc-grooves {
   display: block;
   position: absolute;
   inset: 0;
   border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(circle, transparent 46%, rgba(255, 255, 255, 0.03) 48%, rgba(0, 0, 0, 0.8) 50%, transparent 51%),
-              repeating-radial-gradient(circle, #202024 0px, #111113 1px, #1a1a1d 2px, #0e0e10 3px),
-              conic-gradient(from 45deg, rgba(255, 255, 255, 0.16) 0deg, transparent 40deg, rgba(255, 255, 255, 0.08) 85deg, transparent 135deg, rgba(255, 255, 255, 0.18) 180deg, transparent 220deg, rgba(255, 255, 255, 0.08) 265deg, transparent 315deg, rgba(255, 255, 255, 0.16) 360deg);
+  background:
+    radial-gradient(circle, transparent 40%, rgba(var(--vinyl-tint, 34, 197, 94), 0.22) 48%, rgba(var(--vinyl-tint, 34, 197, 94), 0.12) 68%, rgba(var(--vinyl-tint, 34, 197, 94), 0.26) 95%, #0d0e11 100%),
+    repeating-radial-gradient(circle, rgba(var(--vinyl-tint, 34, 197, 94), 0.06) 0px, #16171a 1px, #1c1d22 2px, #0f1013 3px),
+    conic-gradient(from 45deg, rgba(255,255,255,0.22) 0deg, rgba(var(--vinyl-tint, 34, 197, 94), 0.16) 35deg, transparent 65deg, rgba(255,255,255,0.18) 90deg, transparent 135deg, rgba(255,255,255,0.22) 180deg, rgba(var(--vinyl-tint, 34, 197, 94), 0.16) 215deg, transparent 245deg, rgba(255,255,255,0.18) 270deg, transparent 320deg, rgba(255,255,255,0.22) 360deg);
   box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8),
-              inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+              inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 .np-overlay[data-skin="vinyl"] .np-cover {
   width: 46% !important;
@@ -488,26 +489,25 @@
   pointer-events: none;
 }
 
-/* ================== 唱针样式 (Tonearm - 完全对齐图 1 与 图 2 - 要求 1) ================== */
+/* ================== 唱针样式 (Tonearm - SVG 一体化高质感机械臂，绝不断裂) ================== */
 .np-tonearm {
   position: absolute;
   pointer-events: none;
   display: none;
+  z-index: 10;
 }
 .np-overlay[data-skin="vinyl"] .np-tonearm,
 .np-overlay[data-skin="vinyl-color"] .np-tonearm {
   display: block;
 }
 
-/* 1. 黑胶模式下的唱针 (对标图 2：深色金属质感、带上方配重陀与机械轴承) */
+/* 1. 黑胶模式下的唱针 (对标图 4：深色金属质感、突出配重陀、机械轴承) */
 .np-overlay[data-skin="vinyl"] .np-tonearm {
   top: -16px;
   right: 12px;
   width: 110px;
   height: 260px;
-  z-index: 10;
 }
-/* 金属配重陀 (突出于唱机顶边) */
 .np-overlay[data-skin="vinyl"] .tonearm-weight {
   display: block;
   position: absolute;
@@ -521,7 +521,6 @@
   border: 1px solid #18181b;
   z-index: 13;
 }
-/* 机械转轴底座 */
 .np-overlay[data-skin="vinyl"] .tonearm-base {
   position: absolute;
   top: 12px;
@@ -542,76 +541,38 @@
   background: radial-gradient(circle, #52525b 0%, #27272a 100%);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7);
 }
-/* 唱臂杆与唱头（旋转轴心在底座中心） */
 .np-overlay[data-skin="vinyl"] .tonearm-arm {
   position: absolute;
-  top: 25px;
-  right: 32px;
-  width: 20px;
-  height: 215px;
-  transform-origin: 3px 0px;
-  transform: rotate(-24deg); /* 暂停状态：向右侧上方抬起 */
-  transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1);
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+  top: 10px;
+  right: -6px;
+  width: 110px;
+  height: 260px;
+  transform-origin: 50px 14px;
+  transform: rotate(-26deg);
+  transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 11;
 }
 .np-overlay.playing[data-skin="vinyl"] .tonearm-arm {
-  transform: rotate(2deg); /* 播放状态：落针在唱片右下方音轨上 */
+  transform: rotate(2deg);
 }
-/* 唱臂细长深色金属杆 */
-.np-overlay[data-skin="vinyl"] .tonearm-stick {
-  position: absolute;
-  top: 0;
-  left: 1px;
-  width: 5px;
-  height: 140px;
-  background: linear-gradient(90deg, #52525b 0%, #a1a1aa 45%, #71717a 80%, #3f3f46 100%);
-  border-radius: 3px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+.np-overlay[data-skin="vinyl"] .arm-shaft {
+  stroke: url(#armMetalGrad);
 }
-.np-overlay[data-skin="vinyl"] .tonearm-stick::after {
-  content: "";
-  position: absolute;
-  bottom: -38px;
-  left: -15px;
-  width: 5px;
-  height: 46px;
-  background: linear-gradient(90deg, #52525b 0%, #a1a1aa 45%, #71717a 80%, #3f3f46 100%);
-  border-radius: 3px;
-  transform: rotate(-28deg);
-  transform-origin: top right;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+.np-overlay[data-skin="vinyl"] .arm-head {
+  fill: url(#headMetalGrad);
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 0.8;
 }
-/* 黑色金属唱头与探针 */
-.np-overlay[data-skin="vinyl"] .tonearm-head {
-  position: absolute;
-  bottom: 22px;
-  left: -20px;
-  width: 14px;
-  height: 26px;
-  border-radius: 3px;
-  background: linear-gradient(135deg, #3f3f46 0%, #18181b 80%, #09090b 100%);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.2);
-  transform: rotate(-28deg);
-}
-.np-overlay[data-skin="vinyl"] .tonearm-needle {
+.np-overlay[data-skin="vinyl"] .arm-needle {
   display: block;
-  position: absolute;
-  bottom: -5px;
-  left: 5px;
-  width: 4px;
-  height: 6px;
-  background: #e4e4e7;
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
 
-/* 2. 彩胶模式下的唱针 (对标图 1：极简白银质感、现代圆柱轴承底座、圆头唱头) */
+/* 2. 彩胶模式下的唱针 (对标图 6、图 7：极简白银质感、现代圆柱轴承底座、一体式白圆唱头) */
 .np-overlay[data-skin="vinyl-color"] .np-tonearm {
   top: -24px;
   right: -24px;
   width: 140px;
   height: 240px;
-  z-index: 10;
 }
 .np-overlay[data-skin="vinyl-color"] .tonearm-weight {
   display: none;
@@ -638,72 +599,59 @@
 }
 .np-overlay[data-skin="vinyl-color"] .tonearm-arm {
   position: absolute;
-  top: 26px;
-  right: 33px;
-  width: 20px;
-  height: 200px;
-  transform-origin: 3px 0px;
-  transform: rotate(-28deg); /* 暂停状态：外展抬起 */
-  transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1);
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+  top: 10px;
+  right: -6px;
+  width: 110px;
+  height: 260px;
+  transform-origin: 50px 14px;
+  transform: rotate(-30deg);
+  transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 11;
 }
 .np-overlay.playing[data-skin="vinyl-color"] .tonearm-arm {
-  transform: rotate(-2deg); /* 播放状态：自然平落入彩胶唱片上 */
+  transform: rotate(-2deg);
 }
-.np-overlay[data-skin="vinyl-color"] .tonearm-stick {
-  position: absolute;
-  top: 0;
-  left: 1px;
-  width: 5px;
-  height: 125px;
-  background: linear-gradient(90deg, #ffffff 0%, #f8fafc 40%, #cbd5e1 100%);
-  border-radius: 3px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+.np-overlay[data-skin="vinyl-color"] .arm-shaft {
+  stroke: url(#armWhiteGrad);
 }
-.np-overlay[data-skin="vinyl-color"] .tonearm-stick::after {
-  content: "";
-  position: absolute;
-  bottom: -36px;
-  left: -14px;
-  width: 5px;
-  height: 44px;
-  background: linear-gradient(90deg, #ffffff 0%, #f8fafc 40%, #cbd5e1 100%);
-  border-radius: 3px;
-  transform: rotate(-26deg);
-  transform-origin: top right;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+.np-overlay[data-skin="vinyl-color"] .arm-head {
+  fill: url(#headWhiteGrad);
+  rx: 12px;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 1;
 }
-/* 极简白圆头唱头 (对标图 1) */
-.np-overlay[data-skin="vinyl-color"] .tonearm-head {
-  position: absolute;
-  bottom: 22px;
-  left: -18px;
-  width: 14px;
-  height: 26px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 65%, #cbd5e1 100%);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
-  transform: rotate(-26deg);
-}
-.np-overlay[data-skin="vinyl-color"] .tonearm-needle {
+.np-overlay[data-skin="vinyl-color"] .arm-needle {
   display: none;
 }
-
-/* ================== 彩胶外圈音频律动线条 Canvas (保持在唱片外圈 - 要求 2) ================== */
+.tonearm-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+/* ================== 彩胶外圈音频律动线条 Canvas (保持在唱片外圈，无裁剪溢出 - 用户反馈 9) ================== */
 .np-vinyl-wave {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 540px;
-  height: 540px;
+  width: calc(100% + 100px);
+  height: calc(100% + 100px);
+  max-width: none;
+  max-height: none;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
   display: none;
+  overflow: visible !important;
 }
 .np-overlay[data-skin="vinyl-color"] .np-vinyl-wave {
   display: block;
+}
+.np-overlay[data-skin="vinyl-color"] .np-left {
+  overflow: visible !important;
+}
+.np-overlay[data-skin="vinyl-color"] .np-cover-wrap {
+  overflow: visible !important;
 }
 
 /* 透明彩胶外圈极简微光环 */
@@ -742,49 +690,27 @@
   50% { opacity: 0.88; }
   100% { opacity: 1; transform: scale(1); }
 }
-  filter: blur(4px);
-  opacity: 0.6;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-.np-overlay[data-skin="vinyl-color"] .np-vinyl-aura {
-  display: block;
-}
-/* 播放时透明彩胶的外层流体霓虹轮廓 (对标图 2) */
-.np-overlay[data-skin="vinyl-color"].playing .np-cover-wrap {
-  box-shadow: 0 0 60px var(--np-theme-glow, rgba(244, 63, 94, 0.55)),
-              0 0 25px var(--vinylCR, rgba(244, 63, 94, 0.7)),
-              0 28px 80px rgba(0, 0, 0, 0.6),
-              inset 0 0 24px rgba(255, 255, 255, 0.5),
-              inset 0 0 0 2px rgba(255, 255, 255, 0.4);
-}
-.np-overlay[data-skin="vinyl-color"].playing .np-vinyl-aura {
-  opacity: 0.95;
-  animation: np-aura-pulse 3.6s ease-in-out infinite alternate;
-}
-@keyframes np-aura-pulse {
-  0% { transform: scale(0.98); filter: blur(4px) drop-shadow(0 0 14px var(--vinylCR, rgba(244, 63, 94, 0.6))); }
-  50% { transform: scale(1.05); filter: blur(6px) drop-shadow(0 0 28px var(--vinylCR, rgba(244, 63, 94, 0.85))); }
-  100% { transform: scale(1.01); filter: blur(5px) drop-shadow(0 0 20px var(--vinylCR, rgba(244, 63, 94, 0.7))); }
-}
 /* 右栏：歌曲信息 + 歌词流 */
+/* 右栏默认：歌曲信息居左 + 歌词居左 (用户反馈 5，对标图 2) */
 .np-right {
   display: flex;
   flex-direction: column;
-  height: min(500px, calc(100vh - 210px));
+  height: min(520px, calc(100vh - 210px));
   min-width: 0;
-  text-align: center;
-  align-items: center;
+  text-align: left;
+  align-items: flex-start;
+  width: 100%;
 }
 .np-stage-header {
   flex: 0 0 auto;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   width: 100%;
-  text-align: center;
+  text-align: left;
 }
 .np-title-row {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 10px;
 }
 .np-title {
@@ -822,18 +748,27 @@
 }
 
 /* 歌词视口容器与大字号排版 */
+/* 歌词视口容器：留足左侧边距放置悬停时间胶囊，鼠标可拖拽 (用户反馈 3、5) */
 .np-lyrics-wrap {
   flex: 1 1 0;
   position: relative;
   overflow: hidden;
   min-height: 0;
   width: 100%;
-  padding: 0 16px;
+  padding-left: 96px;
+  padding-right: 24px;
   opacity: 1;
   transform: translateY(0);
   transition: opacity 0.28s ease, transform 0.28s ease;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.np-lyrics-wrap.is-dragging,
+.np-lyrics-wrap.is-dragging * {
+  cursor: grabbing !important;
 }
 .np-lyrics-wrap.lyrics-changing {
   opacity: 0;
@@ -843,9 +778,12 @@
 .np-lyrics {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
   gap: 20px;
   margin: 0;
   padding: 0;
+  width: 100%;
   will-change: transform;
   transition: transform 0.26s cubic-bezier(0.25, 1, 0.5, 1);
 }
@@ -858,6 +796,11 @@
   padding: 4px 10px;
   transition: color 0.2s ease, opacity 0.2s ease, transform 0.25s ease;
   position: relative;
+  text-align: left;
+  justify-content: flex-start;
+  align-items: flex-start;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .np-lyrics .ln:hover {
@@ -870,7 +813,7 @@
   opacity: 1;
   text-shadow: 0 0 18px rgba(255, 255, 255, 0.28);
   transform: scale(1.03);
-  transform-origin: center center;
+  transform-origin: left center;
 }
 
 
@@ -952,12 +895,33 @@
   white-space: nowrap;
 }
 /* 延伸点状虚线律动线（与参考图 1 完全一致） */
+/* 延伸点状虚线律动线（仅简约歌词模式展示 - 用户反馈 4） */
 .np-lyric-seek-pill .pill-guide-line {
   height: 0;
   margin-left: 8px;
-  border-top: 2px dotted rgba(255, 255, 255, 0.35);
+  border-top: 2px dotted rgba(255, 255, 255, 0.38);
   transition: width 0.14s cubic-bezier(0.25, 1, 0.5, 1);
   pointer-events: none;
+}
+/* 除了简约歌词模式，其他三个模式严格隐藏虚线 (用户反馈 4) */
+.np-overlay[data-skin="square"] .pill-guide-line,
+.np-overlay[data-skin="vinyl"] .pill-guide-line,
+.np-overlay[data-skin="vinyl-color"] .pill-guide-line {
+  display: none !important;
+}
+
+/* 简约方形封面尺寸紧凑雅致 (用户反馈 1) */
+.np-overlay[data-skin="square"] .np-cover-wrap {
+  width: min(30vw, 320px, calc(100vh - 280px)) !important;
+  height: min(30vw, 320px, calc(100vh - 280px)) !important;
+  max-width: 320px !important;
+  max-height: 320px !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 4px 18px rgba(0, 0, 0, 0.35) !important;
+}
+.np-overlay[data-skin="square"] .np-body {
+  grid-template-columns: minmax(260px, 320px) minmax(360px, 640px);
+  gap: clamp(32px, 4vw, 56px);
 }
 
 .np-lyrics .ln .tr {
@@ -1008,26 +972,32 @@
   font-weight: 700;
 }
 .np-overlay[data-skin="lyrics"] .np-lyrics-wrap {
-  padding-left: 130px !important; /* 简约歌词模式下更充分留白，让超长居中歌词绝不碰到左侧胶囊 */
-  padding-right: 130px !important;
+  padding-left: 140px !important;
+  padding-right: 140px !important;
 }
 .np-overlay[data-skin="lyrics"] .np-lyrics {
-  align-items: center;
-  text-align: center;
+  align-items: center !important;
+  text-align: center !important;
   gap: 22px;
 }
 .np-overlay[data-skin="lyrics"] .np-lyrics .ln {
   font-size: 27px;
   line-height: 1.9;
   color: rgba(255, 255, 255, 0.42);
+  text-align: center !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
 .np-overlay[data-skin="lyrics"] .np-lyrics .ln.active {
-  color: #ffffff;
+  color: var(--np-theme-color, #22c55e) !important;
   font-size: 38px;
   font-weight: 800;
   text-shadow: 0 0 24px var(--np-theme-glow, rgba(34, 197, 94, 0.45));
   transform: scale(1.04);
-  transform-origin: center center;
+  transform-origin: center center !important;
+}
+.np-overlay[data-skin="lyrics"] .pill-guide-line {
+  display: block;
 }
 
 
@@ -1895,11 +1865,12 @@
     align-items: center;
     height: 100%;
   }
-  .np-cover-wrap {
-    width: min(72vw, 300px, calc(100vh - 180px));
-    height: min(72vw, 300px, calc(100vh - 180px));
-    max-width: calc(100vh - 180px);
-    max-height: calc(100vh - 180px);
+  .np-cover-wrap,
+  .np-overlay[data-skin="square"] .np-cover-wrap {
+    width: min(72vw, 300px, calc(100vh - 180px)) !important;
+    height: min(72vw, 300px, calc(100vh - 180px)) !important;
+    max-width: calc(100vh - 180px) !important;
+    max-height: calc(100vh - 180px) !important;
   }
   .np-right {
     height: min(340px, calc(100vh - 190px));
