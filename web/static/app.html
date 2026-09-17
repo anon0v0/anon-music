@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" translate="no" class="notranslate">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
   <meta name="referrer" content="no-referrer">
+  <meta name="google" content="notranslate">
+  <meta name="microsoft" content="notranslate">
   <title>Anon Music · 私人音乐空间</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png?v=20260721e">
   <link rel="apple-touch-icon" href="/static/app-icon.png?v=20260721e">
@@ -17,7 +19,13 @@
   <meta name="apple-mobile-web-app-title" content="Anon Music">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <!-- 主题预置：CSS 加载前先按 localStorage 设 data-theme，防浅色用户闪黑（完整逻辑在 theme.js） -->
-  <script>try{if(localStorage.getItem('app_theme')==='light')document.documentElement.dataset.theme='light';}catch(e){}</script>
+  <script>
+    try{if(localStorage.getItem('app_theme')==='light')document.documentElement.dataset.theme='light';}catch(e){}
+    (function(){
+      const f=(orig)=>function(...a){if(a.length&&typeof a[0]==='string'&&(a[0].includes('LanguageDetector')||a[0].includes('languagedetector-api')))return;return orig.apply(console,a);};
+      if(console.info)console.info=f(console.info);if(console.log)console.log=f(console.log);if(console.warn)console.warn=f(console.warn);
+    })();
+  </script>
   <link rel="stylesheet" href="/static/app.css?v=20260811np1">
   <link rel="stylesheet" href="/static/nowplaying.css?v=20260917-v115">
   <link rel="stylesheet" href="/static/studio.css?v=20260917-v115">

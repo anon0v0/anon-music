@@ -1,15 +1,15 @@
 /**
  * [NMPv2] NeteaseMiniPlayer v2 JavaScript
  * Lightweight Player Component Based on NetEase Cloud Music API
- *
+ * 
  * Copyright 2025 BHCN STUDIO & 北海的佰川（ImBHCN[numakkiyu]）
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * 
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -187,7 +187,7 @@ class NeteaseMiniPlayer {
         const validPositions = ['static', 'top-left', 'top-right', 'bottom-left', 'bottom-right'];
         const finalPosition = validPositions.includes(position) ? position : 'static';
         const defaultMinimized = element.dataset.defaultMinimized === 'true';
-
+        
         const embedValue = element.getAttribute('data-embed') || element.dataset.embed;
         const isEmbed = embedValue === 'true' || embedValue === true;
 
@@ -217,11 +217,11 @@ class NeteaseMiniPlayer {
             this.element.setAttribute('data-embed', 'true');
         }
         this.element.setAttribute('data-position', this.config.position);
-
+        
         if (this.config.embed) {
             this.element.classList.add('netease-mini-player-embed');
         }
-
+        
         this.initTheme();
         this.createPlayerHTML();
         this.applyResponsiveControls?.();
@@ -253,16 +253,16 @@ class NeteaseMiniPlayer {
                     // 双重保险：音量先设为0
                     const originalVolume = this.volume;
                     this.audio.volume = 0;
-
+                    
                     try {
                         await this.play();
                     } catch (e) {
                         console.log('静音自动播放被拦截，转为交互后播放');
                     }
-
+                    
                     // 2. 监听所有可能的用户交互事件来恢复音量
                     const interactionEvents = ['click', 'touchstart', 'keydown', 'wheel', 'scroll'];
-
+                    
                     const enableAudio = () => {
                         // 移除所有监听器
                         interactionEvents.forEach(event => {
@@ -271,7 +271,7 @@ class NeteaseMiniPlayer {
 
                         // 恢复音量设置（淡入效果）
                         this.audio.muted = false;
-
+                        
                         // 如果之前播放失败了（不在播放状态），则尝试再次播放
                         if (!this.isPlaying) {
                             this.play().then(() => {
@@ -303,7 +303,7 @@ class NeteaseMiniPlayer {
                             }, interval);
                         };
                     };
-
+                    
                     if (this.isPlaying) {
                         // 如果静音播放成功，只需要等待交互恢复音量
                         interactionEvents.forEach(event => {
@@ -472,7 +472,7 @@ class NeteaseMiniPlayer {
             this.elements.minimizeBtn.addEventListener('click', () => this.toggleMinimize());
         }
         document.addEventListener('click', (e) => {
-            if (this.elements.playlistContainer &&
+            if (this.elements.playlistContainer && 
                 this.elements.playlistContainer.classList.contains('show')) {
                 if (!this.element.contains(e.target)) {
                     this.togglePlaylist(false);
@@ -626,7 +626,7 @@ class NeteaseMiniPlayer {
      * @example
      * player.isMinimized = true;
      * player.shouldEnableIdleOpacity(); // true
-     *
+     * 
      * player.isMinimized = false;
      * player.shouldEnableIdleOpacity(); // false
      * @private
@@ -666,7 +666,7 @@ class NeteaseMiniPlayer {
      * @example
      * player.config.position = 'top-left';
      * player.getDockSide(); // 'left'
-     *
+     * 
      * player.config.position = 'bottom-right';
      * player.getDockSide(); // 'right'
      * @private
@@ -973,10 +973,10 @@ class NeteaseMiniPlayer {
         if (!tracks) {
             const response = await this.apiRequest('/playlist/track/all', {
                 id: playlistId,
-                limit: 1000,
+                limit: 1000, 
                 offset: 0
             });
-            tracks = response.songs;
+            tracks = response.songs; 
             this.setCache(cacheKey, tracks);
         }
         this.playlist = tracks.map(song => ({
@@ -1082,7 +1082,7 @@ class NeteaseMiniPlayer {
     async loadCurrentSong() {
         try {
             if (this.playlist.length === 0) return;
-
+            
             if (this.showLyrics) {
                 this.elements.lyricLine.textContent = '♪ 加载歌词中... ♪';
                 this.elements.lyricTranslation.style.display = 'none';
@@ -1091,7 +1091,7 @@ class NeteaseMiniPlayer {
                 this.lyrics = [];
                 this.currentLyricIndex = -1;
             }
-
+            
             const song = this.playlist[this.currentIndex];
             this.currentSong = song;
             this.updateSongInfo(song);
@@ -1344,7 +1344,7 @@ class NeteaseMiniPlayer {
     parseLyrics(lyricData) {
         this.lyrics = [];
         this.currentLyricIndex = -1;
-
+        
         if (!lyricData || (!lyricData.lrc?.lyric && !lyricData.tlyric?.lyric && !lyricData.qrc?.lyric && !lyricData.yrc?.lyric)) {
             this.elements.lyricLine.textContent = '暂无歌词';
             this.elements.lyricTranslation.style.display = 'none';
@@ -1404,7 +1404,7 @@ class NeteaseMiniPlayer {
                 }
             }
         }
-
+        
         // 如果没有QRC，退回解析标准LRC
         if (lrcMap.size === 0 && lyricData.lrc && lyricData.lrc.lyric) {
             const lrcLines = lyricData.lrc.lyric.split('\n');
@@ -1424,7 +1424,7 @@ class NeteaseMiniPlayer {
         }
 
         const tlyricMap = new Map();
-        const tlyricLines = lyricData.tlyric && lyricData.tlyric.lyric ?
+        const tlyricLines = lyricData.tlyric && lyricData.tlyric.lyric ? 
             lyricData.tlyric.lyric.split('\n') : [];
         tlyricLines.forEach(line => {
             const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
@@ -1570,7 +1570,7 @@ class NeteaseMiniPlayer {
      * @throws {Error} 当音频加载失败时可能抛出
      * @example
      * await player.nextSong(); // 根据当前播放模式切换到下一首
-     *
+     * 
      * // 不同模式的行为：
      * // list模式: 1 -> 2 -> 3 -> 1 (循环)
      * // single模式: 1 -> 1 -> 1 (重复当前)
@@ -1588,13 +1588,13 @@ class NeteaseMiniPlayer {
             if (wasPlaying) await this.play();
             return;
         }
-
+    
         let newIndex;
         if (this.playMode === 'shuffle') {
             const availableIndices = this.playlist
                 .map((_, i) => i)
                 .filter(i => i !== this.currentIndex);
-
+            
             if (availableIndices.length === 0) {
                 newIndex = this.currentIndex;
             } else {
@@ -1609,7 +1609,7 @@ class NeteaseMiniPlayer {
         } else {
             newIndex = (this.currentIndex + 1) % this.playlist.length;
         }
-
+    
         this.currentIndex = newIndex;
         await this.loadCurrentSong();
 
@@ -1707,7 +1707,7 @@ class NeteaseMiniPlayer {
         };
         requestAnimationFrame(loop);
     }
-
+    
     /**
      * 同步并平滑切换当前歌词行
      * @returns {void}
@@ -1732,7 +1732,7 @@ class NeteaseMiniPlayer {
             if (newIndex >= 0 && newIndex < this.lyrics.length) {
                 const lyric = this.lyrics[newIndex];
                 const lyricText = lyric.text || '♪';
-
+            
                 let html = '';
                 if (lyric.words) {
                     this.elements.lyricLine.classList.add('word-lyric');
@@ -1743,7 +1743,7 @@ class NeteaseMiniPlayer {
                 }
 
                 this.elements.lyricLine.classList.remove('current');
-
+            
                 requestAnimationFrame(() => {
                     if (lyric.words) {
                         this.elements.lyricLine.innerHTML = html;
@@ -1751,22 +1751,22 @@ class NeteaseMiniPlayer {
                         this.elements.lyricLine.textContent = lyricText;
                     }
                     this.checkLyricScrolling(this.elements.lyricLine, lyricText);
-
+            
                     this.elements.lyricLine.classList.add('current');
-
+            
                     if (lyric.translation) {
                         this.elements.lyricTranslation.textContent = lyric.translation;
                         this.elements.lyricTranslation.style.display = 'block';
-                        this.elements.lyricTranslation.classList.remove('current');
+                        this.elements.lyricTranslation.classList.remove('current'); 
                         requestAnimationFrame(() => {
-                            this.elements.lyricTranslation.classList.add('current');
+                            this.elements.lyricTranslation.classList.add('current'); 
                         });
                     } else {
                         this.elements.lyricTranslation.style.display = 'none';
                         this.elements.lyricTranslation.classList.remove('current', 'scrolling');
                     }
                 });
-
+            
                 this.elements.lyricsContainer.classList.add('switching');
                 setTimeout(() => {
                     this.elements.lyricsContainer.classList.remove('switching');
@@ -1944,10 +1944,10 @@ class NeteaseMiniPlayer {
         const modes = ['list', 'single', 'shuffle'];
         const currentIndex = modes.indexOf(this.playMode);
         this.playMode = modes[(currentIndex + 1) % 3];
-
+        
         const iconSvgs = { list: ICONS.loopList, single: ICONS.loopSingle, shuffle: ICONS.shuffle };
         const titles = { list: '列表循环', single: '单曲循环', shuffle: '随机播放' };
-
+        
         if (this.elements.loopModeBtn) {
             this.elements.loopModeBtn.innerHTML = iconSvgs[this.playMode];
             this.elements.loopModeBtn.title = titles[this.playMode];
@@ -2149,10 +2149,10 @@ class NeteaseMiniPlayer {
     detectCSSTheme() {
         try {
             const rootStyles = getComputedStyle(document.documentElement);
-            const bgColor = rootStyles.getPropertyValue('--bg-color') ||
+            const bgColor = rootStyles.getPropertyValue('--bg-color') || 
                            rootStyles.getPropertyValue('--background-color') ||
                            rootStyles.getPropertyValue('--color-bg');
-            const textColor = rootStyles.getPropertyValue('--text-color') ||
+            const textColor = rootStyles.getPropertyValue('--text-color') || 
                              rootStyles.getPropertyValue('--color-text') ||
                              rootStyles.getPropertyValue('--text-primary');
             if (bgColor || textColor) {
@@ -2262,7 +2262,7 @@ class NeteaseMiniPlayer {
                 if (this.config.theme === 'auto') {
                     let shouldUpdate = false;
                     mutations.forEach((mutation) => {
-                        if (mutation.type === 'attributes' &&
+                        if (mutation.type === 'attributes' && 
                             (mutation.attributeName === 'class' || mutation.attributeName === 'data-theme')) {
                             shouldUpdate = true;
                         }
@@ -2296,7 +2296,7 @@ class NeteaseMiniPlayer {
      * @example
      * // 自动初始化（已内置）
      * NeteaseMiniPlayer.init();
-     *
+     * 
      * // 手动触发初始化
      * document.addEventListener('DOMContentLoaded', NeteaseMiniPlayer.init);
      */
@@ -2311,7 +2311,7 @@ class NeteaseMiniPlayer {
      * @example
      * // 自动初始化页面上所有播放器
      * NeteaseMiniPlayer.init();
-     *
+     * 
      * // 通常在DOMContentLoaded事件中自动调用
      * document.addEventListener('DOMContentLoaded', NeteaseMiniPlayer.init);
      */
@@ -2365,10 +2365,10 @@ if (typeof window !== 'undefined') {
  * @example
  * // 页面加载后自动启用
  * window.nmpv2ShortcodeParser = new NMPv2ShortcodeParser();
- *
+ * 
  * // 将动态字符串中的短语法转换为HTML
  * const html = NMPv2ShortcodeParser.processDynamicContent("{nmpv2:playlist=123, position=bottom-right}");
- *
+ * 
  * @see https://github.com/numakkiyu/NeteaseMiniPlayer
  */
 class NMPv2ShortcodeParser {
@@ -2650,5 +2650,3 @@ if (typeof module !== 'undefined' && module.exports) {
         }
     };
 }
-
-console.log(["版本号 v2.1.0.2", "NeteaseMiniPlayer V2 [NMPv2]", "BHCN STUDIO & 北海的佰川（ImBHCN[numakkiyu]）", "GitHub地址：https://github.com/numakkiyu/NeteaseMiniPlayer", "基于 Apache 2.0 开源协议发布"].join("\n"));
