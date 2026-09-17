@@ -397,7 +397,7 @@ html[data-theme="light"] .np-lyrics .ln.active {
   background: linear-gradient(90deg, var(--np-theme-color, #22c55e) var(--p), #ffffff var(--p));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition: transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.2), text-shadow 0.25s ease;
+  transition: transform 0.32s cubic-bezier(0.25, 1, 0.5, 1), text-shadow 0.25s ease;
   will-change: transform;
 }
 html[data-theme="light"] .np-lyrics .ln.active .w {
@@ -406,8 +406,8 @@ html[data-theme="light"] .np-lyrics .ln.active .w {
   -webkit-text-fill-color: transparent;
 }
 .np-lyrics .ln.active .w.word-active {
-  transform: translateY(-4px) scale(1.08);
-  text-shadow: 0 4px 14px var(--np-theme-glow, rgba(34, 197, 94, 0.4));
+  transform: translateY(-4px) scale(1.06);
+  text-shadow: 0 2px 10px var(--np-theme-glow, rgba(34, 197, 94, 0.4));
 }
 .np-lyrics .ln.active.has-line-p .ln-tx {
   background: linear-gradient(90deg, var(--np-theme-color, #22c55e) var(--line-p, 100%), #ffffff var(--line-p, 100%));
@@ -768,21 +768,72 @@ html[data-theme="light"] .np-foot-right button:hover {
   height: 16px;
   color: var(--np-secondary);
 }
-.np-speed-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: var(--np-secondary);
+.np-speed {
+  position: relative;
+  display: inline-flex;
 }
-.np-speed-select {
+.np-speed-btn {
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 22px !important;
+  width: auto !important;
+  padding: 0 7px !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  cursor: pointer;
+  background: var(--np-hover) !important;
+  border: 1px solid var(--np-line) !important;
+  color: var(--np-secondary) !important;
+  transition: all 0.16s var(--np-ease);
+}
+.np-speed-btn:hover {
+  color: var(--np-text) !important;
+  border-color: var(--np-secondary) !important;
+}
+.np-speed-menu {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 90px;
+  background: var(--np-panel);
   border: 1px solid var(--np-line);
+  border-radius: 12px;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  padding: 5px;
+  z-index: 60;
+}
+.np-speed.open .np-speed-menu {
+  display: block;
+  animation: np-speed-pop 0.2s var(--np-ease);
+}
+@keyframes np-speed-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.95); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+.np-speed-menu > div {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--np-secondary);
+  padding: 6px 10px;
+  text-align: center;
   border-radius: 6px;
+  cursor: pointer;
+}
+.np-speed-menu > div:hover {
   background: var(--np-hover);
   color: var(--np-text);
-  padding: 2px 6px;
-  font-size: 12px;
+}
+.np-speed-menu > div.active {
+  color: var(--np-theme-color, #22c55e);
+  font-weight: 700;
 }
 
 /* 底栏中间：动态音频律动波形 + 控制按钮 + 直线进度条 */

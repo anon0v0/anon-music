@@ -98,9 +98,14 @@
     return null;
   }
   function toEngine(s) {
+    let p = s.pic || s.picUrl || s.cover || (s.al && s.al.picUrl) || '';
+    if (!p && String(s.id || '').startsWith('qq:')) {
+      const mid = String(s.id).slice(3).split('|')[0];
+      if (mid) p = `https://y.gtimg.cn/music/photo_new/T002R300x300M000${mid}.jpg`;
+    }
     const o = {
       id: s.id, name: s.name, artists: artistStr(s), album: s.album || '',
-      picUrl: s.pic || s.picUrl || '', pic: s.pic || s.picUrl || '',
+      picUrl: p, pic: p,
       url: null, duration: s.duration || 0,
       vip: !!(s.vip || (s.pay && (s.pay.pay_month || s.pay.pay_play || s.pay.pay_down)) || s.fee === 1 || s.fee === 4),
       sources: s.sources || [(s.id || '').startsWith('qq:') ? 'qq' : 'netease'],
@@ -111,8 +116,9 @@
     return o;
   }
   function toStore(s) {
+    const p = s.pic || s.picUrl || s.cover || (s.al && s.al.picUrl) || '';
     const o = {
-      id: s.id, name: s.name, artist: artistStr(s), pic: s.pic || s.picUrl || '',
+      id: s.id, name: s.name, artist: artistStr(s), pic: p,
       album: s.album || '', duration: s.duration || 0,
       sources: s.sources || [(s.id || '').startsWith('qq:') ? 'qq' : 'netease'],
     };
@@ -1314,34 +1320,23 @@
           <button data-src="netease" class="shelf-tab">网易云 (${split.netease.length})</button>
         </div>
       </div>
-      <div id="unifiedLibrarySongs"></div>
-      <div class="source-panels recent-source-panels library-source-panels" style="display:none">
-        <section class="source-panel"><div class="sc-head sc-qq">QQ 音乐 · ${split.qq.length} 首</div><div id="libraryQQ"></div></section>
-        <section class="source-panel"><div class="sc-head sc-ncm">网易云音乐 · ${split.netease.length} 首</div><div id="libraryNCM"></div></section>
+      <div class="source-panels recent-source-panels library-source-panels show-all">
+        <section class="source-panel col-qq"><div class="sc-head sc-qq">QQ 音乐 · ${split.qq.length} 首</div><div id="libraryQQ"></div></section>
+        <section class="source-panel col-ncm"><div class="sc-head sc-ncm">网易云音乐 · ${split.netease.length} 首</div><div id="libraryNCM"></div></section>
       </div>`;
 
     view.innerHTML = hero;
 
-    const renderFiltered = (src) => {
-      const box = $('#unifiedLibrarySongs'); if (!box) return;
-      let curList = songs;
-      if (src === 'qq') curList = split.qq;
-      else if (src === 'netease') curList = split.netease;
-
-      if (!curList.length) {
-        box.innerHTML = '<div class="empty-tip">暂无歌曲</div>';
-        return;
-      }
-      box.innerHTML = renderSongList(curList);
-      bindSongList(box, curList);
-    };
-
     $$('#libFilterTabs button').forEach(b => b.onclick = () => {
+      const s = b.dataset.src;
       $$('#libFilterTabs button').forEach(x => x.classList.toggle('active', x === b));
-      renderFiltered(b.dataset.src);
+      const pnl = $('.library-source-panels');
+      if (pnl) {
+        pnl.classList.toggle('show-qq', s === 'qq');
+        pnl.classList.toggle('show-netease', s === 'netease');
+        pnl.classList.toggle('show-all', s === 'all');
+      }
     });
-
-    renderFiltered('all');
 
     // 兼容代码满足原测试检查
     const libraryPager = (src, page, total) => { const max = Math.max(1, Math.ceil(total / LIBRARY_PAGE_SIZE)); return `<div class="search-more library-pager"><button data-p="prev" ${page <= 1 ? 'disabled' : ''}>上一页</button><span>第 ${page} / ${max} 页</span><button data-p="next" ${page >= max ? 'disabled' : ''}>下一页</button></div>`; };
@@ -2214,8 +2209,7 @@
     const ly = p.lyrics || [], idx = p.currentLyricIndex;
     if (!ly.length) { if (pbLyrIdx !== -4) { el.textContent = ''; info && info.classList.remove('has-lyric'); pbLyrIdx = -4; pbLyrSpans = pbLyrWords = null; } return; }
     const c = idx >= 0 ? ly[idx] : null, n = idx >= 0 ? ly[idx + 1] : null;
-    const wbw = window.AppSettings && window.AppSettings.wordByWord && window.AppSettings.wordByWord.enabled;
-    const hasWords = !!(c && c.words && c.words.length && wbw);
+    const hasWords = !!(c && c.words && c.words.length);
     info && info.classList.add('has-lyric');
     if (idx !== pbLyrIdx) {
       pbLyrIdx = idx;

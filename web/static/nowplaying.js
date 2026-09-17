@@ -136,15 +136,13 @@
                 ${ICON.comment}
                 <span class="np-cbtn-count" style="display:none"></span>
               </button>
-              <button class="np-addpl" title="加入歌单">${ICON.plus}</button>
               <div class="np-more">
                 <button class="np-foot-more-btn np-more-btn" title="更多选项">
                   ${ICON.more}
                 </button>
                 <div class="np-more-menu">
-                  <div data-a="style" role="button" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3.2-3.2 3.2h-2.4a2.4 2.4 0 0 0-1.8 4c.4.4.6.9.6 1.4 0 .8-.6 1.4-1.4 1.4z"/><circle cx="7.6" cy="11.6" r="1"/><circle cx="10.6" cy="7.6" r="1"/><circle cx="15.2" cy="8.2" r="1"/></svg><span>播放器样式</span></div>
+                  <div data-a="add" role="button" tabindex="0">${ICON.plus}<span>加入歌单</span></div>
                   <div data-a="download" role="button" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg><span>下载当前歌曲</span></div>
-                  <label class="np-speed-label">播放速度<select class="np-speed-select" aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1.0×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2.0×</option></select></label>
                 </div>
               </div>
             </div>
@@ -184,6 +182,25 @@
             <button class="np-style-btn" id="npSkinToggle" title="切换播放器样式" aria-label="切换播放器样式">
               ${ICON.tshirt}
             </button>
+            <div class="np-speed" id="npSpeedWrap">
+              <button class="np-speed-btn" id="npSpeedBtn" title="播放速度" aria-label="播放速度"><span class="np-speed-label">1.0×</span></button>
+              <select class="np-speed-select" aria-label="播放速度" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;">
+                <option value="0.5">0.5×</option>
+                <option value="0.75">0.75×</option>
+                <option value="1" selected>1.0×</option>
+                <option value="1.25">1.25×</option>
+                <option value="1.5">1.5×</option>
+                <option value="2">2.0×</option>
+              </select>
+              <div class="np-speed-menu">
+                <div data-spd="0.5">0.5×</div>
+                <div data-spd="0.75">0.75×</div>
+                <div data-spd="1" class="active">1.0×</div>
+                <div data-spd="1.25">1.25×</div>
+                <div data-spd="1.5">1.5×</div>
+                <div data-spd="2">2.0×</div>
+              </div>
+            </div>
             <div class="np-q">
               <button class="np-q-btn q-master" id="npQBtn" title="选择音质"><span class="np-q-label">臻品音质</span></button>
               <div class="np-q-menu">${QUALITIES.map(q => `<div data-q="${q[0]}">${q[1]}</div>`).join('')}</div>
@@ -246,7 +263,6 @@
           if (willOpen) {
             moreWrap.classList.add('open');
             this.$('[data-a="download"]').hidden = !document.getElementById('pbDownload');
-            this.$('.np-speed-select').value = String(window.getPlaybackSpeed ? window.getPlaybackSpeed() : ((this.player && this.player.audio.playbackRate) || 1));
           }
         });
       }
@@ -255,19 +271,47 @@
           const it = e.target.closest('[data-a]'); if (!it) return;
           e.stopPropagation();
           if (moreWrap) moreWrap.classList.remove('open');
-          if (it.dataset.a === 'style') { this.openStylePanel(); }
+          if (it.dataset.a === 'add') {
+            if (window.openAddModal && this.player && this.player.currentSong) window.openAddModal(this.player.currentSong);
+          }
           if (it.dataset.a === 'download') { const button = document.getElementById('pbDownload'); if (button) button.click(); }
         });
-        const speedSelect = this.$('.np-speed-select');
-        if (speedSelect) {
-          speedSelect.addEventListener('click', e => e.stopPropagation());
-          speedSelect.addEventListener('change', e => {
-            e.stopPropagation(); const speed = Number(e.target.value);
-            if (window.setPlaybackSpeed) window.setPlaybackSpeed(speed);
-            else if (this.player && this.player.audio) this.player.audio.playbackRate = speed;
-            if (moreWrap) moreWrap.classList.remove('open');
-          });
-        }
+      }
+      const speedWrap = this.$('#npSpeedWrap');
+      const speedBtn = this.$('#npSpeedBtn');
+      const speedMenu = this.$('.np-speed-menu');
+      const speedLabel = this.$('.np-speed-label');
+      this.speedWrap = speedWrap;
+      if (speedBtn && speedWrap) {
+        speedBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const willOpen = !speedWrap.classList.contains('open');
+          this._closeAllPopups(speedWrap);
+          if (willOpen) speedWrap.classList.add('open');
+        });
+      }
+      if (speedMenu) {
+        speedMenu.addEventListener('click', (e) => {
+          const it = e.target.closest('[data-spd]'); if (!it) return;
+          e.stopPropagation();
+          const spd = Number(it.dataset.spd);
+          if (window.setPlaybackSpeed) window.setPlaybackSpeed(spd);
+          else if (this.player && this.player.audio) this.player.audio.playbackRate = spd;
+          if (speedLabel) speedLabel.textContent = `${spd}×`;
+          if (speedSelect) speedSelect.value = String(spd);
+          speedMenu.querySelectorAll('[data-spd]').forEach(d => d.classList.toggle('active', d === it));
+          if (speedWrap) speedWrap.classList.remove('open');
+        });
+      }
+      const speedSelect = this.$('.np-speed-select');
+      if (speedSelect) {
+        speedSelect.addEventListener('change', (e) => {
+          const spd = Number(e.target.value);
+          if (window.setPlaybackSpeed) window.setPlaybackSpeed(spd);
+          else if (this.player && this.player.audio) this.player.audio.playbackRate = spd;
+          if (speedLabel) speedLabel.textContent = `${spd}×`;
+          if (speedMenu) speedMenu.querySelectorAll('[data-spd]').forEach(d => d.classList.toggle('active', Number(d.dataset.spd) === spd));
+        });
       }
       this.cover.addEventListener('error', () => {
         const raw = this.cover.getAttribute('src') || this.cover.src || '';
@@ -362,15 +406,11 @@
             if (this.seekPillTime) this.seekPillTime.textContent = fmt(lineData.time);
             const r = closest.getBoundingClientRect();
             const topOffset = r.top - wrapRect.top + (r.height - 28) / 2;
-            const isLyricsMode = this.el.dataset.skin === 'lyrics';
+            const textEl = closest.querySelector('.ln-tx') || closest;
+            const tr = textEl.getBoundingClientRect();
+            const leftOffset = (tr.right - wrapRect.left) + 16;
             this.seekPill.style.top = `${Math.max(4, Math.min(wrapRect.height - 32, topOffset))}px`;
-            if (isLyricsMode) {
-              const textEl = closest.querySelector('.ln-tx');
-              const textWidth = textEl ? textEl.offsetWidth : 220;
-              this.seekPill.style.left = `${Math.max(10, (wrapRect.width - textWidth) / 2 - 82)}px`;
-            } else {
-              this.seekPill.style.left = '8px';
-            }
+            this.seekPill.style.left = `${Math.max(10, Math.min(wrapRect.width - 96, leftOffset))}px`;
             this.seekPill.style.display = 'inline-flex';
             requestAnimationFrame(() => this.seekPill.classList.add('show'));
             return;
@@ -425,6 +465,7 @@
         if (this.volWrap && except !== this.volWrap) this.volWrap.classList.remove('open');
         const more = this.$('.np-more');
         if (more && except !== more) more.classList.remove('open');
+        if (this.speedWrap && except !== this.speedWrap) this.speedWrap.classList.remove('open');
         if (this.queuePanel && except !== this.queuePanel) this.closeQueue();
         if (this.stylePanel && except !== this.stylePanel) this.closeStylePanel();
       };
@@ -448,7 +489,7 @@
       npl.addEventListener('click', () => { if (window.DeskLyric) { const on = window.DeskLyric.toggle(); npl.classList.toggle('active', on); } });
       this._npl = npl;
       this.el.addEventListener('click', (e) => {
-        const inside = e.target.closest('.np-q, .np-vol, .np-more, .np-queue, .np-style-panel, .np-style-btn');
+        const inside = e.target.closest('.np-q, .np-vol, .np-more, .np-speed, .np-queue, .np-style-panel, .np-style-btn');
         if (!inside) closeAllPopups();
       });
       this.$('.np-q-close').addEventListener('click', (e) => { e.stopPropagation(); this.queuePanel.classList.remove('show'); const qb = this.$('.np-qbtn'); if (qb) qb.classList.remove('active'); });
@@ -947,7 +988,11 @@
         el.style.display = isVip ? 'inline-block' : 'none';
       });
 
-      const pic = (window.httpsify ? window.httpsify(s.picUrl || s.pic) : (s.picUrl || s.pic)) || '';
+      let pic = (window.httpsify ? window.httpsify(s.picUrl || s.pic || s.cover || (s.al && s.al.picUrl)) : (s.picUrl || s.pic || s.cover || (s.al && s.al.picUrl))) || '';
+      if (!pic && String(s.id || '').startsWith('qq:')) {
+        const mid = String(s.id).slice(3).split('|')[0];
+        if (mid) pic = `https://y.gtimg.cn/music/photo_new/T002R300x300M000${mid}.jpg`;
+      }
       delete this.cover.dataset.proxied;
       this.cover.src = pic || window.IMG_PLACEHOLDER || '/static/app-icon.png';
       this.cover.alt = (s.name || '当前歌曲') + ' · 专辑封面';
@@ -1240,16 +1285,24 @@
       if (!lnEl) return;
 
       // 逐字卡拉OK动效
+      // 逐字卡拉OK动效
       if (c.words && c.words.length) {
         const spans = lnEl.querySelectorAll('.w');
         for (let i = 0; i < c.words.length; i++) {
           const start = c.words[i].time;
-          const end = i + 1 < c.words.length ? c.words[i + 1].time : (n ? n.time : start + 0.6);
+          let end;
+          if (i + 1 < c.words.length) {
+            end = c.words[i + 1].time;
+          } else {
+            const naturalGap = n ? (n.time - start) : 1.2;
+            const maxWordDur = Math.min(2.0, Math.max(0.6, naturalGap * 0.7));
+            end = start + maxWordDur;
+          }
           let pct = end > start ? (t - start) / (end - start) : (t >= start ? 1 : 0);
           pct = pct < 0 ? 0 : pct > 1 ? 1 : pct;
           if (spans[i]) {
             spans[i].style.setProperty('--p', (pct * 100).toFixed(1) + '%');
-            const isCur = (t >= start && t < end);
+            const isCur = (t >= start && t < Math.min(end, start + 0.38));
             spans[i].classList.toggle('word-active', isCur);
           }
         }
