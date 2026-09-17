@@ -85,6 +85,7 @@
             <!-- 左栏：大尺寸高清方形专辑封面 (Image 1 规范) / 黑胶 -->
             <div class="np-left">
               <div class="np-cover-wrap">
+                <canvas class="np-vinyl-wave" width="540" height="540" aria-hidden="true"></canvas>
                 <div class="np-vinyl-aura" aria-hidden="true"></div>
                 <div class="np-disc"><img class="np-cover" alt="专辑封面" referrerpolicy="no-referrer" src="/static/app-icon.png"></div>
                 <div class="np-tonearm"><div class="tonearm-base"></div><div class="tonearm-arm"><div class="tonearm-stick"></div><div class="tonearm-head"></div></div></div>
@@ -221,6 +222,7 @@
       this.bg = this.$('.np-bg'); this.fluid = this.$('.np-fluid'); this.cover = this.$('.np-cover');
       this.stageTitle = this.$('.np-stage-title'); this.stageArtist = this.$('.np-stage-artist');
       this.footName = this.$('.np-foot-name'); this.footArtist = this.$('.np-foot-artist');
+      this.rightBox = this.$('.np-right');
       this.source = this.$('.np-source'); this.lyricsBox = this.$('.np-lyrics');
       this.lyricsWrap = this.$('.np-lyrics-wrap');
       this.seekPill = this.$('.np-lyric-seek-pill');
@@ -233,7 +235,8 @@
       this.volBtn = this.$('.np-vol-btn'); this.volWrap = this.$('.np-vol'); this.volPop = this.$('.np-vol-pop');
       this.volTrack = this.$('.np-vol-track'); this.volFill = this.$('.np-vol-fill');
       this.volThumb = this.$('.np-vol-thumb'); this.volNum = this.$('.np-vol-num'); this.volMute = this.$('.np-vol-mute');
-      this.rightBox = this.$('.np-right');
+      this.soundWave = this.$('.np-sound-wave');
+      this.vinylWave = this.$('.np-vinyl-wave');
       this.srcBadge = this.$('.np-srcbadge');
       this.queuePanel = this.$('.np-queue'); this.queueList = this.$('.np-queue-list'); this.queueCount = this.$('.np-q-count');
       this.miniA = this.$('.np-mini-lyric .ml-a'); this.miniB = this.$('.np-mini-lyric .ml-b');
@@ -336,7 +339,7 @@
             this._layoutLyrics();
           }
         });
-        this._lyricResize.observe(this.rightBox);
+        if (this.rightBox) this._lyricResize.observe(this.rightBox);
       }
       window.addEventListener('resize', () => {
         if (this.el && this.el.classList.contains('open')) {
@@ -1297,13 +1300,87 @@
       }
       ctx.restore();
     }
+    _drawVinylWave(isPlaying) {
+      if (!this.vinylWave || !this.el || this.el.dataset.skin !== 'vinyl-color') return;
+      const cv = this.vinylWave;
+      const ctx = cv.getContext('2d');
+      if (!ctx) return;
+      const w = cv.width, h = cv.height;
+      const cx = w / 2, cy = h / 2;
+      ctx.clearRect(0, 0, w, h);
+
+      // 彩胶外半径大约 210px
+      const baseR = 214;
+      const amp = this._waveAmp || 0; // 随主播放态平滑起伏(7.5 -> 0)
+      const themeCol = this._themeColor || '#38bdf8';
+
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // 1. 播放时的多层起伏环形线条 (完全还原参考图 2、图 3)
+      if (amp > 0.1) {
+        // 主波动线条
+        ctx.beginPath();
+        ctx.strokeStyle = themeCol;
+        ctx.lineWidth = 1.8;
+        ctx.shadowColor = themeCol;
+        ctx.shadowBlur = isPlaying ? 14 : 4;
+        ctx.globalAlpha = 0.85;
+
+        const points = 120;
+        for (let i = 0; i <= points; i++) {
+          const theta = (i / points) * Math.PI * 2;
+          // 多频正弦叠加，生成真实柔和的环形声浪起伏
+          const wave1 = Math.sin(theta * 7 + this._wavePhase * 1.5) * (amp * 1.8);
+          const wave2 = Math.sin(theta * 13 - this._wavePhase * 1.2) * (amp * 0.9);
+          const wave3 = Math.cos(theta * 4 + this._wavePhase * 0.8) * (amp * 1.2);
+          const r = baseR + wave1 + wave2 + wave3;
+          const x = cx + Math.cos(theta) * r;
+          const y = cy + Math.sin(theta) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        // 次层环状微光线条（内外呼应）
+        ctx.beginPath();
+        ctx.strokeStyle = themeCol;
+        ctx.lineWidth = 1.2;
+        ctx.globalAlpha = 0.45;
+        for (let i = 0; i <= points; i++) {
+          const theta = (i / points) * Math.PI * 2;
+          const wave = Math.sin(theta * 9 - this._wavePhase * 1.1 + 1.5) * (amp * 1.3);
+          const r = baseR + 5 + wave;
+          const x = cx + Math.cos(theta) * r;
+          const y = cy + Math.sin(theta) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      } else {
+        // 暂停状态：收束为贴合胶片边缘的笔直静止柔光圆环 (完全对齐参考图 1)
+        ctx.beginPath();
+        ctx.strokeStyle = themeCol;
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = themeCol;
+        ctx.shadowBlur = 8;
+        ctx.globalAlpha = 0.6;
+        ctx.arc(cx, cy, baseR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
 
     _rafTick() {
       const p = this.player;
       if (!p) return;
       const isPlaying = !p.audio.paused;
       this._drawSoundWave(isPlaying);
-      if (p._qSwitch) return;
+      this._drawVinylWave(isPlaying);
       const dur = p.duration || (p.audio && p.audio.duration) || 0;
       const t = (p.audio && p.audio.currentTime) || p.currentTime || 0;
       if (!this._barDrag) this._setProgress(dur > 0 ? t / dur : 0);
@@ -1391,8 +1468,7 @@
       this.source.textContent = '';
       this.cover.src = window.IMG_PLACEHOLDER || '/static/app-icon.png'; this.cover.alt = '专辑封面';
       this.srcBadge.classList.remove('show'); this.srcBadge.innerHTML = '';
-      const head = this.$('.np-lyrhead'); if (head) { head.querySelector('.t').textContent = '等待播放'; head.querySelector('.a').textContent = ''; }
-      this._renderLyrics(); this._tick({ currentTime: 0, duration: 0 }); this._renderPlay(false); this._updateLikeState();
+      if (this.srcBadge) { this.srcBadge.classList.remove('show'); this.srcBadge.innerHTML = ''; }
     }
 
     open(lyricsOnly) {

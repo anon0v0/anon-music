@@ -208,8 +208,8 @@ html[data-theme="light"] .np-close:hover {
 
 .np-body {
   display: grid;
-  grid-template-columns: minmax(320px, 440px) minmax(380px, 640px);
-  gap: clamp(40px, 6vw, 110px);
+  grid-template-columns: minmax(320px, 420px) minmax(360px, 620px);
+  gap: clamp(24px, 3.5vw, 48px);
   align-items: center;
   justify-content: center;
   width: 100%;
@@ -373,6 +373,45 @@ html[data-theme="light"] .np-close:hover {
   border-radius: 50% !important;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.8), inset 0 0 0 8px rgba(255, 255, 255, 0.04);
   overflow: visible !important;
+}
+
+/* 黑胶与彩胶下的盘芯专辑圆形封面：绝对居中于胶片中央！(修复黑胶与彩胶被图片撑满的大Bug) */
+.np-overlay[data-skin="vinyl"] .np-disc,
+.np-overlay[data-skin="vinyl-color"] .np-disc {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  border-radius: 50% !important;
+}
+.np-overlay[data-skin="vinyl"] .np-cover,
+.np-overlay[data-skin="vinyl-color"] .np-cover {
+  width: 48% !important;
+  height: 48% !important;
+  position: absolute !important;
+  top: 26% !important;
+  left: 26% !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+.np-overlay[data-skin="vinyl"].playing .np-disc,
+.np-overlay[data-skin="vinyl-color"].playing .np-disc {
+  animation: np-spin 20s linear infinite;
+}
+
+/* 围绕圆形胶片的环形音频律动线条 Canvas (对标参考图 2、图 3) */
+.np-vinyl-wave {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 540px;
+  height: 540px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+  display: none;
+}
+.np-overlay[data-skin="vinyl-color"] .np-vinyl-wave {
+  display: block;
 }
 
 /* 经典黑胶：沉稳黑底 */

@@ -877,15 +877,13 @@
     if (_legacyColor) window.AppSettings.desktopLyrics.scheme = 'custom';
     window.AppSettings.playerStyle = Object.assign({}, PS_DEFAULTS, window.AppSettings.playerStyle || {});
     let _settingsNeedSave = false;
-    const _fixedSkin = ['square', 'lyrics'].includes(window.AppSettings.playerStyle.skin) ? window.AppSettings.playerStyle.skin : 'square';
+    const _userSkin = window.AppSettings.playerStyle.skin;
+    const _fixedSkin = ['square', 'lyrics', 'vinyl', 'vinyl-color'].includes(_userSkin) ? _userSkin : 'square';
     if (window.AppSettings.playerStyle.skin !== _fixedSkin) _settingsNeedSave = true;
-    if (window.AppSettings.playerStyle.bg !== 'auto' || window.AppSettings.playerStyle.lyricAlign !== 'center' || window.AppSettings.playerStyle.viz !== 'wave') _settingsNeedSave = true;
-    const _savedBg = window.AppSettings.background || {};
-    if (_savedBg.fluid !== true || _savedBg.mode !== 'fluid') _settingsNeedSave = true;
     window.AppSettings.playerStyle.skin = _fixedSkin;
     window.AppSettings.playerStyle.bg = 'auto'; window.AppSettings.playerStyle.lyricAlign = 'center'; window.AppSettings.playerStyle.viz = 'wave';
+    const _savedBg = window.AppSettings.background || {};
     window.AppSettings.background = Object.assign({}, _savedBg, { fluid: true, mode: 'fluid' });
-    // 主题：服务器设置为准（跨设备同步），theme.js 已先按 localStorage 预置防闪；
     // ?theme= 调试参数（Theme.locked）优先，不被覆盖
     if (window.Theme && !window.Theme.locked && window.AppSettings.theme) window.Theme.set(window.AppSettings.theme);
     applyAll();
