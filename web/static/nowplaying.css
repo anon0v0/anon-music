@@ -1923,22 +1923,38 @@
     max-width: calc(100vh - 180px) !important;
     max-height: calc(100vh - 180px) !important;
   }
-  .np-right {
-    height: min(340px, calc(100vh - 190px));
-    text-align: center;
+  .np-stage-header {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: center !important;
+    margin-bottom: 16px !important;
   }
   .np-title-row {
-    justify-content: center;
+    justify-content: center !important;
+  }
+  .np-right {
+    height: min(340px, calc(100vh - 190px));
+    text-align: center !important;
+    align-items: center !important;
+  }
+  .np-lyrics-wrap {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
   }
   .np-lyrics {
-    text-align: center;
+    text-align: center !important;
+    align-items: center !important;
   }
   .np-lyrics .ln {
-    font-size: 18px !important;
-    line-height: 1.7 !important;
+  .np-overlay {
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+  }
+    justify-content: center !important;
   }
   .np-lyrics .ln.active {
     font-size: 24px !important;
+    transform-origin: center center !important;
   }
   .np-overlay[data-mpage="lyrics"] .np-left {
     display: none !important;
@@ -1956,8 +1972,8 @@
     width: 100% !important;
     max-width: 100vw !important;
     height: auto !important;
-    min-height: 76px !important;
-    padding: 6px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+    min-height: 72px !important;
+    padding: 6px 12px calc(8px + env(safe-area-inset-bottom)) !important;
     gap: 6px !important;
     z-index: 50 !important;
   }
@@ -1966,6 +1982,14 @@
     flex: 0 0 auto;
     align-items: center;
     gap: 2px;
+  }
+  .np-foot-meta-row {
+    display: none !important;
+  }
+  .np-foot-acts {
+    display: flex !important;
+    align-items: center;
+    gap: 4px;
   }
   .np-foot-right {
     display: flex !important;
@@ -2001,13 +2025,9 @@
   }
   .np-foot-meta,
   .np-center-glow,
-  #npSkinToggle,
-  .np-dock .np-lyric {
+  .np-foot-right #npSkinToggle,
+  .np-foot-right .np-lyric {
     display: none !important;
-  }
-  .np-foot-center {
-    flex: 1 1 auto;
-    max-width: none;
   }
   .np-queue,
   .np-style-panel {

@@ -203,6 +203,7 @@
                   ${ICON.more}
                 </button>
                 <div class="np-more-menu">
+                  <div data-a="style" role="button" tabindex="0">${ICON.tshirt}<span>播放器样式</span></div>
                   <div data-a="add" role="button" tabindex="0">${ICON.plus}<span>加入歌单</span></div>
                   <div data-a="download" role="button" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg><span>下载当前歌曲</span></div>
                 </div>
@@ -532,10 +533,21 @@
           }
         });
       }
-      this.el.addEventListener('click', (e) => {
-        if (this.queuePanel.classList.contains('show') && !this.queuePanel.contains(e.target) && !e.target.closest('.np-qbtn')) {
-          this.closeQueue();
+      this.$('.np-more-menu').addEventListener('click', (e) => {
+        const it = e.target.closest('[data-a]'); if (!it) return;
+        const act = it.dataset.a;
+        if (act === 'style') {
+          this.$('.np-more').classList.remove('open');
+          this.openStylePanel();
+        } else if (act === 'add') {
+          const s = this.player && this.player.currentSong;
+          if (window.openAddModal && s) window.openAddModal(s);
+        } else if (act === 'download') {
+          const s = this.player && this.player.currentSong;
+          if (window.downloadSong && s) window.downloadSong(s, it);
         }
+        this.$('.np-more').classList.remove('open');
+        this.$('.np-more').classList.remove('open');
       });
       this.playBtn.addEventListener('click', () => {
         if (!this.player) return;
@@ -544,7 +556,6 @@
         if ((!p.currentSong || !p.playlist || !p.playlist.length) && window.playRandom) { window.playRandom(); return; }
         p.togglePlay();
       });
-      this.$('.np-prev').addEventListener('click', () => this.player && this.player.previousSong());
       this.$('.np-next').addEventListener('click', () => this.player && this.player.nextSong());
       this.modeBtn.addEventListener('click', () => { if (this.player) { this.player.togglePlayMode(); this._renderMode(); } });
       this.likeBtn.addEventListener('click', () => this._toggleLike());
@@ -1491,13 +1502,10 @@
 
     _startRAF() {
       this._stopRAF();
-      if (document.hidden || !this.el.classList.contains('open')) return;
+      if (document.hidden || !this.el.classList.contains('open') || !this.el.classList.contains('playing')) return;
       const loop = () => {
         this._rafTick();
-        const p = this.player;
-        const isPlaying = !!(p && p.audio && !p.audio.paused);
-        const needsMore = isPlaying || this._waveAmp > 0.02 || this._vinylAmp > 0.02;
-        if (needsMore && this.el.classList.contains('open') && !document.hidden) {
+        if (this.el.classList.contains('open') && this.el.classList.contains('playing') && !document.hidden) {
           this._raf = requestAnimationFrame(loop);
         } else {
           this._raf = null;
@@ -1725,8 +1733,15 @@
       this.playBtn.title = p ? '暂停' : '播放';
       this.playBtn.setAttribute('aria-label', this.playBtn.title);
       this.el.classList.toggle('playing', !!p);
-      // 启动 RAF 持续绘制平滑减速与回缩正圆动效 (用户反馈 9)
-      this._startRAF();
+      if (p) {
+        this._startRAF();
+      } else {
+        this._stopRAF();
+        this._waveAmp = 0;
+        this._vinylAmp = 0;
+        this._drawSoundWave(false);
+        this._drawVinylWave(false);
+      }
       const status = this.$('.np-status');
       if (status) status.textContent = p ? '正在播放' : (this.player && this.player.currentSong ? '已暂停' : '等待播放');
     }
