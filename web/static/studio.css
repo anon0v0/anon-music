@@ -2097,17 +2097,28 @@ body.sidebar-collapsed .playbar {
   flex: 0 0 48px;
   width: 48px;
   height: 48px;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  box-shadow: 0 4px 14px var(--studio-shadow) !important;
+  border: none !important;
+}
+.pb-cover-wrap .pb-ring {
+  display: none !important;
 }
 .pb-cover {
-  width: 48px;
-  height: 48px;
+  width: 100% !important;
+  height: 100% !important;
   border-radius: 50% !important;
-  box-shadow: 0 4px 14px var(--studio-shadow);
   aspect-ratio: 1 / 1;
   object-fit: cover;
+  display: block !important;
   animation: coverSpin 20s linear infinite;
   animation-play-state: paused;
-  transition: transform 0.2s var(--studio-ease), box-shadow 0.2s var(--studio-ease);
+  transition: transform 0.2s var(--studio-ease);
+}
+.pb-cover-expand {
+  border-radius: 50% !important;
 }
 body.music-playing .pb-cover,
 body.playing .pb-cover {

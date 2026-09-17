@@ -350,7 +350,6 @@
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
   transform: rotate(-26deg);
 }
-}
 
 /* ================== 透明彩胶与经典黑胶皮肤 ================== */
 .np-overlay[data-skin="vinyl"] .np-cover-wrap,
@@ -1825,4 +1824,116 @@
   background: var(--np-theme-color, #22c55e);
   box-shadow: 0 0 8px var(--np-theme-glow, rgba(34, 197, 94, 0.45));
   display: block;
+}
+
+/* ==========================================================================
+   全屏播放器官方亮色 (浅色) 模式完整适配 (完全对标 TuneFree 官方浅色参考图)
+   ========================================================================== */
+html[data-theme="light"] .np-overlay {
+  background: #eef0f3;
+  color: #18181b;
+}
+html[data-theme="light"] .np-bg {
+  filter: blur(75px) saturate(1.2) brightness(1.12);
+  opacity: 0.52;
+}
+html[data-theme="light"] .np-bg::after {
+  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.65) 0%, rgba(238, 240, 243, 0.94) 100%),
+              linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(238, 240, 243, 0.98) 100%);
+}
+html[data-theme="light"] .np-close {
+  color: rgba(0, 0, 0, 0.75);
+}
+html[data-theme="light"] .np-close:hover {
+  background: rgba(0, 0, 0, 0.07);
+  color: #000000;
+}
+html[data-theme="light"] .np-title {
+  color: #18181b !important;
+}
+html[data-theme="light"] .np-artist {
+  color: #71717a !important;
+}
+html[data-theme="light"] .np-lyrics .ln {
+  color: rgba(0, 0, 0, 0.42) !important;
+}
+html[data-theme="light"] .np-lyrics .ln:hover {
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+html[data-theme="light"] .np-lyrics .ln.active {
+  color: #18181b !important;
+  text-shadow: 0 0 16px rgba(0, 0, 0, 0.12) !important;
+}
+html[data-theme="light"] .np-lyrics .ln.active .w {
+  background: linear-gradient(90deg, var(--np-theme-color, #22c55e) var(--p), #18181b var(--p));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+html[data-theme="light"] .np-lyric-seek-pill .pill-badge {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(0, 0, 0, 0.14) !important;
+  color: #18181b !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+html[data-theme="light"] .np-lyric-seek-pill .pill-badge:hover {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.28) !important;
+}
+html[data-theme="light"] .np-lyric-seek-pill .pill-guide-line {
+  border-top-color: rgba(0, 0, 0, 0.28) !important;
+}
+html[data-theme="light"] .np-overlay[data-skin="lyrics"] .np-lyrics .ln.active {
+  color: #18181b !important;
+}
+html[data-theme="light"] .np-footer {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+html[data-theme="light"] .np-foot-name {
+  color: #18181b !important;
+}
+html[data-theme="light"] .np-foot-artist {
+  color: #71717a !important;
+}
+html[data-theme="light"] .np-foot-exit-btn,
+html[data-theme="light"] .np-foot-acts button,
+html[data-theme="light"] .np-foot-right button,
+html[data-theme="light"] .np-main-ctrl button {
+  color: rgba(0, 0, 0, 0.72) !important;
+}
+html[data-theme="light"] .np-foot-exit-btn:hover,
+html[data-theme="light"] .np-foot-acts button:hover,
+html[data-theme="light"] .np-foot-right button:hover,
+html[data-theme="light"] .np-main-ctrl button:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: #000000 !important;
+}
+html[data-theme="light"] .np-progress .t {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+html[data-theme="light"] .np-bar-track {
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+html[data-theme="light"] .np-bar-fill {
+  background: #18181b !important;
+}
+html[data-theme="light"] .np-bar-thumb {
+  background: #18181b !important;
+}
+html[data-theme="light"] .np-overlay[data-skin="vinyl"] .np-cover-wrap {
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35), inset 0 0 0 8px rgba(255, 255, 255, 0.1) !important;
+}
+html[data-theme="light"] .np-overlay[data-skin="vinyl-color"] .np-cover-wrap {
+  box-shadow: 0 0 45px var(--np-theme-glow, rgba(56, 189, 248, 0.35)),
+              0 20px 60px rgba(0, 0, 0, 0.18),
+              inset 0 0 16px rgba(255, 255, 255, 0.6),
+              inset 0 0 0 2px rgba(255, 255, 255, 0.5) !important;
+}
+html[data-theme="light"] .tonearm-base {
+  background: radial-gradient(circle, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16), inset 0 1px 3px rgba(255, 255, 255, 1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+}
+html[data-theme="light"] .tonearm-arm {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.18)) !important;
 }
