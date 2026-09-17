@@ -86,7 +86,7 @@
             <div class="np-left">
               <div class="np-cover-wrap">
                 <div class="np-disc"><img class="np-cover" alt="专辑封面" referrerpolicy="no-referrer" src="/static/app-icon.png"></div>
-                <div class="np-tonearm"><i></i></div>
+                <div class="np-tonearm"><div class="tonearm-base"></div><div class="tonearm-arm"><div class="tonearm-stick"></div><div class="tonearm-head"></div></div></div>
                 <span class="np-srcbadge"></span>
               </div>
               <div class="np-meta" style="display:none">
@@ -411,10 +411,9 @@
             const topOffset = r.top - wrapRect.top + (r.height - 28) / 2;
             const txEl = closest.querySelector('.ln-tx') || closest;
             const tr = txEl.getBoundingClientRect();
-
-            // 悬停时间胶囊固定在左侧！
+            // 悬停时间胶囊固定在左侧！(彻底与歌词文字隔离，绝不重叠)
             const isLyricsMode = this.el.dataset.skin === 'lyrics';
-            const fixedLeft = isLyricsMode ? Math.max(16, (wrapRect.width - 720) / 2) : 18;
+            const fixedLeft = isLyricsMode ? 24 : 14;
             this.seekPill.style.top = `${Math.max(4, Math.min(wrapRect.height - 32, topOffset))}px`;
             this.seekPill.style.left = `${fixedLeft}px`;
 
@@ -424,8 +423,8 @@
               const pillBadge = this.seekPill.querySelector('.pill-badge');
               const badgeWidth = pillBadge ? pillBadge.offsetWidth : 76;
               const textLeftInWrap = tr.left - wrapRect.left;
-              const lineGap = textLeftInWrap - (fixedLeft + badgeWidth + 10);
-              if (lineGap > 12) {
+              const lineGap = textLeftInWrap - (fixedLeft + badgeWidth + 8);
+              if (lineGap > 10) {
                 guideLine.style.width = `${lineGap}px`;
                 guideLine.style.display = 'block';
               } else {
@@ -1067,11 +1066,15 @@
     }
 
     _applyBg(c) {
-      const rgb = (c || [250, 35, 59]).map(n => Math.round(Math.max(0, Math.min(255, n))));
+      const rgb = (c || [34, 197, 94]).map(n => Math.round(Math.max(0, Math.min(255, n))));
       this._themeColor = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
       this.el.style.setProperty('--np-theme-color', this._themeColor);
       this.el.style.setProperty('--np-theme-glow', `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.45)`);
       this.el.style.setProperty('--np-tint', rgb.join(' '));
+      this.el.style.setProperty('--vinylC', `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`);
+      this.el.style.setProperty('--vinylCA', `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.35)`);
+      this.el.style.setProperty('--vinylCB', `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.65)`);
+      this.el.style.setProperty('--vinylCR', `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.85)`);
     }
 
     _lineInner(l) {
