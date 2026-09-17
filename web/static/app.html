@@ -27,8 +27,8 @@
     })();
   </script>
   <link rel="stylesheet" href="/static/app.css?v=20260811np1">
-  <link rel="stylesheet" href="/static/nowplaying.css?v=20260917-v116">
-  <link rel="stylesheet" href="/static/studio.css?v=20260917-v116">
+  <link rel="stylesheet" href="/static/nowplaying.css?v=20260917-v117">
+  <link rel="stylesheet" href="/static/studio.css?v=20260917-v117">
 </head>
 <body>
   <!-- 播放引擎（隐藏，仅提供音频/歌词内核） -->
@@ -71,8 +71,11 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><line x1="9" y1="3" x2="9" y2="21"/><path d="M12 9l3 3-3 3"/></svg>
         </button>
         <form class="search" role="search" autocomplete="off" onsubmit="return false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
-          <input id="searchInput" name="q" type="search" inputmode="search" placeholder="搜索歌曲、歌手、专辑…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-form-type="other" aria-label="搜索音乐">
+          <svg class="search-glass-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input id="searchInput" name="q" type="search" inputmode="search" placeholder="搜索音乐、歌手、专辑…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-form-type="other" aria-label="搜索音乐">
+          <button type="button" class="search-logo-btn" id="searchLogoBtn" title="Anon Music" aria-label="刷新或返回首页">
+            <img src="/static/music-logo.png?v=20260721e" alt="Logo">
+          </button>
         </form>
         <div class="topbar-spacer" aria-hidden="true"></div>
         <div class="topbar-right-group">
@@ -236,17 +239,17 @@
   <!-- API 出口统一层：必须先于所有业务脚本。网页端 API_BASE=''（同源，行为不变）；
        原生壳的安装包里会注入 __ANON_API_BASE__ 指向远程站点 -->
   <script src="/static/apibase.js?v=20260811a"></script>
-  <script src="/static/player.js?v=20260917-v116"></script>
+  <script src="/static/player.js?v=20260917-v117"></script>
   <script>
     window.player = NeteaseMiniPlayer.initPlayer(document.getElementById('globalPlayer'));
   </script>
-  <script src="/static/nowplaying.js?v=20260917-v116"></script>
+  <script src="/static/nowplaying.js?v=20260917-v117"></script>
   <script src="/static/bridge.js?v=20260811a"></script>
   <script src="/static/theme.js?v=20260916-tf7"></script>
   <script src="/static/downloads.js?v=20260811a"></script>
   <script src="/static/local.js?v=20260716b"></script>
-  <script src="/static/app.js?v=20260916-tf7"></script>
-  <script src="/static/appext.js?v=20260916-tf7"></script>
+  <script src="/static/app.js?v=20260917-v117"></script>
+  <script src="/static/appext.js?v=20260917-v117"></script>
   <!-- 注册 PWA Service Worker（作用域 /，由根路径 /service-worker.js 提供）。
        打进安装包的壳里前端本来就是本地文件，不需要 SW，跳过。 -->
   <script>

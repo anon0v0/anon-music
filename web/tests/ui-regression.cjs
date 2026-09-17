@@ -151,7 +151,7 @@ const VIS = () => {
     const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
     return { in: b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1, covered: !(hit && (hit === el || el.contains(hit))) };
   };
-  return { search: one('#searchInput'), play: one('#pbPlay'), prev: one('#pbPrev'), next: one('#pbNext'), menu: one('#menuBtn'), bottomNav: one('#mobileBottomNav') };
+  return { search: one('#searchInput'), play: one('#pbPlay'), prev: one('#pbPrev'), next: one('#pbNext'), menu: one('#menuBtn'), bottomNav: one('#mobileBottomNav'), like: one('#pbLike'), queue: one('#pbQueue') };
 };
 
 if (require.main === module) (async () => {
@@ -174,7 +174,7 @@ if (require.main === module) (async () => {
         assert(v.search && v.search.in && !v.search.covered, 'searchInput 不可见/被遮挡');
         assert(v.play && v.play.in && !v.play.covered, 'pbPlay 不可见/被遮挡');
         if (w > 820) assert(v.prev && v.next, '桌面上一首/下一首不可见');
-        if (w <= 820) { assert(v.next && v.next.in && !v.next.covered, '手机下一首不可见'); assert(v.menu && v.menu.in && !v.menu.covered, 'menuBtn不可见/被遮挡'); assert(v.bottomNav, 'mobileBottomNav 不可见'); }
+        if (w <= 820) { assert(v.queue && v.queue.in && !v.queue.covered, '手机队列键不可见/被遮挡'); assert(v.menu && v.menu.in && !v.menu.covered, 'menuBtn不可见/被遮挡'); assert(v.bottomNav, 'mobileBottomNav 不可见'); }
         return '';
       });
       if (w >= 1024) {
