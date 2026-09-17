@@ -89,7 +89,7 @@
             <!-- 左栏：大尺寸高清方形专辑封面 (Image 1 规范) / 黑胶 -->
             <div class="np-left">
               <div class="np-cover-wrap">
-                <canvas class="np-vinyl-wave" width="540" height="540" aria-hidden="true"></canvas>
+                <canvas class="np-vinyl-wave" width="560" height="560" aria-hidden="true"></canvas>
                 <div class="np-vinyl-aura" aria-hidden="true"></div>
                 <div class="np-turntable-deck" aria-hidden="true">
                   <div class="np-deck-well"></div>
@@ -1562,24 +1562,21 @@
       const cx = w / 2, cy = h / 2;
       ctx.clearRect(0, 0, w, h);
 
-      // 动态获取当前彩胶唱盘的实际渲染尺寸与外圈半径 (保证在各分辨率下始终居中且不溢出)
-      const discEl = this.disc || this.$('.np-disc');
+      // 使用未旋转的固定容器布局宽度，严禁使用旋转中的 getBoundingClientRect()！
       const wrapEl = this.coverWrap || this.$('.np-cover-wrap');
-      const discBox = discEl ? discEl.getBoundingClientRect() : (wrapEl ? wrapEl.getBoundingClientRect() : null);
+      const rDiscCSS = (wrapEl && wrapEl.clientWidth > 0) ? (wrapEl.clientWidth / 2) : 170;
       const cvBox = cv.getBoundingClientRect();
       const scale = (cvBox && cvBox.width > 0) ? (w / cvBox.width) : 1;
+      const rDisc = rDiscCSS * scale;
 
-      const discRadiusCSS = (discBox && discBox.width > 0) ? (discBox.width / 2) : 170;
-      const rDiscCanvas = discRadiusCSS * scale;
+      // 唱片外圈基准半径：紧贴在唱盘边缘外 14px 处 (对标图 5 静止状态)
+      const baseR = rDisc + (14 * scale);
 
-      // 唱片外圈基准半径：设定在唱盘边缘外 14px 处，绝不缩入唱片内部 (对标图 5 静止状态)
-      const baseR = rDiscCanvas + (14 * scale);
-
-      // 播放时平滑起伏，暂停时平滑回到初始正圆 (用户反馈 9)
-      const targetAmp = isPlaying ? 5.5 : 0;
+      // 播放时律动幅度克制雅致（目标 3.5px），暂停时平滑衰减回缩至初始正圆 (用户反馈 9)
+      const targetAmp = isPlaying ? 3.5 : 0;
       this._vinylAmp += (targetAmp - this._vinylAmp) * 0.085;
       if (!isPlaying && this._vinylAmp < 0.015) this._vinylAmp = 0;
-      this._vinylPhase += isPlaying ? 0.035 : 0.004;
+      this._vinylPhase += isPlaying ? 0.035 : 0.003;
 
       const amp = this._vinylAmp * scale;
       const themeCol = this._themeColor || '#22c55e';
@@ -1590,20 +1587,20 @@
       ctx.lineJoin = 'round';
 
       if (amp > 0.02) {
-        // 播放状态：双层柔美环形律动波浪线，波动始终在彩胶外圈 (对标图 6、图 7)
+        // 播放状态：双层柔美环形律动波浪线，波动始终在彩胶外圈，波幅轻柔 (对标图 6、图 7)
         ctx.beginPath();
         ctx.strokeStyle = themeCol;
         ctx.lineWidth = 2.0 * scale;
         ctx.shadowColor = themeCol;
         ctx.shadowBlur = 10 * scale;
-        ctx.globalAlpha = 0.9;
+        ctx.globalAlpha = 0.92;
 
         const points = 180;
         for (let i = 0; i <= points; i++) {
           const theta = (i / points) * Math.PI * 2;
           // 5 波峰优雅呼吸律动，波形因子 >= 0 保证绝对在唱盘外圈
           const s = (Math.sin(theta * 5 - this._vinylPhase * 0.8) * 0.6 + Math.cos(theta * 3 + this._vinylPhase * 0.4) * 0.4 + 1) * 0.5;
-          const wave = Math.pow(s, 1.2) * (amp * 1.5);
+          const wave = Math.pow(s, 1.2) * (amp * 1.3);
           const r = baseR + wave;
           const x = cx + Math.cos(theta) * r;
           const y = cy + Math.sin(theta) * r;
@@ -1614,18 +1611,18 @@
         ctx.stroke();
 
         // 次层微光外环：柔和向外呼应
-        if (amp > 1.0) {
+        if (amp > 0.8) {
           ctx.beginPath();
           ctx.strokeStyle = secCol;
           ctx.lineWidth = 1.2 * scale;
           ctx.shadowColor = secCol;
           ctx.shadowBlur = 6 * scale;
-          ctx.globalAlpha = 0.45;
+          ctx.globalAlpha = 0.42;
           for (let i = 0; i <= points; i++) {
             const theta = (i / points) * Math.PI * 2;
             const s = (Math.sin(theta * 6 - this._vinylPhase * 0.6 + 1.2) + 1) * 0.5;
-            const wave = Math.pow(s, 1.1) * (amp * 0.9);
-            const r = baseR + (4 * scale) + wave;
+            const wave = Math.pow(s, 1.1) * (amp * 0.85);
+            const r = baseR + (3 * scale) + wave;
             const x = cx + Math.cos(theta) * r;
             const y = cy + Math.sin(theta) * r;
             if (i === 0) ctx.moveTo(x, y);

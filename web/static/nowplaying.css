@@ -440,16 +440,24 @@
 
 /* 透明彩胶皮肤：悬浮通透果冻彩胶唱盘 (对标图 1) */
 .np-overlay[data-skin="vinyl-color"] .np-cover-wrap {
+  width: min(32vw, 340px, calc(100vh - 270px)) !important;
+  height: min(32vw, 340px, calc(100vh - 270px)) !important;
+  max-width: 340px !important;
+  max-height: 340px !important;
   border-radius: 50% !important;
   overflow: visible !important;
   background: radial-gradient(circle, transparent 46%, var(--vinylCA, rgba(56, 189, 248, 0.35)) 48%, var(--vinylCB, rgba(56, 189, 248, 0.65)) 75%, var(--vinylCR, rgba(56, 189, 248, 0.88)) 100%),
               repeating-radial-gradient(circle, rgba(255, 255, 255, 0.08) 0, rgba(255, 255, 255, 0.08) 1px, transparent 2px, transparent 6px) !important;
-  box-shadow: 0 0 45px var(--np-theme-glow, rgba(56, 189, 248, 0.4)),
-              0 24px 70px rgba(0, 0, 0, 0.5),
-              inset 0 0 20px rgba(255, 255, 255, 0.45),
+  box-shadow: 0 0 36px var(--np-theme-glow, rgba(56, 189, 248, 0.35)),
+              0 20px 60px rgba(0, 0, 0, 0.45),
+              inset 0 0 18px rgba(255, 255, 255, 0.45),
               inset 0 0 0 2px rgba(255, 255, 255, 0.35) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+}
+.np-overlay[data-skin="vinyl-color"] .np-body {
+  grid-template-columns: minmax(260px, 340px) minmax(360px, 640px);
+  gap: clamp(32px, 4vw, 56px);
 }
 .np-overlay[data-skin="vinyl-color"] .np-disc {
   width: 100% !important;
@@ -634,8 +642,8 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(100% + 100px);
-  height: calc(100% + 100px);
+  width: calc(100% + 88px);
+  height: calc(100% + 88px);
   max-width: none;
   max-height: none;
   transform: translate(-50%, -50%);
