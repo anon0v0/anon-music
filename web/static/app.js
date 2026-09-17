@@ -35,7 +35,8 @@
   // 3. 全部失败 → 优雅回退到占位图。
   document.addEventListener('error', (e) => {
     const t = e.target;
-    if (t && t.tagName === 'IMG' && t.src && t.src !== IMG_PLACEHOLDER) {
+    if (t && t.tagName === 'IMG' && t.src && t.src !== IMG_PLACEHOLDER && !t.src.startsWith('data:image')) {
+      if (t.classList.contains('np-cover')) return;
       if (t.src.indexOf('http://') === 0) {
         t.src = httpsify(t.src);
       } else if (!t.dataset.proxied && !t.src.includes('/api/img?url=') && (t.src.includes('gtimg.cn') || t.src.includes('y.qq.com') || t.src.includes('126.net') || t.src.includes('qpic.cn') || t.src.includes('qq.com'))) {
@@ -1657,12 +1658,12 @@
     return keys.map(k => {
       const item = NAV.find(x => x[0] === k); if (!item) return '';
       const [key, label, icon] = item;
-      return `<a class="item" data-nav="${key}" href="#/${key}">${textOnly ? '' : icon}<span>${label}</span></a>`;
+      return `<div class="item" role="button" tabindex="0" data-nav="${key}" data-href="#/${key}">${textOnly ? '' : icon}<span>${label}</span></div>`;
     }).join('');
   }
   function renderNav() {
     $('#nav').innerHTML = NAV.map(([k, label, icon]) =>
-      `<a class="item" data-nav="${k}" href="#/${k}">${icon}<span>${label}</span></a>`).join('');
+      `<div class="item" role="button" tabindex="0" data-nav="${k}" data-href="#/${k}">${icon}<span>${label}</span></div>`).join('');
     const routeNav = $('#mobileRouteNav'); if (routeNav) routeNav.innerHTML = navItems(MOBILE_ROUTES, true);
     const bottomNav = $('#mobileBottomNav'); if (bottomNav) bottomNav.innerHTML = navItems(MOBILE_PRIMARY, false);
   }
@@ -2528,6 +2529,27 @@
   syncToolsPosition();
   async function boot() {
     renderNav();
+    document.addEventListener('click', (e) => {
+      const it = e.target.closest('.nav .item, .mobile-route-nav .item, .mobile-bottom-nav .item');
+      if (it && it.dataset.href) { e.preventDefault(); location.hash = it.dataset.href; }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        const it = e.target.closest && e.target.closest('.nav .item, .mobile-route-nav .item, .mobile-bottom-nav .item');
+        if (it && it.dataset.href) { e.preventDefault(); location.hash = it.dataset.href; }
+      }
+    });
+    const brand = $('#brandLogo') || $('.brand');
+    if (brand) {
+      const goHome = () => {
+        if (window.NowPlaying && window.NowPlaying.close) window.NowPlaying.close();
+        const cur = location.hash.replace(/^#\/?/, '');
+        if (!cur || cur === 'discover') { location.reload(); }
+        else { location.hash = '#/discover'; }
+      };
+      brand.onclick = goHome;
+      brand.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goHome(); } };
+    }
     initPlaybar();
     setupFM();      // 私人FM 自动续歌
     setupStats();   // 听歌统计上报

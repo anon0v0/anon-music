@@ -183,6 +183,16 @@ button:active {
 .side-head .brand {
   padding: 0;
   gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.16s ease, transform 0.16s var(--studio-ease);
+}
+.side-head .brand:hover {
+  opacity: 0.85;
+  transform: scale(1.02);
+}
+.side-head .brand:active {
+  transform: scale(0.97);
 }
 .brand .brand-logo {
   width: 28px;
@@ -281,6 +291,8 @@ button:active {
   font-size: 13px;
   color: var(--studio-secondary);
   font-weight: 500;
+  cursor: pointer;
+  user-select: none;
   transition: background-color 0.18s var(--studio-ease), color 0.18s var(--studio-ease), transform 0.12s var(--studio-ease);
 }
 .nav .item:hover {

@@ -108,8 +108,11 @@
               <div class="np-lyrhead" style="display:none"><div class="t"></div><div class="a"></div></div>
               <div class="np-lyrics-wrap">
                 <div class="np-lyric-seek-pill" style="display:none">
-                  <svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>
-                  <span class="pill-time">00:00</span>
+                  <div class="pill-badge" role="button" tabindex="0" title="点击跳转播放">
+                    <svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                    <span class="pill-time">00:00</span>
+                  </div>
+                  <div class="pill-guide-line"></div>
                 </div>
                 <div class="np-lyrics"><div class="empty">歌词会在这里，随音乐展开</div></div>
               </div>
@@ -314,7 +317,7 @@
         });
       }
       this.cover.addEventListener('error', () => {
-        const raw = this.cover.getAttribute('src') || this.cover.src || '';
+        const raw = this.cover.getAttribute('data-rawsrc') || this.cover.getAttribute('src') || this.cover.src || '';
         if (!this.cover.dataset.proxied && raw && !raw.startsWith('data:') && !raw.includes('/api/img?url=')) {
           this.cover.dataset.proxied = '1';
           const proxied = (window.apiUrl ? window.apiUrl('/api/img?url=') : '/api/img?url=') + encodeURIComponent(raw);
@@ -406,11 +409,30 @@
             if (this.seekPillTime) this.seekPillTime.textContent = fmt(lineData.time);
             const r = closest.getBoundingClientRect();
             const topOffset = r.top - wrapRect.top + (r.height - 28) / 2;
-            const textEl = closest.querySelector('.ln-tx') || closest;
-            const tr = textEl.getBoundingClientRect();
-            const leftOffset = (tr.right - wrapRect.left) + 16;
+            const txEl = closest.querySelector('.ln-tx') || closest;
+            const tr = txEl.getBoundingClientRect();
+
+            // 悬停时间胶囊固定在左侧！
+            const isLyricsMode = this.el.dataset.skin === 'lyrics';
+            const fixedLeft = isLyricsMode ? Math.max(16, (wrapRect.width - 720) / 2) : 18;
             this.seekPill.style.top = `${Math.max(4, Math.min(wrapRect.height - 32, topOffset))}px`;
-            this.seekPill.style.left = `${Math.max(10, Math.min(wrapRect.width - 96, leftOffset))}px`;
+            this.seekPill.style.left = `${fixedLeft}px`;
+
+            // 计算点状虚线导引律动线（从胶囊右端连接到歌词文字左端）
+            const guideLine = this.seekPill.querySelector('.pill-guide-line');
+            if (guideLine) {
+              const pillBadge = this.seekPill.querySelector('.pill-badge');
+              const badgeWidth = pillBadge ? pillBadge.offsetWidth : 76;
+              const textLeftInWrap = tr.left - wrapRect.left;
+              const lineGap = textLeftInWrap - (fixedLeft + badgeWidth + 10);
+              if (lineGap > 12) {
+                guideLine.style.width = `${lineGap}px`;
+                guideLine.style.display = 'block';
+              } else {
+                guideLine.style.display = 'none';
+              }
+            }
+
             this.seekPill.style.display = 'inline-flex';
             requestAnimationFrame(() => this.seekPill.classList.add('show'));
             return;

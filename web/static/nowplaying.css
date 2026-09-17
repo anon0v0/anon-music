@@ -421,49 +421,57 @@ html[data-theme="light"] .np-lyrics .ln.active.has-line-p .ln-tx {
 }
 
 /* 鼠标悬停 / 滚动歌词时间胶囊 */
+/* 鼠标悬停 / 滚动歌词时间胶囊与点状律动导引线 (对齐图 1 效果) */
 .np-lyric-seek-pill {
   position: absolute;
   z-index: 35;
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.94);
+  transition: opacity 0.2s ease, top 0.14s cubic-bezier(0.25, 1, 0.5, 1), transform 0.2s ease;
+  user-select: none;
+}
+.np-lyric-seek-pill.show {
+  opacity: 1;
+  transform: scale(1);
+}
+.np-lyric-seek-pill .pill-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 28px;
   padding: 0 12px;
   border-radius: 999px;
-  background: rgba(30, 30, 35, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(34, 34, 40, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
   color: #ffffff;
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   pointer-events: auto;
-  opacity: 0;
-  transform: scale(0.92);
-  transition: opacity 0.2s ease, top 0.16s cubic-bezier(0.25, 1, 0.5, 1), transform 0.2s ease, background 0.16s, border-color 0.16s;
-  user-select: none;
+  transition: all 0.16s ease;
+  flex: 0 0 auto;
 }
-html[data-theme="light"] .np-lyric-seek-pill {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+html[data-theme="light"] .np-lyric-seek-pill .pill-badge {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.14);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   color: #18181b;
 }
-.np-lyric-seek-pill.show {
-  opacity: 1;
-  transform: scale(1);
-}
-.np-lyric-seek-pill:hover {
-  background: rgba(45, 45, 52, 0.95);
-  border-color: rgba(255, 255, 255, 0.3);
+.np-lyric-seek-pill .pill-badge:hover {
+  background: rgba(48, 48, 56, 0.98);
+  border-color: rgba(255, 255, 255, 0.35);
   transform: scale(1.05);
 }
-html[data-theme="light"] .np-lyric-seek-pill:hover {
+html[data-theme="light"] .np-lyric-seek-pill .pill-badge:hover {
   background: #ffffff;
-  border-color: rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 0, 0, 0.28);
   transform: scale(1.05);
 }
 .np-lyric-seek-pill svg {
@@ -475,6 +483,17 @@ html[data-theme="light"] .np-lyric-seek-pill:hover {
 .np-lyric-seek-pill .pill-time {
   letter-spacing: 0.02em;
   white-space: nowrap;
+}
+/* 延伸点状虚线律动线（与参考图 1 完全一致） */
+.np-lyric-seek-pill .pill-guide-line {
+  height: 0;
+  margin-left: 8px;
+  border-top: 2px dotted rgba(255, 255, 255, 0.35);
+  transition: width 0.14s cubic-bezier(0.25, 1, 0.5, 1);
+  pointer-events: none;
+}
+html[data-theme="light"] .np-lyric-seek-pill .pill-guide-line {
+  border-top: 2px dotted rgba(0, 0, 0, 0.28);
 }
 .np-lyrics .ln .tr {
   display: block;
