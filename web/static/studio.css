@@ -2410,11 +2410,15 @@ body.playing .pb-cover {
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
-    min-height: 48px !important;
-    height: 48px !important;
+    min-height: calc(48px + env(safe-area-inset-top)) !important;
+    height: calc(48px + env(safe-area-inset-top)) !important;
     padding: calc(6px + env(safe-area-inset-top)) 14px 6px !important;
     gap: 8px !important;
+    background: var(--studio-bg) !important;
     border: 0 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 101 !important;
   }
   .topbar .menu-btn {
     position: static !important;
@@ -2494,7 +2498,7 @@ body.playing .pb-cover {
     display: none !important;
   }
   .view {
-    padding: 16px 20px calc(156px + env(safe-area-inset-bottom));
+    padding: 0 20px calc(156px + env(safe-area-inset-bottom)) !important;
     scrollbar-gutter: auto;
   }
   .studio-intro {
@@ -3149,7 +3153,7 @@ body.playing .pb-cover {
     align-items: center !important;
     justify-content: flex-start !important;
     gap: 8px !important;
-    padding: 8px 16px 8px !important;
+    padding: 6px 16px 8px !important;
     margin: 0 -20px 10px !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
@@ -3927,4 +3931,161 @@ body.playing .pb-cover {
     height: 14px;
   }
 }
-}
+
+  /* 猜你喜欢卡片 (1:1 像素级复刻 QQ 音乐) */
+  .feat-fold-card {
+    flex: 0 0 216px !important;
+    width: 216px !important;
+    max-width: 216px !important;
+    height: 152px !important;
+    scroll-snap-align: start !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    position: relative !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+  }
+  .feat-fold-card .fbc-box {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    height: 100% !important;
+    position: relative !important;
+  }
+  .fbc-fold-left {
+    position: relative !important;
+    width: 86px !important;
+    flex: 0 0 86px !important;
+    overflow: hidden !important;
+    border-radius: 16px 0 0 16px !important;
+    border-right: 1px dashed rgba(255, 255, 255, 0.2) !important;
+  }
+  .fbc-fold-bg {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+  .fbc-fold-meta {
+    position: absolute !important;
+    inset: 0 !important;
+    padding: 8px 6px !important;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.8) 100%) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+  .fbc-fortune-tag {
+    font-size: 10px !important;
+    color: #22c55e !important;
+    font-weight: 700 !important;
+  }
+  .fbc-fortune-tip {
+    font-size: 10px !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+  }
+  .fbc-user-tag {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .fbc-vip-tag {
+    font-size: 9px !important;
+    color: #ffd700 !important;
+    font-weight: 700 !important;
+  }
+  .fbc-fold-right {
+    flex: 1 1 auto !important;
+    position: relative !important;
+    padding: 10px 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    min-width: 0 !important;
+    background-image: url('/static/bg_guess_you_like_default.webp') !important;
+    background-size: cover !important;
+    background-position: center !important;
+  }
+  .fbc-header-row {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    position: relative !important;
+    z-index: 2 !important;
+  }
+  .fbc-for-you {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-style: italic !important;
+    letter-spacing: -0.5px !important;
+  }
+  .fbc-disc-wrap {
+    position: relative !important;
+    width: 48px !important;
+    height: 48px !important;
+    flex: 0 0 48px !important;
+  }
+  .fbc-disc-bg {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 50% !important;
+    animation: coverSpin 20s linear infinite !important;
+  }
+  .fbc-disc-cover {
+    position: absolute !important;
+    inset: 9px !important;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    animation: coverSpin 20s linear infinite !important;
+  }
+  .fbc-meta-bottom {
+    position: relative !important;
+    z-index: 2 !important;
+  }
+  .fbc-badge-tip {
+    font-size: 10.5px !important;
+    color: #22c55e !important;
+    font-weight: 600 !important;
+  }
+  .fbc-song-title {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-top: 1px !important;
+  }
+  .fbc-artist-sub {
+    font-size: 10px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .fbc-play-btn {
+    position: absolute !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    z-index: 3 !important;
+  }
+  .fbc-play-btn img {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+  }
+

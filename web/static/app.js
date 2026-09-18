@@ -548,25 +548,33 @@
             <a class="see-all-stats" href="#/stats" style="display:flex;align-items:center;gap:4px;color:var(--studio-secondary);text-decoration:none;font-size:12px;">查看听歌报告 <svg width="14" height="14" style="width:14px;height:14px;flex:0 0 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
           </div>
           <div class="cards home-feature-grid home-feature-track">
-            <!-- 卡片 1：今日为你推荐可折叠特色大卡 (对标参考图 3 & QQ 音乐主流风格) -->
+            <!-- 卡片 1：猜你喜欢特色折叠大卡 (1:1 像素级复刻 QQ 音乐) -->
             <div class="card home-feature-card feat-banner-card feat-fold-card" role="button" tabindex="0" aria-label="${timeTheme} 播放" id="featBannerPlay">
               <div class="fbc-box">
                 <div class="fbc-fold-left">
                   <img class="fbc-fold-bg" src="${attr(heroCover)}" alt="">
                   <div class="fbc-fold-meta">
-                    <div class="fbc-badge-title">${timeTheme}</div>
-                    <div class="fbc-user-info">
-                      <div class="fbc-user-tag">${esc(userNick || 'Anon')}</div>
-                      <div class="fbc-vip-tag">💎 SVIP 7年</div>
-                    </div>
+                    <div class="fbc-fortune-tag">今日运势</div>
+                    <div class="fbc-fortune-tip">宜轻松听歌</div>
+                    <div class="fbc-user-tag">${esc(userNick || 'Anon')}</div>
+                    <div class="fbc-vip-tag">💎 SVIP</div>
                   </div>
                 </div>
                 <div class="fbc-fold-right">
-                  <div class="fbc-badge-tip">猜你喜欢 · 沉浸刷歌 🎵</div>
-                  <div class="fbc-song-title">${esc(heroName)}</div>
-                  <div class="fbc-artist-sub">${esc(heroSinger || '热门推荐')}</div>
+                  <div class="fbc-header-row">
+                    <span class="fbc-for-you">For You</span>
+                    <div class="fbc-disc-wrap">
+                      <img class="fbc-disc-bg" src="/static/recommend_guess_you_like_disk.webp" alt="">
+                      <img class="fbc-disc-cover" src="${attr(heroCover)}" alt="">
+                    </div>
+                  </div>
+                  <div class="fbc-meta-bottom">
+                    <div class="fbc-badge-tip">猜你喜欢 · 沉浸刷歌</div>
+                    <div class="fbc-song-title">${esc(heroName)}</div>
+                    <div class="fbc-artist-sub">${esc(heroSinger || '精选推荐')}</div>
+                  </div>
                   <button class="fbc-play-btn" type="button" aria-label="播放${timeTheme}">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    <img src="/static/guess_you_like_play_icon.webp" alt="播放">
                   </button>
                 </div>
               </div>
@@ -1890,8 +1898,7 @@
     const NO_GESTURE = '.np-overlay,.modal,.sheet,.sidebar,input,textarea,select,' +
       '[contenteditable],.tg-chat,.range-row,.pb';
     // 只屏蔽「横向切分类」的区域：它们自己要横向滚动，但纵向下拉刷新仍应可用
-    const NO_SWIPE_X = '.mobile-route-nav,.cat-chips,.home-feature-track,.stats-bars,' +
-      '.playlist-batchbar,.set-tabs';
+    const NO_SWIPE_X = '.mobile-route-nav,.cat-chips,.home-feature-track,.dns-swipe-track,.discover-shelf-grid,.uc-recent-track,.cards,.plaza-two-col-grid,.songlist,.playlist-batchbar,.set-tabs';
 
     const TRIGGER = 66, MAXP = 118, SWIPE = 62;
     let x0 = 0, y0 = 0, dx = 0, dy = 0, axis = '', tracking = false, pull = 0, busy = false, inHScroll = false;
@@ -1905,7 +1912,7 @@
       ind.classList.toggle('show', d > 2);
       ind.classList.toggle('ready', d >= TRIGGER);
     };
-    const setSlide = (d) => { view.style.transform = d ? `translate3d(${d}px,0,0)` : ''; };
+    const setSlide = (d) => {};
     const clearT = (anim) => {
       view.style.transition = anim ? 'transform .26s cubic-bezier(.22,.61,.36,1)' : '';
       view.style.transform = '';
@@ -1915,17 +1922,22 @@
     // 只有停在一级分类上才允许左右切换；详情页（歌单/榜单/歌手…）不参与
     const routeIndex = () => MOBILE_ROUTES.indexOf(document.body.dataset.route || '');
     function switchRoute(dir) {
-      const i = routeIndex();
-      if (i < 0) return false;
-      const ni = i + dir;
-      if (ni < 0 || ni >= MOBILE_ROUTES.length) return false;
-      view.classList.remove('slide-in-l', 'slide-in-r');
-      // 强制回流让同名动画能重放
-      void view.offsetWidth;
-      view.classList.add(dir > 0 ? 'slide-in-r' : 'slide-in-l');
-      setTimeout(() => view.classList.remove('slide-in-l', 'slide-in-r'), 300);
-      location.hash = '#/' + MOBILE_ROUTES[ni];
-      return true;
+      const subNav = document.getElementById("discoverSubNav");
+      if (subNav && window.innerWidth <= 820) {
+        const subTabs = ["rec", "plaza", "charts"];
+        const activeTab = subNav.querySelector(".dsn-tab.active");
+        const curSub = activeTab ? activeTab.dataset.sub : "rec";
+        const curIdx = subTabs.indexOf(curSub);
+        if (curIdx >= 0) {
+          const nextIdx = curIdx + dir;
+          if (nextIdx >= 0 && nextIdx < subTabs.length) {
+            const targetBtn = subNav.querySelector(`.dsn-tab[data-sub="${subTabs[nextIdx]}"]`);
+            if (targetBtn) { targetBtn.click(); return true; }
+          }
+        }
+        return false;
+      }
+      return false;
     }
 
     function endPull() {
