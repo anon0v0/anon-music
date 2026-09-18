@@ -2780,6 +2780,7 @@ body.playing .pb-cover {
     background: transparent;
     color: var(--studio-accent);
   }
+}
 
 @media (hover: none) {
   .card .play-fab {
@@ -3920,4 +3921,5 @@ body.playing .pb-cover {
     width: 14px;
     height: 14px;
   }
+}
 }

@@ -1437,25 +1437,25 @@
       const favPls = (Library.favPlaylists || []).concat(Library.playlists || []);
       const mobileHero = `
         <div class="mobile-liked-view">
-          <div class="mlv-topbar">
-            <button class="mlv-back-btn" id="mlvBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-            <h1>我的收藏</h1>
-            <div class="mlv-top-acts">
-              <button class="mlv-act-btn" id="mlvShareBtn" title="分享"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+          <div class="mlv-topbar" style="display:flex;align-items:center;justify-content:space-between;height:44px;margin-bottom:8px;">
+            <button class="mlv-back-btn" id="mlvBackBtn" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--studio-text);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+            <h1 style="font-size:17px;font-weight:700;margin:0;">我的收藏</h1>
+            <div class="mlv-top-acts" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+              <button class="mlv-act-btn" id="mlvShareBtn" title="分享" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--studio-text);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
             </div>
           </div>
           <!-- 仅保留【歌曲】和【歌单】两个分类按钮 (用户反馈 2) -->
-          <div class="mlv-sub-tabs" role="tablist">
+          <div class="mlv-sub-tabs" role="tablist" style="display:flex;gap:18px;border-bottom:1px solid var(--studio-line);margin-bottom:12px;padding-bottom:4px;">
             <button class="mlv-tab active" data-sub="songs">歌曲 ${songs.length}</button>
             <button class="mlv-tab" data-sub="playlists">歌单 ${favPls.length}</button>
           </div>
-          <div class="mlv-search-bar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <div class="mlv-search-bar" style="display:flex;align-items:center;background:var(--studio-panel);border:1px solid var(--studio-line);border-radius:999px;height:36px;padding:0 12px;margin-bottom:12px;gap:8px;">
+            <svg width="15" height="15" style="flex:0 0 15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
             <input class="mlv-search-input" id="mlvSearchInput" placeholder="搜索我收藏的歌曲">
           </div>
-          <div class="mlv-actions-bar">
+          <div class="mlv-actions-bar" style="margin-bottom:12px;">
             <button class="mlv-play-all-pill" id="mlvPlayAll">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
               <span>全部播放 (${songs.length})</span>
             </button>
           </div>
@@ -1654,9 +1654,9 @@
       <div class="user-center-page">
         <!-- 头部用户卡片 (对标参考图 6) -->
         <section class="uc-header-card">
-          <div class="uc-user-row">
-            <div class="uc-avatar-wrap" role="button" tabindex="0" id="ucAvatarBtn" title="用户头像">
-              <img class="uc-avatar" src="${attr(avatar)}" alt="用户头像">
+          <div class="uc-user-row" style="display:flex;align-items:center;gap:12px;">
+            <div class="uc-avatar-wrap" style="width:54px;height:54px;max-width:54px;max-height:54px;flex:0 0 54px;border-radius:50%;overflow:hidden;border:2px solid #22c55e;" role="button" tabindex="0" id="ucAvatarBtn" title="用户头像">
+              <img class="uc-avatar" style="width:100%;height:100%;max-width:100%;max-height:100%;object-fit:cover;display:block;" src="${attr(avatar)}" alt="用户头像">
             </div>
             <div class="uc-meta">
               <div class="uc-name-row">
@@ -1670,24 +1670,21 @@
         </section>
 
         <!-- 四大核心功能入口 (对标参考图 6) -->
-        <section class="uc-nav-grid">
-          <div class="uc-nav-item" role="button" tabindex="0" onclick="location.hash='#/liked'">
+        <section class="uc-nav-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div class="uc-nav-item" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;" role="button" tabindex="0" onclick="location.hash='#/liked'">
             <div class="uc-nav-icon uc-icon-liked">${ICONS.heartF}</div>
             <div class="uc-nav-label">收藏</div>
             <div class="uc-nav-sub">${likedSongs.length || (Library.likedSet ? Library.likedSet.size : 0)} 首</div>
           </div>
-          <div class="uc-nav-item" role="button" tabindex="0" onclick="location.hash='#/local'">
-            <div class="uc-nav-icon uc-icon-local"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="15" cy="13.5" r="1.6"/><path d="M16.6 13.5V9.2l-3.2.7v3.9"/></svg></div>
+          <div class="uc-nav-item" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;" role="button" tabindex="0" onclick="location.hash='#/local'">
             <div class="uc-nav-label">本地</div>
             <div class="uc-nav-sub">本地音乐</div>
           </div>
-          <div class="uc-nav-item" role="button" tabindex="0" onclick="location.hash='#/downloads'">
-            <div class="uc-nav-icon uc-icon-dl">${ICONS.download}</div>
+          <div class="uc-nav-item" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;" role="button" tabindex="0" onclick="location.hash='#/downloads'">
             <div class="uc-nav-label">下载</div>
             <div class="uc-nav-sub">下载管理</div>
           </div>
-          <div class="uc-nav-item" role="button" tabindex="0" onclick="location.hash='#/stats'">
-            <div class="uc-nav-icon uc-icon-stats"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 20h16v1.5H4zM6 10h3v8H6zm5-5h3v13h-3zm5 8h3v5h-3z"/></svg></div>
+          <div class="uc-nav-item" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;" role="button" tabindex="0" onclick="location.hash='#/stats'">
             <div class="uc-nav-label">报告</div>
             <div class="uc-nav-sub">听歌档案</div>
           </div>
@@ -1793,7 +1790,7 @@
         const s = (d.data && d.data.songs) || [];
         const subEl = view.querySelector(`.uc-pl-sub[data-pid="${p.id}"]`);
         if (subEl && s.length && s[0]) {
-          subEl.textContent = `${p.songCount || s.length} 首 · ${s[0].name || ''} · ${s[0].artists || s[0].artist || ''}`;
+          subEl.textContent = `${p.songCount || s.length} 首 · ${s[0].name || ''} · ${artistStr(s[0]) || '未知歌手'}`;
         }
       } catch (_) {}
     });
