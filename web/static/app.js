@@ -545,7 +545,7 @@
         <section class="discover-foryou-section">
           <div class="row-head">
             <h2>${forYouTitle}</h2>
-            <a class="see-all-stats" href="#/stats">查看听歌报告 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+            <a class="see-all-stats" href="#/stats" style="display:flex;align-items:center;gap:4px;color:var(--studio-secondary);text-decoration:none;font-size:12px;">查看听歌报告 <svg width="14" height="14" style="width:14px;height:14px;flex:0 0 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
           </div>
           <div class="cards home-feature-grid home-feature-track">
             <!-- 卡片 1：今日为你推荐可折叠特色大卡 (对标参考图 3 & QQ 音乐主流风格) -->
@@ -1670,21 +1670,20 @@
         </section>
 
         <!-- 四大核心功能入口 (对标参考图 6) -->
-        <section class="uc-nav-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-          <div class="uc-nav-item" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;" role="button" tabindex="0" onclick="location.hash='#/liked'">
-            <div class="uc-nav-icon uc-icon-liked">${ICONS.heartF}</div>
+        <section class="uc-nav-grid">
+          <div class="uc-nav-item" role="button" tabindex="0" onclick="location.hash='#/liked'">
             <div class="uc-nav-label">收藏</div>
-            <div class="uc-nav-sub">${likedSongs.length || (Library.likedSet ? Library.likedSet.size : 0)} 首</div>
+            <div class="uc-nav-sub">${likedSongs.length || (Library.likedSet ? Library.likedSet.size : 0)}</div>
           </div>
-          <div class="uc-nav-item" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;" role="button" tabindex="0" onclick="location.hash='#/local'">
+          <div class="uc-nav-item" role="button" tabindex="0" onclick="location.hash='#/local'">
             <div class="uc-nav-label">本地</div>
             <div class="uc-nav-sub">本地音乐</div>
           </div>
-          <div class="uc-nav-item" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;" role="button" tabindex="0" onclick="location.hash='#/downloads'">
+          <div class="uc-nav-item" role="button" tabindex="0" onclick="location.hash='#/downloads'">
             <div class="uc-nav-label">下载</div>
             <div class="uc-nav-sub">下载管理</div>
           </div>
-          <div class="uc-nav-item" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;" role="button" tabindex="0" onclick="location.hash='#/stats'">
+          <div class="uc-nav-item" role="button" tabindex="0" onclick="location.hash='#/stats'">
             <div class="uc-nav-label">报告</div>
             <div class="uc-nav-sub">听歌档案</div>
           </div>
@@ -1694,7 +1693,7 @@
         <section class="uc-section">
           <div class="uc-sec-head">
             <h3>最近播放</h3>
-            <a class="uc-see-more" href="#/recent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+            <a class="uc-see-more" href="#/recent" style="display:flex;align-items:center;color:var(--studio-secondary);text-decoration:none;"><svg width="16" height="16" style="width:16px;height:16px;flex:0 0 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
           </div>
           <div class="uc-recent-track">
             <!-- 首卡：已播歌曲 2x2 四宫格封面 -->
