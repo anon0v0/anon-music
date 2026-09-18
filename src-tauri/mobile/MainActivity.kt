@@ -33,7 +33,9 @@ class MainActivity : TauriActivity() {
         initAndroidContext(this)
         super.onCreate(savedInstanceState)
         showSplash()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        try {
+            WebView.setWebContentsDebuggingEnabled(true)
+        } catch (_: Exception) {}
             try {
                 requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 1001)
             } catch (_: Exception) {}

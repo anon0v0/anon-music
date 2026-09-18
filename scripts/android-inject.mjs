@@ -8,6 +8,7 @@
 // 这样不必把整个 gen/android 入库，CI 每次重新生成后打补丁即可。
 import { readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync, appendFileSync, cpSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = new URL('..', import.meta.url);
 const conf = JSON.parse(readFileSync(new URL('src-tauri/tauri.conf.json', root), 'utf8'));
@@ -27,9 +28,9 @@ if (!existsSync(genJava)) {
 for (const f of ['MainActivity.kt', 'MusicService.kt', 'LyricOverlay.kt', 'DownloadHelper.kt']) {
   const src = new URL(`src-tauri/mobile/${f}`, root);
   const dst = new URL(f, genJava);
-  mkdirSync(dirname(dst.pathname), { recursive: true });
+  mkdirSync(dirname(fileURLToPath(dst)), { recursive: true });
   copyFileSync(src, dst);
-  console.log('[android-inject] copied', f, '->', dst.pathname);
+  console.log('[android-inject] copied', f, '->', fileURLToPath(dst));
 }
 
 // 2.5) 媒体卡片自定义动作的图标。
@@ -38,7 +39,7 @@ for (const f of ['MainActivity.kt', 'MusicService.kt', 'LyricOverlay.kt', 'Downl
 const drawSrc = new URL('src-tauri/mobile/res/drawable/', root);
 const drawDst = new URL('src-tauri/gen/android/app/src/main/res/drawable/', root);
 if (existsSync(drawSrc)) {
-  mkdirSync(drawDst.pathname, { recursive: true });
+  mkdirSync(fileURLToPath(drawDst), { recursive: true });
   cpSync(drawSrc, drawDst, { recursive: true, force: true });
   console.log('[android-inject] media custom-action drawables copied');
 } else {

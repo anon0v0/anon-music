@@ -2444,7 +2444,7 @@ body.playing .pb-cover {
   .topbar-right-group {
     display: flex !important;
     align-items: center !important;
-    flex: 0 0 auto !important;
+    flex: 0 0 34px !important;
     margin: 0 !important;
   }
   .studio-np-btn {
@@ -2459,9 +2459,13 @@ body.playing .pb-cover {
     color: #22c55e !important;
     padding: 0 !important;
     cursor: pointer !important;
+    flex: 0 0 34px !important;
     box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2) !important;
   }
   .studio-np-btn .studio-np-title {
+    display: none !important;
+  }
+  .guest-hint {
     display: none !important;
   }
   .studio-np-btn .studio-np-icon {
@@ -2749,27 +2753,33 @@ body.playing .pb-cover {
     height: 20px !important;
   }
   .mobile-bottom-nav {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     background: var(--studio-bar);
     border-top: 1px solid var(--studio-line);
     backdrop-filter: blur(28px) saturate(190%);
     -webkit-backdrop-filter: blur(28px) saturate(190%);
-    padding-top: 6px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom)) !important;
   }
   .mobile-bottom-nav .item {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 550;
     color: var(--studio-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
   }
   .mobile-bottom-nav .item svg {
     padding: 0;
-    width: 21px;
-    height: 21px;
+    width: 22px;
+    height: 22px;
   }
   .mobile-bottom-nav .item.active, .mobile-bottom-nav .item.active svg {
     background: transparent;
     color: var(--studio-accent);
   }
-}
 
 @media (hover: none) {
   .card .play-fab {
@@ -3136,11 +3146,11 @@ body.playing .pb-cover {
     -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
-    padding: 10px 16px 10px !important;
-    margin: 0 -20px 14px !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    padding: 8px 16px 8px !important;
+    margin: 0 -20px 10px !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-  }
   .discover-sub-nav::-webkit-scrollbar {
     display: none !important;
   }
@@ -3491,9 +3501,10 @@ body.playing .pb-cover {
   }
   .plaza-two-col-grid {
     display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 14px 10px !important;
-    padding: 0 14px 20px !important;
+    margin: 0 -8px !important;
+    padding: 0 8px 20px !important;
   }
 
   /* 6. 【我的】用户中心 (对标参考图 6、8、9) */
